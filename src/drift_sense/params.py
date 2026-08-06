@@ -43,9 +43,9 @@ class DramParams:
     bl_duty: tuple = (0.38, 0.50)
     contact_radius_f: tuple = (0.70, 0.90)
     contact_cd_sigma: float = 0.04
-    contact_missing_prob: tuple = (0.001, 0.008)
-    mat_width_nm: tuple = (2200.0, 3400.0)
-    mat_height_nm: tuple = (1400.0, 2400.0)
+    contact_missing_prob: tuple = (0.002, 0.012)
+    mat_width_nm: tuple = (5500.0, 9000.0)
+    mat_height_nm: tuple = (4500.0, 8000.0)
     sa_stripe_nm: tuple = (380.0, 560.0)
     swd_stripe_nm: tuple = (300.0, 460.0)
     ler_sigma_nm: tuple = (1.2, 2.4)

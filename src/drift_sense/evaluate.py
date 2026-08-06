@@ -164,6 +164,8 @@ def run_evaluation(dataset_dir, out_dir, cfg=None, limit=None):
             "gt_scale_error": meta["search_scale_error"],
             "search_dose_e": meta["search_capture"]["settings"]["dose_e"],
             "num_candidates": diag["num_candidates"],
+            "stage2_used": diag["stage2"]["used"],
+            "stage2_margin": diag["stage2"]["margin"],
             "runtime_s": diag["runtime_s"],
         }
         rows.append(row)

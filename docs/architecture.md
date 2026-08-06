@@ -25,7 +25,10 @@ The same two mapping functions, `capture_to_specimen` and `specimen_to_capture`,
 1. The reference is blurred with a Gaussian matched to typical search optics resolution, then band passed. The search image is lightly denoised and band passed with the same physical cutoff.
 2. For each rotation and scale hypothesis, one affine transform resamples the blurred reference onto the search pixel grid (10x zoom times hypothesis scale, rotated), point sampling included so template aliasing matches search aliasing.
 3. Normalized cross correlation (OpenCV, FFT backed) scores each hypothesis by its response maximum. A coarse grid over rotation (plus minus 3 deg) and scale (plus minus 3 percent) is refined twice around the best hypothesis with halved steps.
-4. On the best response map, all local maxima within a small tolerance of the global maximum are candidates. The candidate closest to the search image center is selected, per the tie break rule, and refined with a per axis parabolic fit for sub pixel output.
+4. On the best response map, all local maxima within a small tolerance of the global maximum are candidates. A single candidate is returned directly with parabolic sub pixel refinement.
+5. When several candidates exist, the correlation surface is degenerate and a residual disambiguation stage runs. It is cell to cell reference subtraction, the standard array inspection technique, applied to localization: the median across all candidate windows estimates the shared periodic content, each window minus the median is its deviation field (missing contacts, size outliers, roughness lumps), and the template's deviation field is correlated against each candidate's. If one candidate wins by a decisive margin it is returned, because the deviation field is the only physically identifying information a periodic array offers. If no candidate is decisive the site is genuinely ambiguous at the available noise level, and the problem statement tie break applies: the candidate closest to the search image center.
+
+The stage 2 margin is exposed in the diagnostics, so every answer carries its own confidence: one candidate means unambiguous, a decisive residual margin means identified by defects, an indecisive margin means the output is the tie break convention rather than an evidence based location.
 
 ## Failure modes by construction
 
