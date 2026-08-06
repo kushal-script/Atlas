@@ -1,0 +1,28 @@
+{
+  "dataset": "data/train40",
+  "match_config": {
+    "zoom": 10.0,
+    "template_px": 90,
+    "psf_sigma_nm": 6.0,
+    "bandpass_sigma_px": 25.0,
+    "denoise_sigma_px": 0.6,
+    "coarse_rotations_deg": [
+      -3.0,
+      -1.5,
+      0.0,
+      1.5,
+      3.0
+    ],
+    "coarse_scales": [
+      0.97,
+      1.0,
+      1.03
+    ],
+    "refine_rot_step_deg": 0.375,
+    "refine_scale_step": 0.0075,
+    "refine_levels": 2,
+    "peak_tolerance": 0.015,
+    "peak_min_separation_px": 4
+  },
+  "n_pairs": 40
+}
