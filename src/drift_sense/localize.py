@@ -263,10 +263,17 @@ def locate(ref_img, search_img, cfg=None):
     return float(x), float(y), diag, resp
 
 
+def optical_config():
+    return MatchConfig(psf_sigma_bank_nm=(2.0, 8.0),
+                      bandpass_sigma_px=120.0,
+                      denoise_sigma_px=1.5)
+
+
 def load_gray(path):
+    """Returns (image, is_rgb); RGB inputs are converted to luminance."""
     img = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
     if img is None:
         raise FileNotFoundError(path)
     if img.ndim == 3:
-        img = cv2.cvtColor(img[:, :, :3], cv2.COLOR_BGR2GRAY)
-    return img
+        return cv2.cvtColor(img[:, :, :3], cv2.COLOR_BGR2GRAY), True
+    return img, False

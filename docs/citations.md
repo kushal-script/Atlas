@@ -36,6 +36,14 @@ Standard cell structure. Logic is organised in rows of 6 to 9 fins with cells of
 
 Line edge roughness. Fin, gate, word line and bit line edges carry correlated roughness with sigma 1 to 2.4 nm and correlation length 15 to 40 nm, matching reported LER magnitudes and correlation lengths for litho and etch defined lines. [15] [16] [17]
 
+## Optical modality (bonus)
+
+Diffraction limited resolution. The brightfield point spread is modelled as a Gaussian of sigma 0.21 lambda over NA per channel, the standard Gaussian approximation of the Airy pattern, with chromatic variation following wavelength. At visible wavelengths and NA near 0.9 this is roughly 130 nm, so nanometer scale array features are unresolved and only mesoscale structure (mats, stripes, blocks) carries localization information, which matches the production division of labor between optical coarse alignment and electron beam fine addressing. [24] [25] [27]
+
+Thin film interference color. Oxide regions are colored by two beam interference with phase 4 pi n t over lambda for film thickness t and index 1.46, which is why wafer dielectric films show thickness dependent colors under brightfield inspection. [24] [26]
+
+Photon noise and camera effects. Per channel Poisson shot noise scaled by exposure (the wide field capture receives far fewer photons per pixel), small Gaussian read noise, radial vignetting, illumination tilt and white balance jitter model the camera chain; optical tools are full field cameras, so no scan line artifacts apply. [25] [26]
+
 ## Localizer choices
 
 Normalized cross correlation. NCC is the standard robust similarity for template localization under linear intensity changes, computed with the FFT accelerated formulation. [18]
@@ -73,3 +81,7 @@ All entries verified against the publisher or an authoritative index.
 21. D. G. Lowe, Distinctive image features from scale invariant keypoints, International Journal of Computer Vision, vol. 60, no. 2, pp. 91 to 110, 2004. doi 10.1023/B:VISI.0000029664.99615.94.
 22. L. T. Clark, V. Vashishtha, L. Shifren, A. Gujja, S. Sinha, B. Cline, C. Ramamurthy, G. Yeric, ASAP7: A 7 nm finFET predictive process design kit, Microelectronics Journal, vol. 53, pp. 105 to 115, 2016. Reports 27 nm fin pitch, 54 nm contacted poly pitch, 7.5 track standard cells.
 23. T. Vogelsang, Understanding the energy consumption of dynamic random access memories, Proceedings of the 43rd Annual IEEE ACM International Symposium on Microarchitecture, 2010. Describes mats bounded by bit line sense amplifier stripes and local word line driver stripes with local lines typically 256 to 512 cells long.
+24. M. Born, E. Wolf, Principles of Optics: Electromagnetic Theory of Propagation, Interference and Diffraction of Light, 7th expanded edition, Cambridge University Press, 1999.
+25. J. W. Goodman, Introduction to Fourier Optics, 3rd edition, Roberts and Company, 2005.
+26. A. C. Diebold, editor, Handbook of Silicon Semiconductor Metrology, Marcel Dekker, New York, 2001.
+27. B. Zhang, J. Zerubia, J. C. Olivo Marin, Gaussian approximations of fluorescence microscope point spread function models, Applied Optics, vol. 46, no. 10, pp. 1819 to 1829, 2007.

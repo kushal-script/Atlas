@@ -24,7 +24,15 @@ Python 3.11 or newer. All commands below assume the repository root as working d
 .venv/bin/python scripts/generate_dataset.py --style mixed --num 40 --out data/train40 --seed 1 --previews
 ```
 
-Arguments: `--style` is `dram`, `finfet` or `mixed`, `--num` is the number of pairs, `--out` the output folder, `--seed` the master seed, `--previews` also writes search images with the ground truth region drawn on top. Each pair folder contains `reference.png`, `search.png` and `meta.json` with the full parameter record and ground truth. A `ground_truth.csv` manifest summarises the dataset.
+Arguments: `--style` is `dram`, `finfet` or `mixed`, `--modality` is `sem` (default) or `optical` for RGB brightfield microscope pairs, `--num` is the number of pairs, `--out` the output folder, `--seed` the master seed, `--previews` also writes search images with the ground truth region drawn on top. Each pair folder contains `reference.png`, `search.png` and `meta.json` with the full parameter record and ground truth. A `ground_truth.csv` manifest summarises the dataset.
+
+A second, deliberately independent generator exists for robustness testing:
+
+```
+.venv/bin/python scripts/generate_stress_dataset.py --num 30 --out data/stress30 --seed 5
+```
+
+It shares no image formation code with the main pipeline (painted edges, plain Gaussian noise, area averaged downsampling, harsher rotations and scale errors) and serves as a domain shift proxy for unseen test data.
 
 ## Localize
 
@@ -32,7 +40,7 @@ Arguments: `--style` is `dram`, `finfet` or `mixed`, `--num` is the number of pa
 .venv/bin/python scripts/localize.py path/to/reference.png path/to/search.png
 ```
 
-Prints one line, `x y`, the center of the matched region in search image pixels with sub pixel precision. `x` is the column measured from the left, `y` is the row measured from the top, origin at the center of the top left pixel. Add `--json` for full diagnostics including the matched rotation, scale, score and runtime.
+Prints one line, `x y`, the center of the matched region in search image pixels with sub pixel precision. `x` is the column measured from the left, `y` is the row measured from the top, origin at the center of the top left pixel. Add `--json` for full diagnostics including the matched rotation, scale, blur, score, confidence regime and runtime. RGB inputs are detected automatically and processed with an optical preset.
 
 ## Evaluate
 
@@ -61,7 +69,7 @@ experiments/             evaluation runs, one timestamped folder each
 
 Generator. A large continuous die layout is built once per pair as a material map and a height map on a 2 nm grid, using published pitches and dimensions for either a DRAM cell array (word lines, bit lines, storage node contacts, array mats separated by sense amplifier and driver stripes) or FinFET logic (fin grid, gate grid, standard cell rows, diffusion breaks, contacts, vias and one perfectly regular SRAM block). Secondary electron emission is modelled as material yield times the secant of the local surface tilt, which produces the bright feature edges characteristic of SEM, plus a detector side asymmetry. Each capture then samples this common specimen through its own pose (center, rotation, pixel size), applies beam blur, per line scan drift, jitter and vibration, dielectric charging, Poisson shot noise set by the electron dose and Gaussian read noise, and quantizes to 8 bit. The two captures use independent random generators, and the search capture always receives a far lower dose than the reference, so it is always noisier. Ground truth is computed by mapping the reference center through both capture transforms, including the scan offsets.
 
-Localizer. The reference is blurred to the search optics resolution and resampled onto the search pixel grid by a single affine transform per rotation and scale hypothesis, reproducing the 10x zoom relationship including its aliasing. Normalized cross correlation against the preprocessed search image scores each hypothesis on a coarse rotation and scale grid, the best hypothesis is refined on a shrinking grid, and candidate peaks within a small tolerance of the best score are collected. A single candidate is returned directly with sub pixel parabolic refinement. When the correlation surface is degenerate (several near equal peaks inside a periodic array), a residual disambiguation stage applies cell to cell reference subtraction across the candidate windows and matches each window's deviation field against the template's, which identifies the true site whenever the window carries defect signatures; if no candidate wins decisively the site is genuinely ambiguous and the mandated tie break returns the candidate closest to the search image center. The diagnostics expose which of the three regimes produced each answer.
+Localizer. The reference is blurred to a bank of plausible search optics resolutions and resampled onto the search pixel grid by a single affine transform per blur, rotation and scale hypothesis, reproducing the 10x zoom relationship including its aliasing. The full grid (rotation to plus minus 6 deg, scale to plus minus 4 percent, four blurs) is screened at half resolution, the best hypotheses are rescored at full resolution and refined, and contrast polarity is detected from the signed correlation extrema so inverted tone conventions still match. A single dominant peak is returned directly with sub pixel parabolic refinement. When the correlation surface is degenerate (near equal peaks inside a periodic array), a residual disambiguation stage applies cell to cell reference subtraction: the shared periodic content is estimated from the median of aligned candidate windows and projected out of the template together with its sub pixel shift terms, the remaining deviation field is scored densely against every position in closed form, and a robust z score decides whether one candidate is identifiably the true site through its defect signature. If not, the site is genuinely ambiguous and the mandated tie break returns the equal match closest to the search image center. The diagnostics expose which regime produced each answer. The same pipeline accepts the RGB optical modality through luminance conversion.
 
 ## Citations
 

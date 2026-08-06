@@ -11,7 +11,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from .localize import MatchConfig, load_gray, locate
+from .localize import MatchConfig, load_gray, locate, optical_config
 
 STYLE_COLORS = {"dram": "#2a78d6", "finfet": "#eb6834"}
 TOLERANCES = (0.5, 1.0, 2.0, 3.0, 5.0, 10.0, 20.0)
@@ -101,8 +101,8 @@ def _plot_scatter(rows, key, xlabel, path, xlog=False):
 
 
 def _montage(pair_dir, row, resp, path, title):
-    ref = load_gray(pair_dir / "reference.png")
-    search = load_gray(pair_dir / "search.png")
+    ref, _ = load_gray(pair_dir / "reference.png")
+    search, _ = load_gray(pair_dir / "search.png")
     meta = json.loads((pair_dir / "meta.json").read_text())
     fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.6), dpi=150)
     axes[0].imshow(ref, cmap="gray")
@@ -144,9 +144,9 @@ def run_evaluation(dataset_dir, out_dir, cfg=None, limit=None):
     responses = {}
     for pd in pair_dirs:
         meta = json.loads((pd / "meta.json").read_text())
-        ref = load_gray(pd / "reference.png")
-        search = load_gray(pd / "search.png")
-        x, y, diag, resp = locate(ref, search, cfg)
+        ref, ref_rgb = load_gray(pd / "reference.png")
+        search, _ = load_gray(pd / "search.png")
+        x, y, diag, resp = locate(ref, search, optical_config() if ref_rgb else cfg)
         gt = meta["ground_truth"]
         err = float(np.hypot(x - gt["x"], y - gt["y"]))
         row = {

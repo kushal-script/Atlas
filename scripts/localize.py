@@ -15,7 +15,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from drift_sense.localize import MatchConfig, load_gray, locate
+from drift_sense.localize import MatchConfig, load_gray, locate, optical_config
 
 
 def main():
@@ -25,9 +25,10 @@ def main():
     ap.add_argument("--json", action="store_true", help="print full diagnostics as JSON")
     args = ap.parse_args()
 
-    ref = load_gray(args.reference)
-    search = load_gray(args.search)
-    x, y, diag, _ = locate(ref, search, MatchConfig())
+    ref, ref_rgb = load_gray(args.reference)
+    search, search_rgb = load_gray(args.search)
+    cfg = optical_config() if (ref_rgb or search_rgb) else MatchConfig()
+    x, y, diag, _ = locate(ref, search, cfg)
     if args.json:
         print(json.dumps({"x": x, "y": y, **{k: v for k, v in diag.items()}}, indent=2))
     else:
