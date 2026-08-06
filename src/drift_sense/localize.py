@@ -34,8 +34,9 @@ class MatchConfig:
     residual_disambiguation: bool = True
     residual_pad_px: int = 3
     residual_min_candidates: int = 3
-    residual_max_candidates: int = 24
-    residual_margin: float = 0.05
+    residual_max_candidates: int = 64
+    residual_margin: float = 0.035
+    residual_cluster_frac: float = 0.5
 
 
 def _preprocess(img, cfg, denoise):
@@ -157,13 +158,25 @@ def locate(ref_img, search_img, cfg=None):
     stage2 = {"used": False, "evaluated": 0, "margin": None}
     x = y = None
     if cfg.residual_disambiguation and len(candidates) >= cfg.residual_min_candidates:
-        cand = sorted(([int(c[0]), int(c[1])] for c in candidates),
-                      key=lambda c: -resp[c[0], c[1]])[:cfg.residual_max_candidates]
-        results = _residual_disambiguate(search, tmpl_best, cand, cfg)
-        order = sorted(range(len(results)), key=lambda i: -results[i][0])
-        margin = results[order[0]][0] - results[order[1]][0]
-        stage2.update(evaluated=len(cand), margin=float(margin),
-                      best_residual_score=float(results[order[0]][0]))
+        ordered = sorted(([int(c[0]), int(c[1])] for c in candidates),
+                         key=lambda c: -resp[c[0], c[1]])
+        radius2 = (t * cfg.residual_cluster_frac) ** 2
+        cand = []
+        for c in ordered:
+            if all((c[0] - r[0]) ** 2 + (c[1] - r[1]) ** 2 > radius2 for r in cand):
+                cand.append(c)
+            if len(cand) >= cfg.residual_max_candidates:
+                break
+        if len(cand) >= cfg.residual_min_candidates:
+            if len(cand) % 2 == 0:
+                cand = cand[:-1]
+            results = _residual_disambiguate(search, tmpl_best, cand, cfg)
+            order = sorted(range(len(results)), key=lambda i: -results[i][0])
+            margin = results[order[0]][0] - results[order[1]][0]
+            stage2.update(evaluated=len(cand), margin=float(margin),
+                          best_residual_score=float(results[order[0]][0]))
+        else:
+            margin = -1.0
         if margin >= cfg.residual_margin:
             py, px = cand[order[0]]
             dx = dy = 0.0
