@@ -59,7 +59,7 @@ def _pick_placement(rng, strategy, zones, search_pose, margin_px, out_px):
     return u, v
 
 
-def generate_pair(seed, style, cfg=None):
+def generate_pair(seed, style, cfg=None, modality="sem"):
     cfg = cfg or GeneratorConfig()
     seq = np.random.SeedSequence(seed)
     rng_layout, rng_canvas, rng_pose, rng_ref, rng_search = [
@@ -70,7 +70,9 @@ def generate_pair(seed, style, cfg=None):
     hgt = np.zeros((size, size), dtype=np.float32)
     style_params = cfg.dram if style == "dram" else cfg.finfet
     zones = LAYOUT_BUILDERS[style](mat, hgt, cfg.canvas.pixel_nm, rng_layout, style_params)
-    se, se_info = build_se_canvas(mat, hgt, cfg.canvas.pixel_nm, rng_canvas, cfg.canvas)
+    se_info = {}
+    if modality == "sem":
+        se, se_info = build_se_canvas(mat, hgt, cfg.canvas.pixel_nm, rng_canvas, cfg.canvas)
 
     extent = cfg.canvas.extent_nm
     pp = cfg.pose
@@ -95,10 +97,21 @@ def generate_pair(seed, style, cfg=None):
     ref_pose = {"center_u_nm": ru, "center_v_nm": rv,
                 "theta_rad": theta_r, "pixel_nm": cfg.reference.pixel_nm}
 
-    ref_img, dx_r, dy_r, ref_meta = render_capture(
-        se, mat, cfg.canvas.pixel_nm, ref_pose, cfg.reference, rng_ref)
-    search_img, dx_s, dy_s, search_meta = render_capture(
-        se, mat, cfg.canvas.pixel_nm, search_pose, cfg.search, rng_search)
+    if modality == "optical":
+        from .imaging.optical import render_optical_capture, sample_optical_settings
+        opt_ref = sample_optical_settings(rng_ref, "reference")
+        opt_search = sample_optical_settings(rng_search, "search")
+        ref_img, ref_meta = render_optical_capture(
+            mat, hgt, cfg.canvas.pixel_nm, ref_pose, opt_ref, rng_ref)
+        search_img, search_meta = render_optical_capture(
+            mat, hgt, cfg.canvas.pixel_nm, search_pose, opt_search, rng_search)
+        zero = np.zeros(cfg.search.out_px, dtype=np.float32)
+        dx_r = dy_r = dx_s = dy_s = zero
+    else:
+        ref_img, dx_r, dy_r, ref_meta = render_capture(
+            se, mat, cfg.canvas.pixel_nm, ref_pose, cfg.reference, rng_ref)
+        search_img, dx_s, dy_s, search_meta = render_capture(
+            se, mat, cfg.canvas.pixel_nm, search_pose, cfg.search, rng_search)
 
     nr = cfg.reference.out_px
     center = (nr - 1) / 2.0
@@ -114,6 +127,7 @@ def generate_pair(seed, style, cfg=None):
     meta = {
         "seed": int(seed),
         "style": style,
+        "modality": modality,
         "placement": strategy,
         "ground_truth": {"x": float(gt_c), "y": float(gt_r)},
         "gt_corners_xy": corners,

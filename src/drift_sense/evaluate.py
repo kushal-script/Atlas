@@ -162,7 +162,8 @@ def run_evaluation(dataset_dir, out_dir, cfg=None, limit=None):
             "scale_est": diag["scale"],
             "gt_rotation_deg": meta["relative_rotation_deg"],
             "gt_scale_error": meta["search_scale_error"],
-            "search_dose_e": meta["search_capture"]["settings"]["dose_e"],
+            "search_dose_e": meta["search_capture"]["settings"].get(
+                "dose_e", meta["search_capture"]["settings"].get("photon_dose", 0.0)),
             "num_candidates": diag["num_candidates"],
             "stage2_used": diag["stage2"]["used"],
             "stage2_margin": diag["stage2"]["margin"],

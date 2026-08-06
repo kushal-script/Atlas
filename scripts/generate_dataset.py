@@ -20,6 +20,7 @@ from drift_sense.generator import generate_pair, save_pair
 def main():
     ap = argparse.ArgumentParser(description="Generate SEM style reference and search image pairs")
     ap.add_argument("--style", choices=["dram", "finfet", "mixed"], default="mixed")
+    ap.add_argument("--modality", choices=["sem", "optical"], default="sem")
     ap.add_argument("--num", type=int, default=30)
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--seed", type=int, default=0)
@@ -32,7 +33,8 @@ def main():
     for i in range(args.num):
         style = args.style if args.style != "mixed" else ("dram" if i % 2 == 0 else "finfet")
         t = time.time()
-        result = generate_pair(seed=args.seed * 1_000_003 + i, style=style)
+        result = generate_pair(seed=args.seed * 1_000_003 + i, style=style,
+                               modality=args.modality)
         save_pair(args.out, i, result, preview=args.previews)
         gt = result["meta"]["ground_truth"]
         rows.append({
@@ -43,7 +45,7 @@ def main():
             "relative_rotation_deg": f"{result['meta']['relative_rotation_deg']:.4f}",
             "search_scale_error": f"{result['meta']['search_scale_error']:.5f}",
             "placement": result["meta"]["placement"],
-            "search_dose_e": f"{result['meta']['search_capture']['settings']['dose_e']:.1f}",
+            "search_dose_e": f"{result['meta']['search_capture']['settings'].get('dose_e', result['meta']['search_capture']['settings'].get('photon_dose', 0.0)):.1f}",
         })
         print(f"pair_{i:04d} {style:7s} gt=({gt['x']:.1f}, {gt['y']:.1f}) "
               f"{result['meta']['placement']:13s} {time.time() - t:.1f}s")
