@@ -48,6 +48,9 @@ class MatchConfig:
     residual_z_thresh: float = 5.0
     residual_z_pool_min: int = 9
     residual_median_k: int = 31
+    reranker_path: str = ""
+    reranker_prob: float = 0.5
+    reranker_pool: int = 48
 
 
 def _preprocess(img, cfg, denoise):
@@ -103,7 +106,7 @@ def _residual_score_map(search, tmpl, aligned_positions, cfg):
     rt0 = np.ascontiguousarray((tmpl.ravel() - basis @ coef).reshape(med.shape))
     e_rt = float(np.sum(rt0 * rt0))
     if e_rt < 1e-4 * float(np.sum(med * med)):
-        return None, med
+        return None, med, None
 
     corr_rt = cv2.matchTemplate(search, rt0, cv2.TM_CCORR).astype(np.float64)
     corr_med = cv2.matchTemplate(search, np.ascontiguousarray(med),
@@ -120,10 +123,10 @@ def _residual_score_map(search, tmpl, aligned_positions, cfg):
     sum_med2 = float(np.sum(med.astype(np.float64) ** 2))
     var = s2 - 2.0 * corr_med + sum_med2 - (s1 - sum_med) ** 2 / n_pix
     np.clip(var, 1e-6, None, out=var)
-    return (num / np.sqrt(var * e_rt)).astype(np.float32), med
+    return (num / np.sqrt(var * e_rt)).astype(np.float32), med, rt0
 
 
-def locate(ref_img, search_img, cfg=None):
+def locate(ref_img, search_img, cfg=None, return_artifacts=False):
     cfg = cfg or MatchConfig()
     t0 = time.perf_counter()
     ref = ref_img.astype(np.float32)
@@ -200,10 +203,11 @@ def locate(ref_img, search_img, cfg=None):
     stage2 = {"used": False, "evaluated": 0, "margin": None,
               "tol_wide": float(tol_wide)}
     x = y = None
+    r2 = med = rt0 = None
     if cfg.residual_disambiguation and len(wide) >= cfg.residual_min_candidates:
         ordered = sorted(([int(c[0]), int(c[1])] for c in wide),
                          key=lambda c: -resp[c[0], c[1]])
-        r2, _ = _residual_score_map(search, tmpl_best, ordered, cfg)
+        r2, med, rt0 = _residual_score_map(search, tmpl_best, ordered, cfg)
         decisive = False
         if r2 is not None:
             slack = 2 * cfg.residual_pad_px + 1
@@ -215,14 +219,22 @@ def locate(ref_img, search_img, cfg=None):
             med_v = float(np.median(vals))
             mad = float(np.median(np.abs(vals - med_v)))
             z = (float(vals[wi]) - med_v) / max(1.4826 * mad, 1e-6)
-            if len(vals) >= cfg.residual_z_pool_min:
-                decisive = z >= cfg.residual_z_thresh and margin >= 0.02
-            else:
-                decisive = margin >= cfg.residual_margin
             order = np.argsort(-vals)
             stage2.update(evaluated=int(len(vals)), margin=margin, z=float(z),
                           best_residual_score=float(vals[wi]),
                           top_scores=[float(v) for v in vals[order[:8]]])
+            if cfg.reranker_path:
+                from .reranker import rerank
+                choice, prob = rerank(search, tmpl_best, med, rt0, resp, r2,
+                                      wide, cfg)
+                stage2.update(reranker_prob=float(prob))
+                if choice is not None:
+                    wi = int(choice)
+                    decisive = True
+            elif len(vals) >= cfg.residual_z_pool_min:
+                decisive = z >= cfg.residual_z_thresh and margin >= 0.02
+            else:
+                decisive = margin >= cfg.residual_margin
         if decisive:
             py, px = int(wide[wi, 0]), int(wide[wi, 1])
             dx = dy = 0.0
@@ -260,6 +272,10 @@ def locate(ref_img, search_img, cfg=None):
         "runtime_s": time.perf_counter() - t0,
         "response_shape": list(resp.shape),
     }
+    if return_artifacts:
+        diag["artifacts"] = {"search": search, "template": tmpl_best,
+                             "resp": resp, "r2": r2, "med": med, "rt0": rt0,
+                             "wide": wide}
     return float(x), float(y), diag, resp
 
 

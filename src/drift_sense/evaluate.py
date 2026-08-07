@@ -86,7 +86,7 @@ def _plot_scatter(rows, key, xlabel, path, xlog=False):
     for style in sorted({r["style"] for r in rows}):
         xs = [r[key] for r in rows if r["style"] == style]
         ys = [max(r["err_px"], 1e-3) for r in rows if r["style"] == style]
-        ax.scatter(xs, ys, s=36, color=STYLE_COLORS[style], label=style, alpha=0.85,
+        ax.scatter(xs, ys, s=36, color=STYLE_COLORS.get(style, "#7a7a76"), label=style, alpha=0.85,
                    edgecolors="white", linewidths=0.5)
     ax.set_yscale("log")
     if xlog:
@@ -108,8 +108,9 @@ def _montage(pair_dir, row, resp, path, title):
     axes[0].imshow(ref, cmap="gray")
     axes[0].set_title("reference, 1 nm per px", fontsize=9)
     axes[1].imshow(search, cmap="gray")
-    corners = np.array(meta["gt_corners_xy"] + [meta["gt_corners_xy"][0]])
-    axes[1].plot(corners[:, 0], corners[:, 1], color="#1baf7a", linewidth=1.5)
+    if "gt_corners_xy" in meta:
+        corners = np.array(meta["gt_corners_xy"] + [meta["gt_corners_xy"][0]])
+        axes[1].plot(corners[:, 0], corners[:, 1], color="#1baf7a", linewidth=1.5)
     axes[1].plot(row["gt_x"], row["gt_y"], "+", color="#1baf7a", markersize=12,
                  markeredgewidth=2, label="truth")
     axes[1].plot(row["pred_x"], row["pred_y"], "x", color="#eb6834", markersize=10,

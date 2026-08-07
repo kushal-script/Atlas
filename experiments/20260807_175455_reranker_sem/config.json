@@ -1,5 +1,5 @@
 {
-  "dataset": "data/stress30",
+  "dataset": "data/train40_v2",
   "match_config": {
     "zoom": 10.0,
     "template_px": 90,
@@ -44,7 +44,10 @@
     "residual_margin": 0.035,
     "residual_z_thresh": 5.0,
     "residual_z_pool_min": 9,
-    "residual_median_k": 31
+    "residual_median_k": 31,
+    "reranker_path": "/Users/kushalsathyanarayan/Desktop/semicon_india_hackathon/PS2/models/reranker.npz",
+    "reranker_prob": 0.5,
+    "reranker_pool": 48
   },
-  "n_pairs": 30
+  "n_pairs": 40
 }

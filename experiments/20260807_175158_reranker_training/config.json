@@ -1,0 +1,39 @@
+{
+  "data": "data/reranker_harvest",
+  "epochs": 60,
+  "lr": 0.001,
+  "seed": 0,
+  "train_pairs": 75,
+  "val_pairs": 13,
+  "final_val_acc": 0.6923076923076923,
+  "tau": 0.5,
+  "calibration": {
+    "0.3": {
+      "fired": 9,
+      "correct": 5,
+      "precision": 0.5556
+    },
+    "0.35": {
+      "fired": 7,
+      "correct": 5,
+      "precision": 0.7143
+    },
+    "0.4": {
+      "fired": 6,
+      "correct": 5,
+      "precision": 0.8333
+    },
+    "0.45": {
+      "fired": 6,
+      "correct": 5,
+      "precision": 0.8333
+    },
+    "0.5": {
+      "fired": 5,
+      "correct": 5,
+      "precision": 1.0
+    }
+  },
+  "numpy_torch_max_diff": 3.814697265625e-06,
+  "runtime_s": 101.36454391479492
+}

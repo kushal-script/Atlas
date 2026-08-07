@@ -30,6 +30,8 @@ The same two mapping functions, `capture_to_specimen` and `specimen_to_capture`,
 
 The diagnostics expose which regime produced each answer (single candidate, decisive residual, or tie break convention) plus the residual z score, so every output carries its own confidence.
 
+An optional learned decision can replace the z score rule (see the re-ranker section of the README): a small CNN scores each candidate from the same evidence the statistical rule uses, the search window, template and both deviation fields plus the two scalar scores, with a learnable abstain class trained on pools whose true site is absent. It changes only the decision among already found candidates, never the candidate search, so its worst case is bounded by the classical pipeline's candidate set, and abstention still falls through to the mandated tie break.
+
 ## Failure modes by construction
 
 The generator can place the reference deep inside a uniform array (placement `deep_array`). There the correlation surface has a lattice of near equal peaks and the tie break rule decides, which is exactly the failure regime the problem statement asks to be demonstrated and explained. The evaluation harness separates metrics by placement so this regime is measured rather than hidden.

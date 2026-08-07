@@ -50,6 +50,19 @@ Prints one line, `x y`, the center of the matched region in search image pixels 
 
 Runs the localizer over every pair, compares against ground truth and writes metrics, a results table and plots into a timestamped folder under `experiments/`.
 
+## Optional learned re-ranker
+
+The stage two decision (which degenerate candidate is the true site, or abstain) is by default a hand calibrated statistical rule. An optional small CNN can replace it:
+
+```
+.venv/bin/python scripts/localize.py reference.png search.png --reranker
+.venv/bin/python scripts/evaluate.py --dataset data/train40_v2 --name reranker_run --reranker
+```
+
+Inference is pure numpy from `models/reranker.npz`, so the default installation needs no deep learning framework and the flag adds no dependencies. Training (torch, CPU) is reproduced by `notebooks/train_reranker.ipynb` or the underlying scripts `generate_dataset.py`, `harvest_reranker_data.py` and `train_reranker.py`, with dependencies in `requirements_train.txt`. The network sees each candidate's search window, the template, and both deviation fields after periodic content removal, and scores them jointly with a softmax that includes a learnable abstain class.
+
+The flag is off by default for a measured reason. On the main dataset the re-ranker matches the classical statistical decision (87.5 percent within 1 px both ways). On the independent stress generator, which shares no image formation code with its training data, it degrades accuracy (30 percent within 1 px against 43 percent classical), because a network trained on one generator's physics does not transfer to another's. The hidden test set is by definition another generator, so the physics grounded classical decision remains the default, and the re-ranker stays available as an option with its full training and evaluation record under `experiments/`.
+
 ## Repository layout
 
 ```

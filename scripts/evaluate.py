@@ -24,11 +24,16 @@ def main():
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--no_stage2", action="store_true",
                     help="disable the residual disambiguation stage")
+    ap.add_argument("--reranker", action="store_true",
+                    help="use the learned re-ranker for the stage two decision")
     args = ap.parse_args()
 
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    out_dir = Path(__file__).resolve().parents[1] / "experiments" / f"{stamp}_{args.name}"
+    repo = Path(__file__).resolve().parents[1]
+    out_dir = repo / "experiments" / f"{stamp}_{args.name}"
     cfg = MatchConfig(residual_disambiguation=not args.no_stage2)
+    if args.reranker:
+        cfg.reranker_path = str(repo / "models" / "reranker.npz")
     t0 = time.time()
     rows, metrics = run_evaluation(args.dataset, out_dir, cfg, args.limit)
     overall = metrics["overall"]
