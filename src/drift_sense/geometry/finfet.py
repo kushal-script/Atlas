@@ -15,7 +15,7 @@ def _sample(rng, lo_hi):
     return float(rng.uniform(lo_hi[0], lo_hi[1]))
 
 
-def build_finfet_layout(mat, hgt, pixel_nm, rng, p):
+def build_finfet_layout(mat, hgt, pixel_nm, rng, p, target=None, want=None):
     extent = mat.shape[0] * pixel_nm
     n = mat.shape[0]
     fp = _sample(rng, p.fin_pitch_nm)
@@ -36,8 +36,22 @@ def build_finfet_layout(mat, hgt, pixel_nm, rng, p):
 
     sram_w = _sample(rng, p.sram_width_nm)
     sram_h = _sample(rng, p.sram_height_nm)
-    sram_u0 = rng.uniform(0.1 * extent, 0.9 * extent - sram_w)
-    sram_v0 = rng.uniform(0.1 * extent, 0.9 * extent - sram_h)
+    if target is not None and want == "deep":
+        # Centre the perfectly regular block on the requested site, so that the
+        # hard case is created by structure rather than by searching the canvas
+        # for it, which would bias where the site lands in the search frame.
+        sram_u0 = float(np.clip(target[0] - sram_w / 2.0, 0.0, extent - sram_w))
+        sram_v0 = float(np.clip(target[1] - sram_h / 2.0, 0.0, extent - sram_h))
+    elif target is not None and want == "boundary":
+        sram_u0 = float(np.clip(target[0] + (sram_w if target[0] < extent / 2
+                                             else -2.0 * sram_w),
+                                0.0, extent - sram_w))
+        sram_v0 = float(np.clip(target[1] + (sram_h if target[1] < extent / 2
+                                             else -2.0 * sram_h),
+                                0.0, extent - sram_h))
+    else:
+        sram_u0 = rng.uniform(0.1 * extent, 0.9 * extent - sram_w)
+        sram_v0 = rng.uniform(0.1 * extent, 0.9 * extent - sram_h)
     sram = (sram_u0, sram_v0, sram_u0 + sram_w, sram_v0 + sram_h)
 
     row_starts = np.arange(phase_row - row_pitch, extent + row_pitch, row_pitch)

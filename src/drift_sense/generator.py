@@ -24,38 +24,17 @@ def _inside_rect(u, v, rect, inset):
     return (u0 + inset <= u <= u1 - inset) and (v0 + inset <= v <= v1 - inset)
 
 
-def _pick_placement(rng, strategy, zones, search_pose, margin_px, out_px):
+def _uniform_site(rng, search_pose, margin_px, out_px):
+    """Specimen coordinate of a site drawn uniformly inside the search frame."""
     n = out_px
-    for _ in range(300):
-        c = rng.uniform(margin_px, n - 1 - margin_px)
-        r = rng.uniform(margin_px, n - 1 - margin_px)
-        p = search_pose["pixel_nm"]
-        du = (c - (n - 1) / 2.0) * p
-        dv = (r - (n - 1) / 2.0) * p
-        cos_t, sin_t = np.cos(search_pose["theta_rad"]), np.sin(search_pose["theta_rad"])
-        u = search_pose["center_u_nm"] + du * cos_t - dv * sin_t
-        v = search_pose["center_v_nm"] + du * sin_t + dv * cos_t
-        if strategy == "uniform":
-            return u, v
-        if strategy == "deep_array":
-            if any(_inside_rect(u, v, z, 400.0) for z in zones["periodic_zones"]):
-                if not zones["anchor_zones"] or all(
-                        _rect_distance(u, v, z) > 600.0 for z in zones["anchor_zones"]):
-                    return u, v
-        if strategy == "near_boundary":
-            if zones["anchor_zones"]:
-                if any(_rect_distance(u, v, z) < 450.0 for z in zones["anchor_zones"]):
-                    return u, v
-            else:
-                if all(not _inside_rect(u, v, z, -300.0) for z in zones["periodic_zones"]):
-                    return u, v
     c = rng.uniform(margin_px, n - 1 - margin_px)
     r = rng.uniform(margin_px, n - 1 - margin_px)
     p = search_pose["pixel_nm"]
     du = (c - (n - 1) / 2.0) * p
     dv = (r - (n - 1) / 2.0) * p
-    u = search_pose["center_u_nm"] + du
-    v = search_pose["center_v_nm"] + dv
+    cos_t, sin_t = np.cos(search_pose["theta_rad"]), np.sin(search_pose["theta_rad"])
+    u = search_pose["center_u_nm"] + du * cos_t - dv * sin_t
+    v = search_pose["center_v_nm"] + du * sin_t + dv * cos_t
     return u, v
 
 
@@ -69,11 +48,6 @@ def generate_pair(seed, style, cfg=None, modality="sem"):
     mat = np.zeros((size, size), dtype=np.uint8)
     hgt = np.zeros((size, size), dtype=np.float32)
     style_params = cfg.dram if style == "dram" else cfg.finfet
-    zones = LAYOUT_BUILDERS[style](mat, hgt, cfg.canvas.pixel_nm, rng_layout, style_params)
-    se_info = {}
-    if modality == "sem":
-        se, se_info = build_se_canvas(mat, hgt, cfg.canvas.pixel_nm, rng_canvas, cfg.canvas)
-
     extent = cfg.canvas.extent_nm
     pp = cfg.pose
     theta_s = float(np.clip(rng_pose.normal(0.0, np.deg2rad(pp.rotation_deg_sigma)),
@@ -90,10 +64,23 @@ def generate_pair(seed, style, cfg=None, modality="sem"):
         "pixel_nm": cfg.search.pixel_nm * (1.0 + scale_err),
     }
 
+    # The reference site is drawn uniformly in the search frame first, and the
+    # layout is then generated so the requested local structure lands on it.
+    # Searching a finished layout for a structure instead would bias where the
+    # site falls in the frame, because large structures sit preferentially near
+    # the frame centre, and that bias would flatter any decision rule that
+    # favours the frame centre.
     strategies, weights = zip(*cfg.placement_mix)
     strategy = str(rng_pose.choice(strategies, p=np.array(weights) / sum(weights)))
-    ru, rv = _pick_placement(rng_pose, strategy, zones, search_pose,
-                             pp.ref_margin_px, cfg.search.out_px)
+    ru, rv = _uniform_site(rng_pose, search_pose, pp.ref_margin_px, cfg.search.out_px)
+    want = {"deep_array": "deep", "near_boundary": "boundary"}.get(strategy)
+    zones = LAYOUT_BUILDERS[style](mat, hgt, cfg.canvas.pixel_nm, rng_layout,
+                                   style_params, target=(ru, rv), want=want)
+    se_info = {}
+    if modality == "sem":
+        se, se_info = build_se_canvas(mat, hgt, cfg.canvas.pixel_nm, rng_canvas,
+                                      cfg.canvas)
+
     ref_pose = {"center_u_nm": ru, "center_v_nm": rv,
                 "theta_rad": theta_r, "pixel_nm": cfg.reference.pixel_nm}
 

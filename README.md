@@ -161,6 +161,7 @@ See [results/README.md](results/README.md) for the headline tables and the failu
 ## Documentation
 
 * [docs/architecture.md](docs/architecture.md) coordinate frames, generator and localizer pipelines, failure modes by construction
+* [docs/failure_analysis.md](docs/failure_analysis.md) root cause of every known failure mode, the oracle experiment separating recoverable from ill posed cases, and the recorded negative results
 * [docs/citations.md](docs/citations.md) every noise model, augmentation and structural parameter mapped to public literature
 * [docs/dataset_format.md](docs/dataset_format.md) on disk format and metadata fields
 * [docs/development_log.md](docs/development_log.md) chronological record of every major change and the measurement that motivated it

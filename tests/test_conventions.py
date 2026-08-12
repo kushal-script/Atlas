@@ -42,7 +42,10 @@ def _lattice_canvas(rng, size, mat=800, strip=220):
             y1, x1 = min(by + mat, size), min(bx + mat, size)
             if y1 - by < 100 or x1 - bx < 100:
                 continue
-            py, px = 23 + 2 * (i * n + j), 41 + 3 * (i * n + j)
+            # Pitches stay dense so every mat holds 17 or more periods and its
+            # pitch is a strong signature; the pair (i, j) is unique per mat, so
+            # no two mats are interchangeable.
+            py, px = 29 + 2 * i, 37 + 2 * j
             tile = np.full((y1 - by, x1 - bx), 40, np.uint8)
             tile[::py, :] = 150
             tile[:, ::px] = 170
@@ -51,7 +54,23 @@ def _lattice_canvas(rng, size, mat=800, strip=220):
     return canvas
 
 
-def _make_exact_pair(rng, gt_x, gt_y):
+def _draw_landmark(fine, cx, cy):
+    """One large asymmetric landmark, unique on the canvas.
+
+    Accuracy can only be asserted where the answer is unique. Rather than trying
+    to build a lattice that is provably non degenerate, which is the very
+    problem this project exists to study, a single unmistakable landmark is
+    placed at the target. Its asymmetry also means a transposed or reflected
+    coordinate convention cannot accidentally satisfy the assertion.
+    """
+    arm, thick = 340, 90
+    fine[cy - thick // 2:cy + thick // 2, cx - arm // 2:cx + arm // 2] = 250
+    fine[cy - thick // 2:cy + arm // 2, cx - arm // 2:cx - arm // 2 + thick] = 250
+    fine[cy - arm // 2:cy - arm // 2 + thick // 2, cx:cx + arm // 3] = 15
+    return fine
+
+
+def _make_exact_pair(rng, gt_x, gt_y, landmark=True):
     """Build a search image and the reference crop that produced it.
 
     The search image is an exact area averaged decimation of a fine canvas, and
@@ -60,6 +79,8 @@ def _make_exact_pair(rng, gt_x, gt_y):
     """
     import cv2
     fine = _lattice_canvas(rng, SIZE * ZOOM)
+    if landmark:
+        _draw_landmark(fine, int(round(gt_x * ZOOM)), int(round(gt_y * ZOOM)))
     search = cv2.resize(fine, (SIZE, SIZE), interpolation=cv2.INTER_AREA)
     x0 = int(round((gt_x - (SIZE // ZOOM) / 2.0) * ZOOM))
     y0 = int(round((gt_y - (SIZE // ZOOM) / 2.0) * ZOOM))
@@ -143,6 +164,7 @@ def test_confidence_is_higher_when_correct_than_when_degenerate():
     flat_search = cv2.resize(flat, (SIZE, SIZE), interpolation=cv2.INTER_AREA)
     flat_reference = flat[2000:2000 + SIZE, 3000:3000 + SIZE]
     degenerate = zncc_match(flat_reference, flat_search)["score"]
+    assert 0.0 <= degenerate <= 1.0
     assert good > degenerate, (
         f"unique pattern confidence {good:.3f} should exceed "
         f"perfectly periodic confidence {degenerate:.3f}")

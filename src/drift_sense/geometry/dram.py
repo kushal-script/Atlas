@@ -31,7 +31,24 @@ def _stripe_texture(mat, hgt, px, rect, rng):
                    min(cu + w / 2, u1), min(cv + h / 2, v1), material, height)
 
 
-def build_dram_layout(mat, hgt, pixel_nm, rng, p):
+def _phase_start(target, span, gap, want, rng):
+    """Grid origin placing a chosen specimen coordinate at a chosen phase.
+
+    Selecting the reference site by searching the canvas for a structure biases
+    where that site lands in the search frame, because large structures sit
+    preferentially near the frame centre. Instead the frame position is drawn
+    uniformly first and the grid phase is solved here so the requested local
+    structure lands on it, which decouples structure type from frame position.
+    """
+    if target is None or want is None:
+        return float(rng.uniform(-span, 0.0))
+    period = span + gap
+    offset = span / 2.0 if want == "deep" else span + gap / 2.0
+    start = target - offset
+    return float(start - period * np.ceil(start / period))
+
+
+def build_dram_layout(mat, hgt, pixel_nm, rng, p, target=None, want=None):
     extent = mat.shape[0] * pixel_nm
     f = _sample(rng, p.feature_nm)
     wl_pitch = 2.0 * f
@@ -51,13 +68,15 @@ def build_dram_layout(mat, hgt, pixel_nm, rng, p):
     sa_h = _sample(rng, p.sa_stripe_nm)
     swd_w = _sample(rng, p.swd_stripe_nm)
 
+    tu = target[0] if target is not None else None
+    tv = target[1] if target is not None else None
     u_edges = []
-    u = rng.uniform(-mat_w, 0.0)
+    u = _phase_start(tu, mat_w, swd_w, want, rng)
     while u < extent:
         u_edges.append((u, u + mat_w))
         u += mat_w + swd_w
     v_edges = []
-    v = rng.uniform(-mat_h, 0.0)
+    v = _phase_start(tv, mat_h, sa_h, want, rng)
     while v < extent:
         v_edges.append((v, v + mat_h))
         v += mat_h + sa_h

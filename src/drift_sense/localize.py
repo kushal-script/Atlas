@@ -29,9 +29,17 @@ class MatchConfig:
     template_px: int = 90
     psf_sigma_bank_nm: tuple = (2.0, 4.0, 6.5, 9.0, 14.0, 20.0)
     wide_sigma_bank_nm: tuple = (4.0, 9.0, 16.0, 25.0)
-    antialias: bool = True
+    # Anti aliasing the template models one particular search pipeline, the one
+    # that decimates by area averaging. Measured over four independent
+    # generators it cost more on the point sampling ones than it gained on the
+    # area averaging one, so it is off by default and kept as an option. See
+    # experiments/*_tolerance_and_template_ablation.
+    antialias: bool = False
     nominal_preference: float = 0.02
-    nominal_accept_score: float = 0.80
+    # Above 1.0 the early exit never fires and the pose grid is always searched,
+    # which measured better than exiting early on data carrying real rotation
+    # and magnification error. Lower it to trade accuracy for runtime.
+    nominal_accept_score: float = 9.9
     bandpass_sigma_px: float = 25.0
     denoise_sigma_px: float = 0.6
     impulse_median_ksize: int = 3
@@ -45,7 +53,13 @@ class MatchConfig:
     refine_rot_step_deg: float = 0.375
     refine_scale_step: float = 0.0075
     refine_levels: int = 2
-    peak_tolerance: float = 0.015
+    # The equal match set the centre tie break applies to. Kept tight on
+    # purpose: the reference crop origin is sampled uniformly, so proximity to
+    # the frame centre carries no information about correctness, and applying
+    # the tie break to candidates that score measurably worse only loses
+    # accuracy. Measured over four generators, 0.003 beat 0.015 on three of
+    # them and improved median error on all four.
+    peak_tolerance: float = 0.003
     stage2_tolerance_frac: float = 0.6
     stage2_tolerance_cap: float = 0.06
     peak_min_separation_px: int = 4
