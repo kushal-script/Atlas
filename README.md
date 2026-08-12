@@ -27,6 +27,15 @@ python3 -m venv .venv
 
 Python 3.11 or newer. Inference needs only numpy, scipy, OpenCV, Pillow and matplotlib; no deep learning framework is required. All commands below run from the repository root.
 
+Two further dependency files exist for optional work: `requirements_dev.txt` adds pytest for the test suite, and `requirements_train.txt` adds torch, needed only to retrain the optional re-ranker since inference reads its exported weights with numpy.
+
+```
+.venv/bin/pip install -r requirements_dev.txt
+.venv/bin/python -m pytest tests/ -q
+```
+
+The test suite asserts the coordinate convention, that the axes are not transposed, sub pixel accuracy on noise free pairs whose answer is unique by construction, generator reproducibility from a seed, independent noise between the two captures, the mandated noisier search capture, and that the confidence score ranks an identifiable pattern above a degenerate one.
+
 ## Generate a dataset
 
 ```

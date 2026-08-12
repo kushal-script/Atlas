@@ -271,10 +271,11 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
                     r = cv2.matchTemplate(small, t_small, cv2.TM_CCOEFF_NORMED)
                     prescreen.append((float(r.max()), sig, th, sc))
         prescreen.sort(key=lambda p: -p[0])
+        wide_keys = []
         for _, sig, th, sc in prescreen[:cfg.prescreen_top_k]:
             evaluate(sig, th, sc)
-        cand = max((k for k in tried if k != nominal_key), key=tried.get,
-                   default=nominal_key)
+            wide_keys.append((round(th, 4), round(sc, 5), sig))
+        cand = max(wide_keys, key=tried.get, default=nominal_key)
         cand = refine(cand)
         if tried[cand] > nominal_score + cfg.nominal_preference:
             wide_key, wide_score, used_wide = cand, tried[cand], True

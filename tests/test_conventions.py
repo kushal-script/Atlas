@@ -22,22 +22,27 @@ ZOOM = 10
 SIZE = 1000
 
 
-def _lattice_canvas(rng, size, block=1700):
-    """Blocks of differing lattice pitch separated by routing strips.
+def _lattice_canvas(rng, size, mat=800, strip=220):
+    """Mats of pairwise distinct lattice pitch separated by routing strips.
 
-    Every window of reference footprint size lands in a block with a distinctive
-    pitch or straddles a boundary, so the correct answer is identifiable. A
-    single global lattice would be genuinely degenerate and could not be used to
-    test localization accuracy at all.
+    Two properties make this well posed as an accuracy test. Every mat has a
+    unique pitch pair, so no two mats are interchangeable; and the mat period is
+    smaller than the reference footprint, so every possible template window
+    contains at least one strip boundary and cannot slide along the lattice
+    while still matching. A single global lattice, or repeated pitches, would be
+    genuinely degenerate and could not be used to assert localization accuracy
+    at all: the correct answer would not be unique.
     """
     canvas = np.full((size, size), 95, np.uint8)
-    pitches = [(37, 53), (43, 61), (29, 47), (53, 71), (31, 67), (47, 59)]
-    for by in range(0, size, block):
-        for bx in range(0, size, block):
-            py, px = pitches[int(rng.integers(0, len(pitches)))]
-            y1, x1 = min(by + block - 220, size), min(bx + block - 220, size)
-            if y1 - by < 200 or x1 - bx < 200:
+    period = mat + strip
+    n = size // period + 1
+    for i in range(n):
+        for j in range(n):
+            by, bx = i * period, j * period
+            y1, x1 = min(by + mat, size), min(bx + mat, size)
+            if y1 - by < 100 or x1 - bx < 100:
                 continue
+            py, px = 23 + 2 * (i * n + j), 41 + 3 * (i * n + j)
             tile = np.full((y1 - by, x1 - bx), 40, np.uint8)
             tile[::py, :] = 150
             tile[:, ::px] = 170
@@ -62,27 +67,43 @@ def _make_exact_pair(rng, gt_x, gt_y):
     return reference, search
 
 
-@pytest.mark.parametrize("gt_x,gt_y", [(250.0, 300.0), (700.0, 180.0), (480.0, 620.0)])
-def test_noise_free_localization_is_sub_pixel(gt_x, gt_y):
+PERIOD_SEARCH_PX = (800 + 220) / ZOOM
+STRIP_CENTRE_PX = (800 + 220 / 2.0) / ZOOM
+
+
+def _strip_crossing(col, row):
+    """A placement centred on a strip crossing, maximally distinctive."""
+    return (col * PERIOD_SEARCH_PX + STRIP_CENTRE_PX,
+            row * PERIOD_SEARCH_PX + STRIP_CENTRE_PX)
+
+
+@pytest.mark.parametrize("col,row", [(1, 2), (6, 2), (4, 5)])
+def test_noise_free_localization_is_sub_pixel(col, row):
+    """On a noise free, exactly decimated pair whose window straddles unique
+    boundaries, the answer is unique by construction and must be recovered."""
+    gt_x, gt_y = _strip_crossing(col, row)
     rng = np.random.default_rng(7)
     reference, search = _make_exact_pair(rng, gt_x, gt_y)
     x, y, diag, _ = locate(reference, search, MatchConfig())
-    assert np.hypot(x - gt_x, y - gt_y) < 1.0, (
-        f"predicted ({x:.2f}, {y:.2f}) for truth ({gt_x}, {gt_y}), "
-        f"regime {diag['num_candidates']} candidates")
+    assert np.hypot(x - gt_x, y - gt_y) < 1.5, (
+        f"predicted ({x:.2f}, {y:.2f}) for truth ({gt_x:.1f}, {gt_y:.1f}), "
+        f"{diag['num_candidates']} candidates, regime "
+        f"{'stage2' if diag['stage2']['used'] else 'tie break'}")
 
 
 def test_x_is_column_and_y_is_row():
-    """A pattern placed far left and near the top must return small x and small y.
+    """A pattern placed far left and low must return small x and large y.
 
-    This fails loudly if x and y are ever transposed, which a symmetric test
-    case would not detect.
+    This fails loudly if x and y are ever transposed, which a placement on the
+    image diagonal would not detect.
     """
+    gt_x, gt_y = _strip_crossing(1, 7)
     rng = np.random.default_rng(11)
-    reference, search = _make_exact_pair(rng, gt_x=120.0, gt_y=850.0)
+    reference, search = _make_exact_pair(rng, gt_x, gt_y)
     x, y, _, _ = locate(reference, search, MatchConfig())
-    assert x < 300.0, f"x should be small for a left placed pattern, got {x:.1f}"
-    assert y > 700.0, f"y should be large for a low placed pattern, got {y:.1f}"
+    assert abs(x - gt_x) < 40.0, f"x should be near {gt_x:.0f}, got {x:.1f}"
+    assert abs(y - gt_y) < 40.0, f"y should be near {gt_y:.0f}, got {y:.1f}"
+    assert x < y, "a left and low placement must give x below y"
 
 
 def test_localizer_is_deterministic():

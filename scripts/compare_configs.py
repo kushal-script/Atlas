@@ -29,16 +29,26 @@ from drift_sense.localize import MatchConfig, load_gray, locate
 TOLERANCES = (1.0, 2.0, 4.0, 5.0, 10.0)
 
 CONFIGS = {
-    # The state before the reference pipeline was studied: point sampled
-    # template, always widen the pose grid, loose equal match tolerance.
+    # Round one, recorded for the log: anti aliasing and the nominal first early
+    # exit were both net regressions, so point sampling is restored below.
     "baseline_loose_tol": dict(antialias=False, nominal_accept_score=9.9,
                                nominal_preference=-9.9, peak_tolerance=0.015),
-    # Anti aliased template plus nominal first pose search, loose tolerance.
     "aa_nominal_loose_tol": dict(antialias=True, peak_tolerance=0.015),
-    # Same, with the equal match set restricted to numerical ties so the centre
-    # tie break stops overriding a decisive correlation maximum.
-    "aa_nominal_tight_tol": dict(antialias=True, peak_tolerance=0.002),
     "aa_nominal_mid_tol": dict(antialias=True, peak_tolerance=0.006),
+    "aa_nominal_tight_tol": dict(antialias=True, peak_tolerance=0.002),
+
+    # Round two, isolating the two surviving ideas with point sampling restored
+    # and no early exit, so the pose grid is always searched: does requiring an
+    # off nominal pose to earn its acceptance help, and does restricting the
+    # equal match set to numerical ties help.
+    "ps_wide_loose": dict(antialias=False, nominal_accept_score=9.9,
+                          nominal_preference=-9.9, peak_tolerance=0.015),
+    "ps_wide_tight": dict(antialias=False, nominal_accept_score=9.9,
+                          nominal_preference=-9.9, peak_tolerance=0.003),
+    "ps_prefer_loose": dict(antialias=False, nominal_accept_score=9.9,
+                            nominal_preference=0.02, peak_tolerance=0.015),
+    "ps_prefer_tight": dict(antialias=False, nominal_accept_score=9.9,
+                            nominal_preference=0.02, peak_tolerance=0.003),
 }
 
 
