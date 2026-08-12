@@ -1,0 +1,5 @@
+config,dataset,n,median_px,mean_px,worst_px,mean_runtime_s,wide_grid_used,within_1.0px_pct,within_2.0px_pct,within_4.0px_pct,within_5.0px_pct,within_10.0px_pct
+ps_prefer_tight,physics40,40,0.137,3.14,51.5,3.77,1,90.0,90.0,90.0,90.0,90.0
+ps_prefer_tight,stress30,30,2.674,193.32,723.8,4.37,21,46.7,50.0,50.0,56.7,56.7
+ps_prefer_tight,spec40,40,34.298,168.56,820.9,3.96,32,32.5,40.0,40.0,40.0,45.0
+ps_prefer_tight,amat40,40,2.853,58.98,532.5,3.89,1,20.0,37.5,57.5,57.5,62.5

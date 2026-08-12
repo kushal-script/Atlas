@@ -6,7 +6,7 @@ Headline numbers, with the run that produced each one. Every figure and table he
 
 Accuracy on this task is only meaningful alongside the generator that produced the data, so results are reported per domain rather than as a single number. Four generators are used and they share no image formation code:
 
-* `train40_v2`, the primary physics generator, modern node dimensions
+* `physics40`, the primary physics generator, modern node dimensions
 * `amat40`, a faithful reproduction of the reference starter pipeline
 * `spec40`, an independent reading of the organiser specification with rotation and 9 to 1 through 11 to 1 magnification
 * `stress30`, an adversarial generator with painted edges and plain Gaussian noise
@@ -16,13 +16,13 @@ The domains where the localizer scores lowest are the ones deliberately built to
 ## Reproducing
 
 ```
-.venv/bin/python generate_dataset.py --generator physics --num 40 --out data/train40_v2 --seed 1
+.venv/bin/python generate_dataset.py --generator physics --num 40 --out data/physics40 --seed 1
 .venv/bin/python generate_dataset.py --generator amat_proxy --num 40 --out data/amat40 --seed 5
 .venv/bin/python generate_dataset.py --generator spec --num 40 --out data/spec40 --seed 11
 .venv/bin/python generate_dataset.py --generator stress --num 30 --out data/stress30 --seed 5
 
-.venv/bin/python scripts/compare_configs.py --datasets data/train40_v2 data/amat40 data/spec40 data/stress30 --name ablation
-.venv/bin/python scripts/evaluate.py --dataset data/train40_v2 --name primary
+.venv/bin/python scripts/compare_configs.py --datasets data/physics40 data/amat40 data/spec40 data/stress30 --name ablation
+.venv/bin/python scripts/evaluate.py --dataset data/physics40 --name primary
 .venv/bin/python scripts/evaluate_tiers.py --dataset data/amat40 --name tier_report
 .venv/bin/python scripts/sweep_analysis.py --run experiments/<stamp>_tier_report --dataset data/amat40
 ```
@@ -34,3 +34,64 @@ Runtime is part of the accuracy component of the score, so it is measured rather
 ## Files
 
 Result tables and figures are written under `experiments/<timestamp>_<name>/`, each folder holding the exact configuration used, a per pair results table, aggregate metrics and plots. Referencing a number therefore always means referencing a folder.
+
+## Accuracy by domain
+
+Pass rate at the thresholds the specification asks for, on the final configuration. Accuracy is reported per domain because a single number would hide which generator produced the data.
+
+| Domain | What it tests | 1 px | 2 px | 4 px | 5 px | median | worst | runtime |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `physics40` | primary physics generator | 90.0% | 90.0% | 90.0% | 90.0% | 0.14 px | 52 px | 4.10 s |
+| `amat40` | faithful reference pipeline proxy | 20.0% | 37.5% | 57.5% | 57.5% | 2.85 px | 532 px | 4.08 s |
+| `spec40` | organiser specification proxy | 32.5% | 40.0% | 40.0% | 40.0% | 34.30 px | 821 px | 4.21 s |
+| `stress30` | adversarial generator | 46.7% | 50.0% | 50.0% | 56.7% | 2.67 px | 724 px | 4.06 s |
+
+## Where the errors are
+
+Split by layout style and by how the reference site sits relative to aperiodic structure. Sites deep inside periodic arrays are the hard case by construction, and the residual failures concentrate there; see [failure analysis](../docs/failure_analysis.md).
+
+| Domain | Split | n | within 5 px | median |
+| --- | --- | --- | --- | --- |
+| `physics40` | placement deep array | 15 | 73.3% | 0.15 px |
+| `physics40` | placement near boundary | 6 | 100.0% | 0.08 px |
+| `physics40` | placement uniform | 19 | 100.0% | 0.14 px |
+| `physics40` | style dram | 20 | 100.0% | 0.14 px |
+| `physics40` | style finfet | 20 | 80.0% | 0.13 px |
+| `amat40` | placement near boundary | 12 | 83.3% | 2.62 px |
+| `amat40` | placement uniform | 28 | 46.4% | 7.07 px |
+| `amat40` | style dram | 20 | 55.0% | 2.83 px |
+| `amat40` | style finfet | 20 | 60.0% | 2.88 px |
+| `spec40` | placement near boundary | 16 | 37.5% | 34.30 px |
+| `spec40` | placement uniform | 24 | 41.7% | 28.64 px |
+| `spec40` | style dram | 20 | 30.0% | 52.66 px |
+| `spec40` | style finfet | 20 | 50.0% | 5.35 px |
+| `stress30` | placement uniform | 30 | 56.7% | 2.67 px |
+| `stress30` | style stress basic | 30 | 56.7% | 2.67 px |
+
+## Configuration ablation
+
+Each candidate configuration measured on every domain at once, because a change that helps one generator often costs another. The selected configuration is in bold and is the default in `src/drift_sense/localize.py`.
+
+| Configuration | `train40_v2` | `stress30` | `spec40` | `amat40` | mean | runtime |
+| --- | --- | --- | --- | --- | --- | --- |
+| ps_wide_loose | 90.0% | 50.0% | 37.5% | 50.0% | 56.9% | 3.88 s |
+| ps_wide_tight | 85.0% | 53.3% | 40.0% | 57.5% | 59.0% | 3.72 s |
+| ps_prefer_loose | 87.5% | 53.3% | 37.5% | 47.5% | 56.5% | 4.64 s |
+| **ps_prefer_tight** | 85.0% | 56.7% | 40.0% | 57.5% | 59.8% | 4.07 s |
+
+The physics column here is `train40_v2`, generated before the reference site placement bias was fixed. That bias pulled sites deep inside periodic arrays toward the frame centre, which flattered the loose tolerance setting and penalised the tight one, and is why the selected configuration reads 85 percent in this table but 90 percent on the unbiased `physics40` above. The ablation is kept as measured rather than rerun, because its purpose is to record the comparison that selected the configuration.
+
+## Robustness by acquisition severity
+
+The four documented noise tiers, with average precision obtained by ranking predictions on the returned confidence. Every pair has exactly one true match, so recall is bounded by accuracy and average precision measures whether the confidence separates correct answers from incorrect ones.
+
+| Acquisition tier | n | within 5 px | average precision | median |
+| --- | --- | --- | --- | --- |
+| low | 10 | 70.0% | 0.559 | 0.86 px |
+| medium | 10 | 70.0% | 0.583 | 1.43 px |
+| high | 10 | 40.0% | 0.238 | 20.83 px |
+| severe | 10 | 50.0% | 0.330 | 11.28 px |
+
+## Environment
+
+Measured on macOS-26.5.1-arm64-arm-64bit-Mach-O, processor arm, Python 3.14.0. Timing is `time.perf_counter` around the complete `locate` call in a single process with no warm up excluded. Tables regenerated 2026-08-13 by `scripts/build_results_tables.py`.
