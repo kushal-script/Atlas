@@ -1,0 +1,11 @@
+{
+  "generator": "spec",
+  "description": "Independent reimplementation of the organiser specification and starter Space parameters",
+  "structure_presets": "six DRAM and six FinFET presets, feature size 24 to 80 nm, fin pitch 40 to 140 nm, scaled 0.7 to 1.4",
+  "magnification": [9.0, 11.0],
+  "rotation_deg": [-2.0, 2.0],
+  "barrel_max_default": 0.02,
+  "boundary_bias": 0.35,
+  "variants": ["clean", "low_dose", "heavy_drift", "speckle_salt_pepper", "charging"],
+  "degradations": ["beam spot blur before downsampling", "astigmatism", "dose shot noise", "raster shear", "row jitter", "line width bias", "corner rounding", "vignetting", "gamma 0.4 to 2.5", "charging streaks", "multiplicative speckle", "salt and pepper up to 3 percent"]
+}

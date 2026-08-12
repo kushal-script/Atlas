@@ -14,7 +14,7 @@ import numpy as np
 from .localize import MatchConfig, load_gray, locate, optical_config
 
 STYLE_COLORS = {"dram": "#2a78d6", "finfet": "#eb6834"}
-TOLERANCES = (0.5, 1.0, 2.0, 3.0, 5.0, 10.0, 20.0)
+TOLERANCES = (0.5, 1.0, 2.0, 3.0, 4.0, 5.0, 10.0, 20.0)
 
 
 def _metrics_block(errors, runtimes):

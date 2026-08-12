@@ -26,12 +26,16 @@ def main():
                     help="disable the residual disambiguation stage")
     ap.add_argument("--reranker", action="store_true",
                     help="use the learned re-ranker for the stage two decision")
+    ap.add_argument("--peak_tolerance", type=float, default=None,
+                    help="score gap defining the equal match set used by the tie break")
     args = ap.parse_args()
 
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     repo = Path(__file__).resolve().parents[1]
     out_dir = repo / "experiments" / f"{stamp}_{args.name}"
     cfg = MatchConfig(residual_disambiguation=not args.no_stage2)
+    if args.peak_tolerance is not None:
+        cfg.peak_tolerance = args.peak_tolerance
     if args.reranker:
         cfg.reranker_path = str(repo / "models" / "reranker.npz")
     t0 = time.time()
