@@ -41,8 +41,8 @@ def metrics_for(suffix):
 
 
 def table_accuracy():
-    lines = ["| Domain | What it tests | 1 px | 2 px | 4 px | 5 px | median | worst | runtime |",
-             "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
+    lines = ["| Domain | What it tests | 1 px | 2 px | 4 px | 5 px | mean | median | worst | runtime |",
+             "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"]
     for ds, suffix, desc in DOMAINS:
         m, run = metrics_for(suffix)
         if m is None:
@@ -50,7 +50,8 @@ def table_accuracy():
         o = m["overall"]
         cells = " | ".join(f"{o[f'within_{t}px_pct']:.1f}%" for t in TOLS)
         lines.append(
-            f"| `{ds}` | {desc} | {cells} | {o['median_err_px']:.2f} px | "
+            f"| `{ds}` | {desc} | {cells} | {o['mean_err_px']:.2f} px | "
+            f"{o['median_err_px']:.2f} px | "
             f"{o['max_err_px']:.0f} px | {o['mean_runtime_s']:.2f} s |")
     return "\n".join(lines)
 
@@ -114,6 +115,92 @@ def table_tiers():
     return "\n".join(lines)
 
 
+def table_pose():
+    run = latest("*_pose_robustness")
+    if run is None or not (run / "summary.json").exists():
+        return None
+    s = json.loads((run / "summary.json").read_text())
+    lines = [f"Overall pass rate within {s['tolerance_px']:.0f} px across the "
+             f"grid: **{s['overall']['pass_rate_pct']:.1f}%**, median "
+             f"{s['overall']['median_px']:.2f} px, mean "
+             f"{s['overall']['mean_px']:.2f} px, worst "
+             f"{s['overall']['worst_px']:.0f} px over {s['n_pairs']} pairs at "
+             f"the {s['tier']} acquisition tier.", "",
+             "| Magnification | n | within 5 px | median | worst |",
+             "| --- | --- | --- | --- | --- |"]
+    for b in s["by_magnification"]:
+        lines.append(f"| {b['value']:.1f} to 1 | {b['n']} | "
+                     f"{b['pass_rate_pct']:.1f}% | {b['median_px']:.2f} px | "
+                     f"{b['worst_px']:.0f} px |")
+    lines += ["", "| Rotation | n | within 5 px | median | worst |",
+              "| --- | --- | --- | --- | --- |"]
+    for b in s["by_rotation"]:
+        lines.append(f"| {b['value']:+.1f} deg | {b['n']} | "
+                     f"{b['pass_rate_pct']:.1f}% | {b['median_px']:.2f} px | "
+                     f"{b['worst_px']:.0f} px |")
+    return "\n".join(lines)
+
+
+def _cpu_and_memory():
+    import subprocess
+    cpu = mem = "not detected"
+    try:
+        if sys.platform == "darwin":
+            cpu = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"],
+                                 capture_output=True, text=True).stdout.strip()
+            raw = subprocess.run(["sysctl", "-n", "hw.memsize"],
+                                 capture_output=True, text=True).stdout.strip()
+            if raw.isdigit():
+                mem = f"{int(raw) / 1024 ** 3:.0f} GiB"
+        else:
+            for line in Path("/proc/cpuinfo").read_text().splitlines():
+                if line.startswith("model name"):
+                    cpu = line.split(":", 1)[1].strip()
+                    break
+            for line in Path("/proc/meminfo").read_text().splitlines():
+                if line.startswith("MemTotal"):
+                    mem = f"{int(line.split()[1]) / 1024 ** 2:.0f} GiB"
+                    break
+    except Exception:
+        pass
+    return cpu, mem
+
+
+def environment_block():
+    """Hardware, library versions and timing method, as the specification asks."""
+    import cv2
+    import numpy
+    import scipy
+    cpu, mem = _cpu_and_memory()
+    counts = []
+    for _, suffix, _ in DOMAINS:
+        m, _ = metrics_for(suffix)
+        if m:
+            counts.append(m["overall"]["n"])
+    lines = [
+        "| Item | Value |",
+        "| --- | --- |",
+        f"| CPU | {cpu} |",
+        f"| Memory | {mem} |",
+        f"| Accelerator | none, CPU only, no GPU used at inference |",
+        f"| Operating system | {platform.platform()} |",
+        f"| Python | {platform.python_version()} |",
+        f"| numpy | {numpy.__version__} |",
+        f"| scipy | {scipy.__version__} |",
+        f"| OpenCV | {cv2.__version__} |",
+        "| Timing method | `time.perf_counter` around the complete `locate` "
+        "call, single process, single thread of control, no warm up excluded "
+        "and no run discarded |",
+        "| Runs per pair | 1, and each reported runtime is the mean over the "
+        f"pairs in that domain ({', '.join(str(c) for c in counts)} pairs) |",
+        "| Reported statistic | mean seconds per image pair; batch runs also "
+        "record the median in their `.runtime.json` |",
+        f"| Tables regenerated | {date.today().isoformat()} by "
+        "`scripts/build_results_tables.py` |",
+    ]
+    return "\n".join(lines)
+
+
 def main():
     doc = (REPO / "results" / "README.md").read_text()
     marker = "## Accuracy by domain"
@@ -156,14 +243,19 @@ def main():
                   "confidence separates correct answers from incorrect ones.", "",
                   tiers, ""]
 
-    parts += ["## Environment", "",
-              f"Measured on {platform.platform()}, processor "
-              f"{platform.processor() or platform.machine()}, Python "
-              f"{platform.python_version()}. Timing is `time.perf_counter` "
-              f"around the complete `locate` call in a single process with no "
-              f"warm up excluded. Tables regenerated "
-              f"{date.today().isoformat()} by `scripts/build_results_tables.py`.",
-              ""]
+    pose = table_pose()
+    if pose:
+        parts += ["## Pose robustness over the stated ranges", "",
+                  "A deliberate grid at exact magnification and rotation values, "
+                  "rather than a randomised sample, so the stated 9 to 1 through "
+                  "11 to 1 and plus or minus 2 degree ranges are answered "
+                  "directly. Every reference site straddles a mat boundary so the "
+                  "content is identifiable by construction; without that control "
+                  "a failure could be caused either by the pose or by the site "
+                  "being in a periodic region, and the two would be "
+                  "inseparable.", "", pose, ""]
+
+    parts += ["## Environment and timing method", "", environment_block(), ""]
 
     (REPO / "results" / "README.md").write_text("\n".join(parts))
     print("wrote results/README.md")

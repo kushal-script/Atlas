@@ -39,12 +39,12 @@ Result tables and figures are written under `experiments/<timestamp>_<name>/`, e
 
 Pass rate at the thresholds the specification asks for, on the final configuration. Accuracy is reported per domain because a single number would hide which generator produced the data.
 
-| Domain | What it tests | 1 px | 2 px | 4 px | 5 px | median | worst | runtime |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `physics40` | primary physics generator | 90.0% | 90.0% | 90.0% | 90.0% | 0.14 px | 52 px | 4.10 s |
-| `amat40` | faithful reference pipeline proxy | 20.0% | 37.5% | 57.5% | 57.5% | 2.85 px | 532 px | 4.08 s |
-| `spec40` | organiser specification proxy | 32.5% | 40.0% | 40.0% | 40.0% | 34.30 px | 821 px | 4.21 s |
-| `stress30` | adversarial generator | 46.7% | 50.0% | 50.0% | 56.7% | 2.67 px | 724 px | 4.06 s |
+| Domain | What it tests | 1 px | 2 px | 4 px | 5 px | mean | median | worst | runtime |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `physics40` | primary physics generator | 90.0% | 90.0% | 90.0% | 90.0% | 3.14 px | 0.14 px | 52 px | 4.10 s |
+| `amat40` | faithful reference pipeline proxy | 20.0% | 37.5% | 57.5% | 57.5% | 58.98 px | 2.85 px | 532 px | 4.08 s |
+| `spec40` | organiser specification proxy | 32.5% | 40.0% | 40.0% | 40.0% | 168.56 px | 34.30 px | 821 px | 4.21 s |
+| `stress30` | adversarial generator | 46.7% | 50.0% | 50.0% | 56.7% | 193.32 px | 2.67 px | 724 px | 4.06 s |
 
 ## Where the errors are
 
@@ -92,6 +92,41 @@ The four documented noise tiers, with average precision obtained by ranking pred
 | high | 10 | 40.0% | 0.238 | 20.83 px |
 | severe | 10 | 50.0% | 0.330 | 11.28 px |
 
-## Environment
+## Pose robustness over the stated ranges
 
-Measured on macOS-26.5.1-arm64-arm-64bit-Mach-O, processor arm, Python 3.14.0. Timing is `time.perf_counter` around the complete `locate` call in a single process with no warm up excluded. Tables regenerated 2026-08-13 by `scripts/build_results_tables.py`.
+A deliberate grid at exact magnification and rotation values, rather than a randomised sample, so the stated 9 to 1 through 11 to 1 and plus or minus 2 degree ranges are answered directly. Every reference site straddles a mat boundary so the content is identifiable by construction; without that control a failure could be caused either by the pose or by the site being in a periodic region, and the two would be inseparable.
+
+Overall pass rate within 5 px across the grid: **78.0%**, median 1.62 px, mean 39.47 px, worst 901 px over 50 pairs at the medium acquisition tier.
+
+| Magnification | n | within 5 px | median | worst |
+| --- | --- | --- | --- | --- |
+| 9.0 to 1 | 10 | 60.0% | 1.90 px | 901 px |
+| 9.5 to 1 | 10 | 60.0% | 2.11 px | 117 px |
+| 10.0 to 1 | 10 | 90.0% | 1.34 px | 56 px |
+| 10.5 to 1 | 10 | 90.0% | 1.43 px | 28 px |
+| 11.0 to 1 | 10 | 90.0% | 1.62 px | 532 px |
+
+| Rotation | n | within 5 px | median | worst |
+| --- | --- | --- | --- | --- |
+| -2.0 deg | 10 | 80.0% | 1.44 px | 117 px |
+| -1.0 deg | 10 | 80.0% | 1.78 px | 36 px |
+| +0.0 deg | 10 | 80.0% | 1.60 px | 901 px |
+| +1.0 deg | 10 | 70.0% | 1.55 px | 532 px |
+| +2.0 deg | 10 | 80.0% | 1.83 px | 56 px |
+
+## Environment and timing method
+
+| Item | Value |
+| --- | --- |
+| CPU | Apple M3 |
+| Memory | 16 GiB |
+| Accelerator | none, CPU only, no GPU used at inference |
+| Operating system | macOS-26.5.1-arm64-arm-64bit-Mach-O |
+| Python | 3.14.0 |
+| numpy | 2.5.1 |
+| scipy | 1.18.0 |
+| OpenCV | 5.0.0 |
+| Timing method | `time.perf_counter` around the complete `locate` call, single process, single thread of control, no warm up excluded and no run discarded |
+| Runs per pair | 1, and each reported runtime is the mean over the pairs in that domain (40, 40, 40, 30 pairs) |
+| Reported statistic | mean seconds per image pair; batch runs also record the median in their `.runtime.json` |
+| Tables regenerated | 2026-08-13 by `scripts/build_results_tables.py` |

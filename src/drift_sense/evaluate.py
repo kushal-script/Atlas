@@ -152,6 +152,8 @@ def run_evaluation(dataset_dir, out_dir, cfg=None, limit=None):
         err = float(np.hypot(x - gt["x"], y - gt["y"]))
         row = {
             "pair_id": pd.name,
+            "reference_path": str((pd / "reference.png").relative_to(dataset_dir)),
+            "search_path": str((pd / "search.png").relative_to(dataset_dir)),
             "style": meta["style"],
             "placement": meta["placement"],
             "gt_x": gt["x"], "gt_y": gt["y"],
