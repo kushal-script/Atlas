@@ -1,0 +1,9 @@
+config,dataset,n,median_px,mean_px,worst_px,mean_runtime_s,wide_grid_used,within_1.0px_pct,within_2.0px_pct,within_4.0px_pct,within_5.0px_pct,within_10.0px_pct
+v3_no_adaptive_template,physics40,40,0.137,3.14,51.5,3.88,1,90.0,90.0,90.0,90.0,90.0
+v3_no_adaptive_template,stress30,30,33.112,229.01,998.5,3.89,20,43.3,43.3,43.3,50.0,50.0
+v3_no_adaptive_template,spec40,40,42.257,168.84,820.9,3.89,31,32.5,40.0,40.0,40.0,45.0
+v3_no_adaptive_template,amat40,40,2.853,58.98,532.5,3.89,1,20.0,37.5,57.5,57.5,62.5
+v3_no_adaptive_denoise,physics40,40,0.126,3.14,51.5,3.89,1,90.0,90.0,90.0,90.0,90.0
+v3_no_adaptive_denoise,stress30,30,202.911,256.81,998.5,7.81,21,33.3,36.7,40.0,43.3,43.3
+v3_no_adaptive_denoise,spec40,40,18.826,153.97,825.6,13.33,30,32.5,40.0,42.5,42.5,47.5
+v3_no_adaptive_denoise,amat40,40,2.853,49.25,532.5,4.43,1,20.0,40.0,60.0,60.0,65.0

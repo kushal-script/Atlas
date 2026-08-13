@@ -1,0 +1,72 @@
+{
+  "dataset": "data/stress30",
+  "match_config": {
+    "zoom": 10.0,
+    "template_px": 90,
+    "scale_adaptive_template": true,
+    "psf_sigma_bank_nm": [
+      2.0,
+      4.0,
+      6.5,
+      9.0,
+      14.0,
+      20.0
+    ],
+    "wide_sigma_bank_nm": [
+      4.0,
+      9.0,
+      16.0,
+      25.0
+    ],
+    "antialias": false,
+    "nominal_preference": 0.02,
+    "nominal_accept_score": 9.9,
+    "bandpass_sigma_px": 25.0,
+    "denoise_sigma_px": 0.6,
+    "adaptive_denoise": true,
+    "denoise_noise_gain": 0.04,
+    "denoise_sigma_max": 2.0,
+    "impulse_median_ksize": 3,
+    "impulse_detect_frac": 0.005,
+    "impulse_detect_delta": 55,
+    "tone_norm": "none",
+    "coarse_rotations_deg": [
+      -3.0,
+      -1.5,
+      0.0,
+      1.5,
+      3.0
+    ],
+    "coarse_scales": [
+      0.9,
+      0.925,
+      0.95,
+      0.975,
+      1.0,
+      1.025,
+      1.05,
+      1.075,
+      1.1
+    ],
+    "prescreen_downsample": 2,
+    "prescreen_top_k": 6,
+    "refine_rot_step_deg": 0.375,
+    "refine_scale_step": 0.0075,
+    "refine_levels": 2,
+    "peak_tolerance": 0.003,
+    "stage2_tolerance_frac": 0.6,
+    "stage2_tolerance_cap": 0.06,
+    "peak_min_separation_px": 4,
+    "residual_disambiguation": true,
+    "residual_pad_px": 3,
+    "residual_min_candidates": 3,
+    "residual_margin": 0.035,
+    "residual_z_thresh": 5.0,
+    "residual_z_pool_min": 9,
+    "residual_median_k": 31,
+    "reranker_path": "",
+    "reranker_prob": 0.5,
+    "reranker_pool": 48
+  },
+  "n_pairs": 30
+}

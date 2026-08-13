@@ -49,6 +49,27 @@ CONFIGS = {
                             nominal_preference=0.02, peak_tolerance=0.015),
     "ps_prefer_tight": dict(antialias=False, nominal_accept_score=9.9,
                             nominal_preference=0.02, peak_tolerance=0.003),
+
+    # Round three: the current defaults, which add the scale adaptive template,
+    # adaptive denoise and the extended blur banks on top of ps_prefer_tight,
+    # and the same with each of the two new mechanisms disabled to attribute
+    # any change.
+    "defaults_v3": dict(),
+    "v3_no_adaptive_template": dict(scale_adaptive_template=False),
+    "v3_no_adaptive_denoise": dict(adaptive_denoise=False),
+    # Tests the causal claim for the stress regression precisely: only the
+    # 36 nm wide bank level is removed, keeping the 28 nm nominal addition and
+    # both adaptive mechanisms, because the regression appeared in every v3
+    # variant and the one change common to all of them was the wide bank
+    # growing the hypothesis grid against a fixed prescreen budget.
+    "v3_no_wide36": dict(wide_sigma_bank_nm=(4.0, 9.0, 16.0, 25.0)),
+    # Removing only the 36 nm wide level recovered just part of the stress
+    # regression, leaving one candidate common to every measured variant: the
+    # 28 nm nominal addition. This reverts both banks to their original sizes
+    # while keeping the two adaptive mechanisms, completing the attribution.
+    "v3_banks_reverted": dict(
+        psf_sigma_bank_nm=(2.0, 4.0, 6.5, 9.0, 14.0, 20.0),
+        wide_sigma_bank_nm=(4.0, 9.0, 16.0, 25.0)),
 }
 
 

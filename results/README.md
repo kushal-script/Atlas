@@ -41,10 +41,10 @@ Pass rate at the thresholds the specification asks for, on the final configurati
 
 | Domain | What it tests | 1 px | 2 px | 4 px | 5 px | mean | median | worst | runtime |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `physics40` | primary physics generator | 90.0% | 90.0% | 90.0% | 90.0% | 3.14 px | 0.14 px | 52 px | 4.10 s |
-| `amat40` | faithful reference pipeline proxy | 20.0% | 37.5% | 57.5% | 57.5% | 58.98 px | 2.85 px | 532 px | 4.08 s |
-| `spec40` | organiser specification proxy | 32.5% | 40.0% | 40.0% | 40.0% | 168.56 px | 34.30 px | 821 px | 4.21 s |
-| `stress30` | adversarial generator | 46.7% | 50.0% | 50.0% | 56.7% | 193.32 px | 2.67 px | 724 px | 4.06 s |
+| `physics40` | primary physics generator | 90.0% | 90.0% | 90.0% | 90.0% | 3.14 px | 0.13 px | 52 px | 3.65 s |
+| `amat40` | faithful reference pipeline proxy | 20.0% | 40.0% | 60.0% | 60.0% | 49.25 px | 2.85 px | 532 px | 3.57 s |
+| `spec40` | organiser specification proxy | 32.5% | 40.0% | 42.5% | 42.5% | 154.10 px | 18.83 px | 826 px | 3.53 s |
+| `stress30` | adversarial generator | 43.3% | 46.7% | 50.0% | 53.3% | 202.00 px | 4.13 px | 724 px | 3.63 s |
 
 ## Where the errors are
 
@@ -54,19 +54,19 @@ Split by layout style and by how the reference site sits relative to aperiodic s
 | --- | --- | --- | --- | --- |
 | `physics40` | placement deep array | 15 | 73.3% | 0.15 px |
 | `physics40` | placement near boundary | 6 | 100.0% | 0.08 px |
-| `physics40` | placement uniform | 19 | 100.0% | 0.14 px |
-| `physics40` | style dram | 20 | 100.0% | 0.14 px |
-| `physics40` | style finfet | 20 | 80.0% | 0.13 px |
-| `amat40` | placement near boundary | 12 | 83.3% | 2.62 px |
-| `amat40` | placement uniform | 28 | 46.4% | 7.07 px |
-| `amat40` | style dram | 20 | 55.0% | 2.83 px |
-| `amat40` | style finfet | 20 | 60.0% | 2.88 px |
-| `spec40` | placement near boundary | 16 | 37.5% | 34.30 px |
-| `spec40` | placement uniform | 24 | 41.7% | 28.64 px |
-| `spec40` | style dram | 20 | 30.0% | 52.66 px |
-| `spec40` | style finfet | 20 | 50.0% | 5.35 px |
-| `stress30` | placement uniform | 30 | 56.7% | 2.67 px |
-| `stress30` | style stress basic | 30 | 56.7% | 2.67 px |
+| `physics40` | placement uniform | 19 | 100.0% | 0.12 px |
+| `physics40` | style dram | 20 | 100.0% | 0.13 px |
+| `physics40` | style finfet | 20 | 80.0% | 0.12 px |
+| `amat40` | placement near boundary | 12 | 75.0% | 2.73 px |
+| `amat40` | placement uniform | 28 | 53.6% | 2.99 px |
+| `amat40` | style dram | 20 | 65.0% | 2.73 px |
+| `amat40` | style finfet | 20 | 55.0% | 3.11 px |
+| `spec40` | placement near boundary | 16 | 37.5% | 22.25 px |
+| `spec40` | placement uniform | 24 | 45.8% | 8.54 px |
+| `spec40` | style dram | 20 | 35.0% | 22.25 px |
+| `spec40` | style finfet | 20 | 50.0% | 5.30 px |
+| `stress30` | placement uniform | 30 | 53.3% | 4.13 px |
+| `stress30` | style stress basic | 30 | 53.3% | 4.13 px |
 
 ## Configuration ablation
 

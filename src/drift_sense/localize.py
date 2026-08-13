@@ -27,6 +27,22 @@ from scipy.ndimage import affine_transform, gaussian_filter, maximum_filter
 class MatchConfig:
     zoom: float = 10.0
     template_px: int = 90
+    # At an under unity scale hypothesis a fixed pixel size template covers
+    # less of the reference (810 nm at 9 to 1 against 900 at 10 to 1), which
+    # measurably cost accuracy at the low end of the stated magnification
+    # range (60 percent at 9.0 and 9.5 to 1 against 90 at and above 10 to 1,
+    # experiments/*_pose_robustness). When enabled, the template grows as
+    # 1 over scale below unity so its physical reference coverage stays
+    # constant across the magnification range.
+    scale_adaptive_template: bool = True
+    # Extending these banks to 28 and 36 nm to represent the specification
+    # proxy's heaviest blur was tried and reverted on attribution evidence
+    # (experiments/*_v3_banks_reverted): the additions caused the whole stress
+    # domain regression through the enlarged hypothesis grid competing for a
+    # fixed prescreen budget, while the specification domain's gain turned out
+    # to come from the scale adaptive template, not the bank. Representing
+    # blur beyond 25 nm therefore remains an open trade off; scaling the
+    # prescreen budget with the bank size is the named future experiment.
     psf_sigma_bank_nm: tuple = (2.0, 4.0, 6.5, 9.0, 14.0, 20.0)
     wide_sigma_bank_nm: tuple = (4.0, 9.0, 16.0, 25.0)
     # Anti aliasing the template models one particular search pipeline, the one
@@ -42,6 +58,13 @@ class MatchConfig:
     nominal_accept_score: float = 9.9
     bandpass_sigma_px: float = 25.0
     denoise_sigma_px: float = 0.6
+    # At the heaviest acquisition tiers (dose 25 to 60 electrons per pixel)
+    # a fixed 0.6 px denoise leaves the correlation dominated by noise, so
+    # the denoise strength scales with the measured noise level, floored at
+    # the fixed value so clean images are untouched.
+    adaptive_denoise: bool = True
+    denoise_noise_gain: float = 0.04
+    denoise_sigma_max: float = 2.0
     impulse_median_ksize: int = 3
     impulse_detect_frac: float = 0.005
     impulse_detect_delta: int = 55
@@ -108,13 +131,30 @@ def _tone_normalize(img, cfg):
     raise ValueError(f"unknown tone_norm {cfg.tone_norm}")
 
 
+_NOISE_KERNEL = np.array([[1.0, -2.0, 1.0],
+                          [-2.0, 4.0, -2.0],
+                          [1.0, -2.0, 1.0]], dtype=np.float32)
+
+
+def _noise_sigma(img):
+    """Immerkaer style noise estimate, median based so edges do not inflate it."""
+    lap = cv2.filter2D(img.astype(np.float32), -1, _NOISE_KERNEL)
+    return float(np.sqrt(np.pi / 2.0) * np.median(np.abs(lap)) / 6.0)
+
+
 def _preprocess(img, cfg, denoise):
     x = img.astype(np.float32)
+    noise = 0.0
     if denoise and cfg.denoise_sigma_px > 0:
-        x = gaussian_filter(x, cfg.denoise_sigma_px)
+        sigma = cfg.denoise_sigma_px
+        if cfg.adaptive_denoise:
+            noise = _noise_sigma(img)
+            sigma = float(np.clip(cfg.denoise_noise_gain * noise,
+                                  cfg.denoise_sigma_px, cfg.denoise_sigma_max))
+        x = gaussian_filter(x, sigma)
     if cfg.bandpass_sigma_px > 0:
         x = x - gaussian_filter(x, cfg.bandpass_sigma_px)
-    return x
+    return x, noise
 
 
 def _effective_sigma(spot_nm, cfg):
@@ -134,6 +174,8 @@ def _effective_sigma(spot_nm, cfg):
 
 def _make_template(ref_band, theta_deg, scale, cfg):
     t = cfg.template_px
+    if cfg.scale_adaptive_template and scale < 1.0:
+        t = int(round(cfg.template_px / scale))
     zoom = cfg.zoom * scale
     ang = np.deg2rad(theta_deg)
     rot = np.array([[np.cos(ang), -np.sin(ang)], [np.sin(ang), np.cos(ang)]])
@@ -208,7 +250,7 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
     all_sigmas = sorted(set(cfg.psf_sigma_bank_nm) | set(cfg.wide_sigma_bank_nm))
     ref_bank = {s: gaussian_filter(ref, _effective_sigma(s, cfg)) - ref_low
                 for s in all_sigmas}
-    search = _preprocess(search_img, cfg, denoise=True)
+    search, search_noise = _preprocess(search_img, cfg, denoise=True)
 
     tried = {}
 
@@ -280,8 +322,10 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
                 for sc in cfg.coarse_scales:
                     if th == 0.0 and sc == 1.0:
                         continue
-                    t_small = cv2.resize(_make_template(ref_bank[sig], th, sc, cfg),
-                                         (ts, ts), interpolation=cv2.INTER_AREA)
+                    tmpl_h = _make_template(ref_bank[sig], th, sc, cfg)
+                    th_px = max(tmpl_h.shape[0] // ds, 8)
+                    t_small = cv2.resize(tmpl_h, (th_px, th_px),
+                                         interpolation=cv2.INTER_AREA)
                     r = cv2.matchTemplate(small, t_small, cv2.TM_CCOEFF_NORMED)
                     prescreen.append((float(r.max()), sig, th, sc))
         prescreen.sort(key=lambda p: -p[0])
@@ -306,7 +350,7 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
     local_max = maximum_filter(resp, size=cfg.peak_min_separation_px) == resp
     wide = np.argwhere(local_max & (resp >= score_best - tol_wide))
     strict = np.argwhere(local_max & (resp >= score_best - cfg.peak_tolerance))
-    t = cfg.template_px
+    t = tmpl_best.shape[0]
     half = (t - 1) / 2.0
     center = (search.shape[1] - 1) / 2.0, (search.shape[0] - 1) / 2.0
     dists = [(np.hypot(c[1] + half - center[0], c[0] + half - center[1]), c)
@@ -380,6 +424,8 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
         "wide_score": float(wide_score),
         "inverted_contrast": bool(inverted),
         "impulse_fraction": [float(ref_impulse), float(search_impulse)],
+        "search_noise_sigma": float(search_noise),
+        "template_px_used": int(t),
         "num_candidates": int(len(strict)),
         "num_candidates_wide": int(len(wide)),
         "candidate_peaks_xy": [[float(c[1] + half), float(c[0] + half)]

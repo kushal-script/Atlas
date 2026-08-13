@@ -1,0 +1,5 @@
+config,dataset,n,median_px,mean_px,worst_px,mean_runtime_s,wide_grid_used,within_1.0px_pct,within_2.0px_pct,within_4.0px_pct,within_5.0px_pct,within_10.0px_pct
+defaults_v3,physics40,40,0.126,3.14,51.5,3.92,1,90.0,90.0,90.0,90.0,90.0
+defaults_v3,stress30,30,121.946,236.98,998.5,3.98,21,36.7,40.0,43.3,46.7,46.7
+defaults_v3,spec40,40,18.826,153.97,825.6,3.94,30,32.5,40.0,42.5,42.5,47.5
+defaults_v3,amat40,40,2.853,49.25,532.5,3.89,1,20.0,40.0,60.0,60.0,65.0
