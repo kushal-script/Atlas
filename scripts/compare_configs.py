@@ -70,6 +70,18 @@ CONFIGS = {
     "v3_banks_reverted": dict(
         psf_sigma_bank_nm=(2.0, 4.0, 6.5, 9.0, 14.0, 20.0),
         wide_sigma_bank_nm=(4.0, 9.0, 16.0, 25.0)),
+
+    # Round four, adaptive prescreen budget. The attribution round showed the
+    # wide grid competing 176 hypotheses for six full resolution slots and
+    # implicated candidate survival in the stress regression; this asks
+    # whether six was undersized all along. Prediction registered before the
+    # data: stress improves through candidate survival on the wide path,
+    # physics and amat are untouched because they resolve on the nominal
+    # path, runtime rises by under 0.2 s, and the 9.0 to 1 pose boundary may
+    # recover as a side effect because endpoint hypotheses rank low at half
+    # resolution for the same reason.
+    "k12": dict(prescreen_top_k=12),
+    "k24": dict(prescreen_top_k=24),
 }
 
 

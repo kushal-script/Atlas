@@ -70,6 +70,8 @@ def main():
                     help="pairs per magnification and rotation combination")
     ap.add_argument("--tier", default="medium", choices=list(TIERS))
     ap.add_argument("--name", default="pose_robustness")
+    ap.add_argument("--top_k", type=int, default=None,
+                    help="override the prescreen budget for survival experiments")
     args = ap.parse_args()
 
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -89,7 +91,11 @@ def main():
                 ref, search, meta = generate_pair(
                     seed=90000 + seed * 31, kind=kind, params=params,
                     rotation_deg=rot, scale=mag / 10.0, boundary_bias=1.0)
-                res = match_pair(ref, search)
+                cfg_kwargs = ({"prescreen_top_k": args.top_k}
+                              if args.top_k else {})
+                from drift_sense.localize import MatchConfig
+                res = match_pair(ref, search,
+                                 cfg=MatchConfig(**cfg_kwargs) if cfg_kwargs else None)
                 g = meta["ground_truth"]
                 err = float(np.hypot(res["x"] - g["x"], res["y"] - g["y"]))
                 rows.append({"magnification": mag, "rotation_deg": rot,
