@@ -37,11 +37,13 @@ The fix evaluates the nominal pose first at full resolution and requires an off 
 
 Salt and pepper noise up to a few percent of pixels appears in the published degradation list. Impulse pixels are unbounded outliers, so they dominate the sums inside normalized cross correlation, and Gaussian denoising spreads them rather than removing them. An adaptive 3 by 3 median that fires only when the impulse fraction is detectable recovered one affected pair from 765 px to 0.09 px.
 
-## The irreducible failure mode
+## The ambiguity dominated failure regime
 
-The remaining failures are concentrated in defect free periodic interiors, and they are not a deficiency of the algorithm.
+The remaining failures are concentrated in defect free periodic interiors, and three independent tests converge on the same conclusion: they are dominated by information limited spatial ambiguity rather than search range or candidate budget failure.
 
-If two candidate windows inside a periodic array are identical to within the noise floor, then no function of the two images can prefer one over the other, because the two inputs are the same. Localization inside such a region is not a hard problem, it is an ill posed one. The information that disambiguates has to come from aperiodic content: array boundaries, termination structures, missing or oversized contacts, line edge roughness that happens to be locally distinctive.
+First, the candidate budget test: raising the number of hypotheses promoted to full resolution from 6 to 12 and 24 produced answers identical to three decimal places on all 150 pairs across four domains, so the correct candidate is not being discarded during prescreening. Second, pose inspection: on the failing 9 to 1 magnification cases the estimated scale lands within 0.007 to 0.017 of truth with the rotation correct, and the prediction still sits on a wrong periodic instance, so the transformation is found and the instance selection is what fails. Third, the oracle experiment below, where supplying the exact true pose from the generator metadata does not eliminate the failures.
+
+In the strictly identical limit the statement is exact: if two candidate windows are the same array of pixels, no function of the images can prefer one. In the realistic near identical regime the supported claim is the measured one: within the available image evidence the competing sites are indistinguishable, and neither a larger search budget nor the true pose resolves them. Localization there is ill posed rather than hard, and the information that disambiguates has to come from aperiodic content: array boundaries, termination structures, missing or oversized contacts, line edge roughness that happens to be locally distinctive.
 
 An oracle experiment quantified this. Supplying the true scale and rotation from the generator metadata, so that the pose search cannot be blamed, and then measuring the correlation at the true location against the global maximum, the failures on the specification proxy split into three classes:
 
