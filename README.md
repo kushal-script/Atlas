@@ -206,7 +206,17 @@ Every run writes into a timestamped folder under `experiments/`, holding the con
 | 6 | requirements.txt | [requirements.txt](requirements.txt), [requirements_freeze.txt](requirements_freeze.txt) | `requirements.txt` is the pinned runtime set the inference and generation scripts need, and is the file to install: a clean clone plus this file was verified end to end from a fresh virtual environment. `requirements_freeze.txt` is the complete `pip freeze` of the development environment, including the test and training only packages |
 | 7 | Citation document | [docs/citations.md](docs/citations.md), [references/references.bib](references/references.bib) | 27 references, each verified against the publisher and each tied to the specific parameter or noise model it supports; these are the sources cited in the submission |
 
-Also included beyond the required list: the complete experiment record under `experiments/`, the results tables under `results/`, the figures behind this page under `docs/images/`, and an automated test suite under `tests/`. A recorded walkthrough of the system running end to end is linked from the submission rather than stored here, so this repository holds the project itself.
+Also included beyond the required list: the complete experiment record under `experiments/`, the results tables under `results/`, the figures behind this page under `docs/images/`, and an automated test suite under `tests/`.
+
+## Walkthrough
+
+A recorded run of the system, end to end and unedited. It checks the environment, generates a pair with its ground truth, localizes it and compares the answer against the recorded truth, shows the confidence diagnostics, exercises the batch and accelerator forms, runs the test suite, and opens the success and failure cases.
+
+<video src="https://github.com/kushal-script/drift-sense/raw/main/drift_sense_demo.mp4" controls width="100%"></video>
+
+[![Watch the walkthrough](docs/images/demo_poster.png)](drift_sense_demo.mp4)
+
+If the player above does not load, the poster links to [drift_sense_demo.mp4](drift_sense_demo.mp4) directly.
 
 ## Repository layout
 

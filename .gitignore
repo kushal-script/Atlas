@@ -3,16 +3,10 @@ __pycache__/
 *.pyc
 .DS_Store
 data/
-# The sponsor problem statement deck is their material and stays out of the
-Problem Statement*.pptx
 thumbnails*.jpg
 unpacked/
 
-# Presentation and video tooling. The decks are submitted through the portal and
-# the videos are hosted externally, so neither they nor the scripts that build
-# them belong in a repository that is meant to hold the project itself.
+# Submission material and scratch work, kept out of the project repository.
+local/
 *.pptx
 *.pdf
-scripts/video_io.py
-*.mp4
-*.mov
