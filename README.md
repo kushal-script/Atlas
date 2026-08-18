@@ -22,9 +22,20 @@ The reference pattern occupies roughly 100 x 100 pixels inside the search image.
 ## Setup
 
 ```
+git clone https://github.com/kushal-script/drift-sense.git
+cd drift-sense
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ```
+
+The three commands below take a clean clone to a localized pair with nothing else installed:
+
+```
+.venv/bin/python generate_dataset.py --generator physics --style mixed --num 2 --out data/demo --seed 1
+.venv/bin/python localize.py data/demo/pair_0000/reference.png data/demo/pair_0000/search.png
+```
+
+The second command prints one line, `x y`, the predicted centre of the reference pattern inside the search image. `data/demo/pair_0000/meta.json` holds the true centre for comparison.
 
 Python 3.11 or newer. Inference needs only numpy, scipy, OpenCV, Pillow and matplotlib; no deep learning framework is required. All commands below run from the repository root.
 
@@ -70,6 +81,8 @@ Full diagnostics including the confidence regime, matched pose and runtime:
 .venv/bin/python localize.py path/to/reference.png path/to/search.png --json
 ```
 
+`--batch` accepts either a directory of pair subfolders, a directory holding a single `reference.png` and `search.png`, or, with `--pattern flat`, one directory of images paired by the token left after the role word, so `pair_0000_reference.png` pairs with `pair_0000_search.png`.
+
 Batch over a directory of pair folders, writing predictions and a runtime record:
 
 ```
@@ -89,6 +102,8 @@ Run on an accelerator instead of the CPU. The default is CPU and an accelerator 
 ```
 
 `--device` accepts `cpu`, `cuda`, `mps` or `auto`; a device that is not present is an error rather than a silent downgrade. The accelerator backend needs torch, which is already in `requirements_train.txt`; the CPU path does not.
+
+Two further flags exist and are off by default. `--preset` forces the imaging preset, which otherwise follows the input: colour input selects the optical preset and grayscale the SEM one, and `--preset sem` or `--preset optical` overrides that choice. `--reranker` enables the optional learned re-ranker described under model weights below; it may override which candidate the residual stage selects, and when it abstains the classical decision still stands.
 
 Batch over a flat directory whose files pair by shared prefix:
 
@@ -143,9 +158,9 @@ Every run writes into a timestamped folder under `experiments/`, holding the con
 | 1 | README with complete setup | this file | clone, install, generate a pair and localize using only the commands above; verified from a fresh virtual environment |
 | 2 | Dataset generator script | [generate_dataset.py](generate_dataset.py) | accepts `--style dram/finfet/mixed`, `--num`, `--out`; records the true centre of every pair in `meta.json` and in the `ground_truth.csv` manifest |
 | 3 | Localization inference script | [localize.py](localize.py) | takes a reference path and a search path, prints `x y`; runs with no manual edits, and also accepts `--batch` or `--manifest` for an evaluator supplied set |
-| 4 | Model weights | [models/reranker.npz](models/reranker.npz), [models/reranker.pt](models/reranker.pt) | the submitted inference path is **not** deep learning; the optional re-ranker is off by default and is loaded automatically only when `--reranker` is passed. Inference reads the numpy `.npz`, so no framework is required; the `.pt` is the same weights in PyTorch format |
+| 4 | Model weights | [models/reranker.npz](models/reranker.npz), [models/reranker.pt](models/reranker.pt) | the submitted inference path is **not** deep learning; the optional re-ranker is off by default and is loaded automatically from `models/` when `--reranker` is passed, with no path editing. Inference reads the numpy `.npz`, so no framework is required; the training script writes the `.pt` as the same weights in PyTorch format |
 | 5 | Training script or notebook | [notebooks/train_reranker.ipynb](notebooks/train_reranker.ipynb), [scripts/train_reranker.py](scripts/train_reranker.py) | reproduces the whole chain: generate, harvest candidates, train, calibrate, export, and verify that the numpy and torch forward passes agree |
-| 6 | requirements.txt | [requirements.txt](requirements.txt), [requirements_freeze.txt](requirements_freeze.txt) | `requirements.txt` is the minimal runtime set the inference script actually needs; `requirements_freeze.txt` is the complete `pip freeze` of the development environment, including the training and test only packages |
+| 6 | requirements.txt | [requirements.txt](requirements.txt), [requirements_freeze.txt](requirements_freeze.txt) | `requirements.txt` is the pinned runtime set the inference and generation scripts need, and is the file to install: a clean clone plus this file was verified end to end from a fresh virtual environment. `requirements_freeze.txt` is the complete `pip freeze` of the development environment, including the test and training only packages |
 | 7 | Citation document | [docs/citations.md](docs/citations.md), [references/references.bib](references/references.bib) | 27 references, each verified against the publisher and each tied to the specific parameter or noise model it supports; these are the sources cited in the presentation |
 
 

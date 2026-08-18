@@ -26,6 +26,7 @@ No source code changes are needed for any of these forms.
 
 import argparse
 import csv
+import re
 import json
 import platform
 import sys
@@ -59,30 +60,56 @@ def _find(folder, names):
 
 
 def discover_nested(root):
+    """One pair per subfolder, plus the case of a single pair sitting in root."""
     pairs = []
     for folder in sorted(d for d in root.iterdir() if d.is_dir()):
         ref = _find(folder, REF_NAMES)
         search = _find(folder, SEARCH_NAMES)
         if ref and search:
             pairs.append((folder.name, ref, search))
+    if not pairs:
+        ref = _find(root, REF_NAMES)
+        search = _find(root, SEARCH_NAMES)
+        if ref and search:
+            pairs.append((root.name, ref, search))
     return pairs
 
 
+ROLE_WORDS = (("reference", ("reference", "ref")),
+              ("search", ("search", "wide")))
+
+
+def _role_and_token(stem):
+    """Split a filename stem into its role and the token identifying the pair.
+
+    The role word is matched as a whole token delimited by the start or end of
+    the stem or by a separator, and the longest word is tried first. Removing
+    it as a bare substring instead would turn "reference" into "erence", so the
+    reference and search members of a pair could never agree on a token.
+    """
+    s = stem.lower()
+    for role, words in ROLE_WORDS:
+        for word in sorted(words, key=len, reverse=True):
+            m = re.search(rf"(?:^|[_\-. ]){re.escape(word)}(?:$|[_\-. ])", s)
+            if m:
+                return role, (s[:m.start()] + s[m.end():]).strip("_-. ")
+    return None, None
+
+
 def discover_flat(root):
-    """Pair images in one directory by the token before the role keyword."""
+    """Pair images in one directory by the token left after the role word."""
     refs, searches = {}, {}
     for p in sorted(root.iterdir()):
         if p.suffix.lower() not in (".png", ".tif", ".tiff", ".jpg", ".bmp"):
             continue
-        stem = p.stem.lower()
-        for key, bucket in (("ref", refs), ("search", searches), ("wide", searches)):
-            if key in stem:
-                token = stem.replace(key, "").strip("_-. ") or p.stem
-                bucket[token] = p
-                break
+        role, token = _role_and_token(p.stem)
+        if role == "reference":
+            refs[token] = p
+        elif role == "search":
+            searches[token] = p
     pairs = []
     for token in sorted(set(refs) & set(searches)):
-        pairs.append((token, refs[token], searches[token]))
+        pairs.append((token or root.name, refs[token], searches[token]))
     return pairs
 
 
@@ -107,10 +134,12 @@ def read_manifest(path):
     return pairs
 
 
-def run_one(ref_path, search_path, use_reranker, device="cpu"):
+def run_one(ref_path, search_path, use_reranker, device="cpu", preset="auto"):
     ref, ref_rgb = load_gray(ref_path)
     search, search_rgb = load_gray(search_path)
-    cfg = optical_config() if (ref_rgb or search_rgb) else MatchConfig()
+    if preset == "auto":
+        preset = "optical" if (ref_rgb or search_rgb) else "sem"
+    cfg = optical_config() if preset == "optical" else MatchConfig()
     cfg.device = device
     if use_reranker:
         weights = REPO / "models" / "reranker.npz"
@@ -139,6 +168,9 @@ def main():
     ap.add_argument("--json", action="store_true", help="full diagnostics for a single pair")
     ap.add_argument("--reranker", action="store_true",
                     help="use the learned re-ranker for the stage two decision")
+    ap.add_argument("--preset", default="auto", choices=["auto", "sem", "optical"],
+                    help="imaging preset; auto picks optical for colour input and "
+                         "sem otherwise, and this flag forces either one")
     ap.add_argument("--device", default="cpu",
                     choices=["cpu", "cuda", "mps", "auto"],
                     help="compute backend; cpu is the default and needs no "
@@ -160,7 +192,7 @@ def main():
 
         rows, t0 = [], time.perf_counter()
         for pid, ref_path, search_path in pairs:
-            x, y, diag = run_one(ref_path, search_path, args.reranker, device)
+            x, y, diag = run_one(ref_path, search_path, args.reranker, device, args.preset)
             rows.append({
                 "pair_id": pid,
                 "reference_path": str(ref_path),
@@ -205,7 +237,7 @@ def main():
 
     if not args.reference or not args.search:
         ap.error("give reference and search paths, or use --batch or --manifest")
-    x, y, diag = run_one(args.reference, args.search, args.reranker, device)
+    x, y, diag = run_one(args.reference, args.search, args.reranker, device, args.preset)
     if args.json:
         print(json.dumps({"x": x, "y": y,
                           "confidence_regime": confidence_regime(diag), **diag},

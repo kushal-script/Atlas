@@ -79,7 +79,9 @@ def _delegate(script, args, extra):
            "--num", str(args.num), "--out", str(args.out), "--seed", str(args.seed)] + extra
     subprocess.run(cmd, check=True, cwd=REPO)
     manifest = args.out / "ground_truth.csv"
-    rows = list(csv.DictReader(open(manifest))) if manifest.exists() else []
+    if not manifest.exists():
+        raise SystemExit(f"{script} wrote no ground_truth.csv under {args.out}")
+    rows = list(csv.DictReader(open(manifest)))
     for r in rows:
         r.setdefault("reference_path", f"{r.get('pair_id', '')}/reference.png")
         r.setdefault("search_path", f"{r.get('pair_id', '')}/search.png")
@@ -92,7 +94,9 @@ def main():
     ap.add_argument("--generator",
                     choices=["physics", "spec", "amat_proxy", "stress"],
                     default="physics")
-    ap.add_argument("--style", choices=["dram", "finfet", "mixed"], default="mixed")
+    ap.add_argument("--style", choices=["dram", "finfet", "mixed"], default="mixed",
+                    help="physics generator only: the other generators carry their "
+                         "own fixed structure and record what they actually produced")
     ap.add_argument("--modality", choices=["sem", "optical"], default="sem",
                     help="physics generator only: grayscale SEM or RGB optical brightfield")
     ap.add_argument("--num", type=int, default=30)
@@ -109,6 +113,10 @@ def main():
     ap.add_argument("--scale_jitter", type=float, default=0.0,
                     help="amat_proxy only: robustness magnification error amplitude")
     args = ap.parse_args()
+    # Delegated generators run with the repository as their working directory,
+    # so a relative output path would resolve differently for parent and child
+    # and the pairs would land somewhere the caller never asked for.
+    args.out = args.out.resolve()
     args.out.mkdir(parents=True, exist_ok=True)
 
     if args.generator == "physics":
@@ -124,6 +132,17 @@ def main():
     else:
         rows, elapsed = _delegate("generate_stress_dataset.py", args, [])
 
+    # Only the physics generator builds layouts per style; the others carry
+    # their own fixed structure, so recording the requested style for them
+    # would put a claim in the provenance record that the pixels do not support.
+    styles = sorted({r["style"] for r in rows if r.get("style")})
+    if args.generator == "physics":
+        recorded_style = args.style
+    elif styles:
+        recorded_style = styles[0] if len(styles) == 1 else "mixed"
+    else:
+        recorded_style = "generator defined"
+
     if rows:
         with open(args.out / "ground_truth.csv", "w", newline="") as fh:
             w = csv.DictWriter(fh, fieldnames=list(rows[0].keys()))
@@ -131,7 +150,9 @@ def main():
             w.writerows(rows)
     with open(args.out / "dataset_meta.json", "w") as fh:
         json.dump({"generator_version": __version__, "generator": args.generator,
-                   "style": args.style, "modality": args.modality,
+                   "style": recorded_style, "style_requested": args.style,
+                   "style_honoured": args.generator == "physics",
+                   "modality": args.modality,
                    "num_pairs": args.num, "seed": args.seed,
                    "coordinate_convention": "origin at centre of top left pixel, "
                                             "x increases right, y increases down"},

@@ -182,8 +182,11 @@ def main():
     val_acc, records = evaluate_split(model, val, device)
     tau, table = calibrate_tau(records)
     weight_path = REPO / "models" / "reranker.npz"
+    torch_path = REPO / "models" / "reranker.pt"
     weight_path.parent.mkdir(exist_ok=True)
     export_weights(model, weight_path)
+    torch.save(model.state_dict(), torch_path)
+    print(f"wrote {weight_path} and {torch_path}")
     parity = verify_parity(model, val, weight_path, device)
 
     with open(run_dir / "training_log.csv", "w", newline="") as fh:

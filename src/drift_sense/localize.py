@@ -391,18 +391,24 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
             stage2.update(evaluated=int(len(vals)), margin=margin, z=float(z),
                           best_residual_score=float(vals[wi]),
                           top_scores=[float(v) for v in vals[order[:8]]])
+            # The classical rule is the decision. An enabled re-ranker may
+            # override which candidate is chosen, but when it abstains the
+            # classical rule still decides, because letting an abstention fall
+            # through to the centre tie break discards a sub pixel answer the
+            # deviation field had already identified.
+            if len(vals) >= cfg.residual_z_pool_min:
+                decisive = z >= cfg.residual_z_thresh and margin >= 0.02
+            else:
+                decisive = margin >= cfg.residual_margin
             if cfg.reranker_path:
                 from .reranker import rerank
                 choice, prob = rerank(search, tmpl_best, med, rt0, resp, r2,
                                       wide, cfg)
-                stage2.update(reranker_prob=float(prob))
+                stage2.update(reranker_prob=float(prob),
+                              reranker_abstained=choice is None)
                 if choice is not None:
                     wi = int(choice)
                     decisive = True
-            elif len(vals) >= cfg.residual_z_pool_min:
-                decisive = z >= cfg.residual_z_thresh and margin >= 0.02
-            else:
-                decisive = margin >= cfg.residual_margin
         if decisive:
             py, px = int(wide[wi, 0]), int(wide[wi, 1])
             dx = dy = 0.0
