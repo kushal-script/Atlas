@@ -210,13 +210,11 @@ Also included beyond the required list: the complete experiment record under `ex
 
 ## Walkthrough
 
-A recorded run of the system, end to end and unedited. It checks the environment, generates a pair with its ground truth, localizes it and compares the answer against the recorded truth, shows the confidence diagnostics, exercises the batch and accelerator forms, runs the test suite, and opens the success and failure cases.
+A recorded run of the system, end to end and unedited.
 
-<video src="https://github.com/kushal-script/drift-sense/raw/main/drift_sense_demo.mp4" controls width="100%"></video>
+![Walkthrough](docs/images/demo.gif)
 
-[![Watch the walkthrough](docs/images/demo_poster.png)](drift_sense_demo.mp4)
-
-If the player above does not load, the poster links to [drift_sense_demo.mp4](drift_sense_demo.mp4) directly.
+Twenty five seconds drawn from the three minute run: the localizer answering on one pair with its error against the recorded truth, then the success case, the honest failure and the runtime comparison. The full recording is [drift_sense_demo.mp4](drift_sense_demo.mp4), which also covers the environment check, dataset generation, the confidence diagnostics, the batch and accelerator forms and the test suite.
 
 ## Repository layout
 
