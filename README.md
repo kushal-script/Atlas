@@ -204,13 +204,9 @@ Every run writes into a timestamped folder under `experiments/`, holding the con
 | 4 | Model weights | [models/reranker.npz](models/reranker.npz), [models/reranker.pt](models/reranker.pt) | the submitted inference path is **not** deep learning; the optional re-ranker is off by default and is loaded automatically from `models/` when `--reranker` is passed, with no path editing. Inference reads the numpy `.npz`, so no framework is required; the training script writes the `.pt` as the same weights in PyTorch format |
 | 5 | Training script or notebook | [notebooks/train_reranker.ipynb](notebooks/train_reranker.ipynb), [scripts/train_reranker.py](scripts/train_reranker.py) | reproduces the whole chain: generate, harvest candidates, train, calibrate, export, and verify that the numpy and torch forward passes agree |
 | 6 | requirements.txt | [requirements.txt](requirements.txt), [requirements_freeze.txt](requirements_freeze.txt) | `requirements.txt` is the pinned runtime set the inference and generation scripts need, and is the file to install: a clean clone plus this file was verified end to end from a fresh virtual environment. `requirements_freeze.txt` is the complete `pip freeze` of the development environment, including the test and training only packages |
-| 7 | Citation document | [docs/citations.md](docs/citations.md), [references/references.bib](references/references.bib) | 27 references, each verified against the publisher and each tied to the specific parameter or noise model it supports; these are the sources cited in the presentation |
+| 7 | Citation document | [docs/citations.md](docs/citations.md), [references/references.bib](references/references.bib) | 27 references, each verified against the publisher and each tied to the specific parameter or noise model it supports; these are the sources cited in the submission |
 
-
-
-```
-```
-
+Also included beyond the required list: the complete experiment record under `experiments/`, the results tables under `results/`, the figures behind this page under `docs/images/`, and an automated test suite under `tests/`. A recorded walkthrough of the system running end to end is linked from the submission rather than stored here, so this repository holds the project itself.
 
 ## Repository layout
 

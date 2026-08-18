@@ -7,3 +7,12 @@ data/
 Problem Statement*.pptx
 thumbnails*.jpg
 unpacked/
+
+# Presentation and video tooling. The decks are submitted through the portal and
+# the videos are hosted externally, so neither they nor the scripts that build
+# them belong in a repository that is meant to hold the project itself.
+*.pptx
+*.pdf
+scripts/video_io.py
+*.mp4
+*.mov

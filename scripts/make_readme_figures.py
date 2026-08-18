@@ -13,11 +13,18 @@ import json
 import shutil
 from pathlib import Path
 
+import sys
+
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+# the curve and its average precision come from the evaluation script itself, so
+# the README cannot quote a number the experiment record does not hold
+from evaluate_tiers import average_precision, precision_recall
 
 REPO = Path(__file__).resolve().parent.parent
 OUT = REPO / "docs" / "images"
@@ -130,6 +137,60 @@ def confidence_regimes():
     print("wrote confidence_regimes.png")
 
 
+def pose_robustness():
+    rows = list(csv.DictReader(open(latest("experiments/*_pose_robustness_final") / "results.csv")))
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.4), dpi=110)
+    for ax, key, xlabel in ((axes[0], "magnification", "magnification, ratio to 1"),
+                            (axes[1], "rotation_deg", "relative rotation, degrees")):
+        buckets = {}
+        for r in rows:
+            buckets.setdefault(float(r[key]), []).append(float(r["err_px"]) <= 5.0)
+        xs = sorted(buckets)
+        ys = [100.0 * np.mean(buckets[x]) for x in xs]
+        ax.plot(xs, ys, "o-", color=BLUE, linewidth=2.4, markersize=7)
+        ax.set_xlabel(xlabel)
+        ax.set_ylim(0, 108)
+        ax.grid(alpha=0.3)
+        ax.set_axisbelow(True)
+        for x, y in zip(xs, ys):
+            ax.annotate(f"{y:.0f}", (x, y), textcoords="offset points",
+                        xytext=(0, 9), ha="center", fontsize=10)
+    axes[0].set_ylabel("pass rate within 5 px, %")
+    fig.suptitle("Pose robustness across the stated magnification and rotation range")
+    fig.tight_layout()
+    fig.savefig(OUT / "pose_robustness.png")
+    plt.close(fig)
+    print("wrote pose_robustness.png")
+
+
+def precision_recall_by_tier():
+    rows = list(csv.DictReader(open(latest("experiments/*_tier_report_final") / "results.csv")))
+    fig, ax = plt.subplots(figsize=(8.6, 4.8), dpi=110)
+    colours = {"low": BLUE, "medium": GREEN, "high": ORANGE, "severe": RED}
+    for tier in ("low", "medium", "high", "severe"):
+        sub = [(float(r["confidence"]), float(r["err_px"]) <= 5.0)
+               for r in rows if r["tier"] == tier]
+        if not sub:
+            continue
+        sub.sort(key=lambda p: -p[0])
+        prec, rec = precision_recall([c for c, _ in sub], [ok for _, ok in sub])
+        ap = average_precision(prec, rec)
+        ax.plot(rec, prec, "-", color=colours[tier], linewidth=2.2,
+                label=f"{tier}  (AP={ap:.2f})")
+    ax.set_xlabel("recall")
+    ax.set_ylabel("precision")
+    ax.set_title("Confidence ranked precision and recall, by noise tier")
+    ax.set_xlim(0, 1.02)
+    ax.set_ylim(0, 1.05)
+    ax.grid(alpha=0.3)
+    ax.set_axisbelow(True)
+    ax.legend(loc="lower left")
+    fig.tight_layout()
+    fig.savefig(OUT / "precision_recall.png")
+    plt.close(fig)
+    print("wrote precision_recall.png")
+
+
 def copy_experiment_figures():
     wanted = {
         "montage_success.png": latest("experiments/*_final_physics/plots") ,
@@ -140,14 +201,12 @@ def copy_experiment_figures():
         if folder and (folder / name).exists():
             shutil.copy(folder / name, OUT / name)
             print("copied", name)
-    for name in ("pose_robustness.png", "precision_recall.png"):
-        if src.exists():
-            shutil.copy(src, OUT / name)
-            print("copied", name)
 
 
 if __name__ == "__main__":
     input_pair()
     accuracy_by_domain()
     confidence_regimes()
+    pose_robustness()
+    precision_recall_by_tier()
     copy_experiment_figures()
