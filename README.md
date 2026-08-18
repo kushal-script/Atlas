@@ -46,7 +46,7 @@ Two further dependency files exist for optional work: `requirements_dev.txt` add
 .venv/bin/python -m pytest tests/ -q
 ```
 
-The test suite asserts the coordinate convention, that the axes are not transposed, sub pixel accuracy on noise free pairs whose answer is unique by construction, generator reproducibility from a seed, independent noise between the two captures, the mandated noisier search capture, and that the confidence score ranks an identifiable pattern above a degenerate one.
+The test suite asserts the coordinate convention, that the axes are not transposed, sub pixel accuracy on noise free pairs whose answer is unique by construction, generator reproducibility from a seed, independent noise between the two captures, the mandated noisier search capture, that the confidence score ranks an identifiable pattern above a degenerate one, and that every pair layout an evaluator might supply is discovered, including a flat directory named with the full word reference and a directory holding a single pair.
 
 ## Generate a dataset
 
