@@ -164,6 +164,7 @@ Every run writes into a timestamped folder under `experiments/`, holding the con
 | 7 | Citation document | [docs/citations.md](docs/citations.md), [references/references.bib](references/references.bib) | 27 references, each verified against the publisher and each tied to the specific parameter or noise model it supports; these are the sources cited in the presentation |
 
 
+
 ```
 ```
 
