@@ -72,3 +72,21 @@ The explanation came from reading the reference pipeline: gamma, speckle and imp
 A small convolutional re-ranker was trained to replace the statistical decision in the residual stage, using labels that are free because ground truth is known. It matched the classical rule in distribution and lost to it out of distribution, falling from 43.3 to 30.0 percent within 1 px on the held out adversarial generator. A network trained on one generator's physics did not transfer to an independent generator, and the hidden test set is by definition an independent generator. The physics grounded decision therefore remains the default and the re-ranker ships behind a flag, with the full training and comparison record under `experiments/`.
 
 The claim this evidence supports is narrow and worth stating precisely: this re-ranker, trained on 88 degenerate pairs from one generator, did not transfer. It is not evidence that learned re-ranking cannot work here. Establishing that would require substantially more training data and domain randomisation over the generator parameters, so that the network is given a fair opportunity to fail.
+
+## The confidence regime rule, and the defect that produced it
+
+A spot check while auditing the repository found the worst possible kind of error: a pair labelled `unique_peak`, the most confident regime, that was wrong by 250 px. The diagnostics explained it immediately. The regime was decided by the strict equal match count alone, and that pair had one strict candidate but 4444 candidates inside the wider noise scaled tolerance. On a thoroughly degenerate surface the strict tolerance can isolate a single peak by noise, and the label then claims certainty that the evidence does not support.
+
+The rule was re-derived from measurement rather than intuition. Across all 150 pairs from the four generators, the wide candidate pool separates correct from incorrect answers far better than the strict count: when the answer is correct the median wide pool is 1 with a 75th percentile of 2, and when it is wrong the median is 29 with a 75th percentile of 410. Thresholds were then swept:
+
+| unique_peak requires | cases labelled | precision |
+| --- | --- | --- |
+| strict at most 1 (the old rule) | 112 | 77.7 percent |
+| strict at most 1 and wide at most 1 | 67 | 98.5 percent |
+| strict at most 1 and wide at most 2 | 73 | 98.6 percent |
+| strict at most 1 and wide at most 4 | 81 | 91.4 percent |
+| strict at most 1 and wide at most 8 | 86 | 89.5 percent |
+
+A wide pool of at most 2 was selected: it is the knee of the curve, and it makes the confident label mean what its name claims. The resulting three regimes, measured over the same 150 pairs, are `unique_peak` at 98.6 percent precision over 73 pairs, `residual_identified` at 50.0 percent over 16, and `tie_break_convention` at 21.3 percent over 61. Accepting the first two and reacquiring on the third covers 59 percent of cases at 89.9 percent precision, against 62.0 percent if every answer is accepted blindly.
+
+This defect is worth recording for what it says about the project's own claims. It changed no predicted coordinate and no accuracy number, so the localization result was never affected; what it corrupted was the system's account of its own certainty, which is precisely the property the abstain and reacquire policy depends on. It was found by checking a requirement rather than by any accuracy metric, because an aggregate pass rate cannot see a confidently wrong answer.

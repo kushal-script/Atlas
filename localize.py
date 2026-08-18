@@ -36,6 +36,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
 import numpy as np
 
+from drift_sense.api import _regime
 from drift_sense.localize import MatchConfig, load_gray, locate, optical_config
 
 REPO = Path(__file__).resolve().parent
@@ -119,11 +120,8 @@ def run_one(ref_path, search_path, use_reranker):
 
 
 def confidence_regime(diag):
-    if diag["num_candidates"] <= 1:
-        return "unique_peak"
-    if diag["stage2"]["used"]:
-        return "residual_identified"
-    return "tie_break_convention"
+    """Single source of truth for the regime rule, shared with the API."""
+    return _regime(diag)
 
 
 def main():
