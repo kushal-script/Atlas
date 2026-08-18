@@ -121,6 +121,19 @@ Configuration ablation across every dataset at once:
 
 Every run writes into a timestamped folder under `experiments/`, holding the configuration, a per pair results table, aggregate metrics and plots, so any number quoted anywhere in this repository is traceable to the run that produced it.
 
+## Submission requirement mapping
+
+| # | Requirement | Where it is | Notes |
+| --- | --- | --- | --- |
+| 1 | README with complete setup | this file | clone, install, generate a pair and localize using only the commands above; verified from a fresh virtual environment |
+| 2 | Dataset generator script | [generate_dataset.py](generate_dataset.py) | accepts `--style dram/finfet/mixed`, `--num`, `--out`; records the true centre of every pair in `meta.json` and in the `ground_truth.csv` manifest |
+| 3 | Localization inference script | [localize.py](localize.py) | takes a reference path and a search path, prints `x y`; runs with no manual edits, and also accepts `--batch` or `--manifest` for an evaluator supplied set |
+| 4 | Model weights | [models/reranker.npz](models/reranker.npz), [models/reranker.pt](models/reranker.pt) | the submitted inference path is **not** deep learning; the optional re-ranker is off by default and is loaded automatically only when `--reranker` is passed. Inference reads the numpy `.npz`, so no framework is required; the `.pt` is the same weights in PyTorch format |
+| 5 | Training script or notebook | [notebooks/train_reranker.ipynb](notebooks/train_reranker.ipynb), [scripts/train_reranker.py](scripts/train_reranker.py) | reproduces the whole chain: generate, harvest candidates, train, calibrate, export, and verify that the numpy and torch forward passes agree |
+| 6 | requirements.txt | [requirements.txt](requirements.txt), [requirements_freeze.txt](requirements_freeze.txt) | `requirements.txt` is the minimal runtime set the inference script actually needs; `requirements_freeze.txt` is the complete `pip freeze` of the development environment, including the training and test only packages |
+| 7 | Citation document | [docs/citations.md](docs/citations.md), [references/references.bib](references/references.bib) | 27 references, each verified against the publisher and each tied to the specific parameter or noise model it supports; these are the sources cited in the presentation |
+
+
 ## Repository layout
 
 ```

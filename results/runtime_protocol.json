@@ -1,0 +1,19 @@
+{
+  "protocol": "cool start, discard warmup runs, time N localizations with time.perf_counter around the complete locate call, single process, report median and mean",
+  "measured_at": "2026-08-14T13:25:12",
+  "dataset": "data/physics40",
+  "warmup_runs_discarded": 2,
+  "timed_runs": 10,
+  "median_s_per_pair": 5.886,
+  "mean_s_per_pair": 5.907,
+  "min_s": 5.854,
+  "max_s": 6.052,
+  "cpu": "Apple M3",
+  "memory": "16 GiB",
+  "accelerator": "none, CPU only",
+  "os": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
+  "python": "3.14.0",
+  "numpy": "2.5.1",
+  "scipy": "1.18.0",
+  "opencv": "5.0.0"
+}
