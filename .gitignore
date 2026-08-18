@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 .DS_Store
 data/
-*.pptx
+# The sponsor problem statement deck is their material and stays out of the
+Problem Statement*.pptx
 thumbnails*.jpg
 unpacked/

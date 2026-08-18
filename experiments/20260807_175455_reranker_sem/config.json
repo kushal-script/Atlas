@@ -45,7 +45,7 @@
     "residual_z_thresh": 5.0,
     "residual_z_pool_min": 9,
     "residual_median_k": 31,
-    "reranker_path": "/Users/kushalsathyanarayan/Desktop/semicon_india_hackathon/PS2/models/reranker.npz",
+    "reranker_path": "models/reranker.npz",
     "reranker_prob": 0.5,
     "reranker_pool": 48
   },
