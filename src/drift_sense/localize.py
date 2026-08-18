@@ -20,12 +20,20 @@ from dataclasses import dataclass
 
 import cv2
 import numpy as np
-from scipy.ndimage import affine_transform, gaussian_filter, maximum_filter
+from scipy.ndimage import affine_transform, maximum_filter
+
+from . import backend
 
 
 @dataclass
 class MatchConfig:
     zoom: float = 10.0
+    # Compute backend for the blur bank and the correlation, the two
+    # operations that dominate runtime. Defaults to cpu, which needs no
+    # framework and is the submitted inference path; an accelerator is only
+    # ever used when asked for explicitly. scripts/verify_backends.py
+    # asserts that every backend returns the same answer.
+    device: str = "cpu"
     template_px: int = 90
     # At an under unity scale hypothesis a fixed pixel size template covers
     # less of the reference (810 nm at 9 to 1 against 900 at 10 to 1), which
@@ -151,9 +159,9 @@ def _preprocess(img, cfg, denoise):
             noise = _noise_sigma(img)
             sigma = float(np.clip(cfg.denoise_noise_gain * noise,
                                   cfg.denoise_sigma_px, cfg.denoise_sigma_max))
-        x = gaussian_filter(x, sigma)
+        x = backend.gaussian(x, sigma, cfg.device)
     if cfg.bandpass_sigma_px > 0:
-        x = x - gaussian_filter(x, cfg.bandpass_sigma_px)
+        x = x - backend.gaussian(x, cfg.bandpass_sigma_px, cfg.device)
     return x, noise
 
 
@@ -246,11 +254,12 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
     ref_img = _tone_normalize(ref_img, cfg)
     search_img = _tone_normalize(search_img, cfg)
     ref = ref_img.astype(np.float32)
-    ref_low = gaussian_filter(ref, cfg.bandpass_sigma_px * cfg.zoom)
+    ref_low = backend.gaussian(ref, cfg.bandpass_sigma_px * cfg.zoom, cfg.device)
     all_sigmas = sorted(set(cfg.psf_sigma_bank_nm) | set(cfg.wide_sigma_bank_nm))
-    ref_bank = {s: gaussian_filter(ref, _effective_sigma(s, cfg)) - ref_low
+    ref_bank = {s: backend.gaussian(ref, _effective_sigma(s, cfg), cfg.device) - ref_low
                 for s in all_sigmas}
     search, search_noise = _preprocess(search_img, cfg, denoise=True)
+    corr = backend.make_correlator(search, cfg.device)
 
     tried = {}
 
@@ -259,8 +268,7 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
         if key in tried:
             return tried[key]
         tmpl = _make_template(ref_bank[sig], theta, scale, cfg)
-        resp_h = cv2.matchTemplate(search, tmpl, cv2.TM_CCOEFF_NORMED)
-        tried[key] = float(resp_h.max())
+        tried[key] = float(corr.peaks([tmpl])[0])
         return tried[key]
 
     def refine(seed_key):
@@ -286,15 +294,16 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
                        interpolation=cv2.INTER_AREA)
     ts = cfg.template_px // ds
     pol_mx = pol_mn = 0.0
-    for sig in cfg.wide_sigma_bank_nm:
-        t_small = cv2.resize(_make_template(ref_bank[sig], 0.0, 1.0, cfg), (ts, ts),
-                             interpolation=cv2.INTER_AREA)
-        r = cv2.matchTemplate(small, t_small, cv2.TM_CCOEFF_NORMED)
-        mn, mx, _, _ = cv2.minMaxLoc(r)
+    pol_tmpls = [cv2.resize(_make_template(ref_bank[sig], 0.0, 1.0, cfg), (ts, ts),
+                            interpolation=cv2.INTER_AREA)
+                 for sig in cfg.wide_sigma_bank_nm]
+    corr_small = backend.make_correlator(small, cfg.device)
+    for mn, mx in corr_small.peaks(pol_tmpls, want_min=True):
         pol_mx, pol_mn = max(pol_mx, mx), min(pol_mn, mn)
     inverted = -pol_mn > pol_mx
     if inverted:
         search = -search
+        corr = backend.make_correlator(search, cfg.device)
         tried.clear()
 
     # Stage one, the nominal pose. The reference pipeline is an exact 10 to 1
@@ -316,7 +325,7 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
     wide_key = nominal_key
     used_wide = False
     if nominal_score < cfg.nominal_accept_score:
-        prescreen = []
+        poses, grid_tmpls = [], []
         for sig in cfg.wide_sigma_bank_nm:
             for th in cfg.coarse_rotations_deg:
                 for sc in cfg.coarse_scales:
@@ -324,10 +333,12 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
                         continue
                     tmpl_h = _make_template(ref_bank[sig], th, sc, cfg)
                     th_px = max(tmpl_h.shape[0] // ds, 8)
-                    t_small = cv2.resize(tmpl_h, (th_px, th_px),
-                                         interpolation=cv2.INTER_AREA)
-                    r = cv2.matchTemplate(small, t_small, cv2.TM_CCOEFF_NORMED)
-                    prescreen.append((float(r.max()), sig, th, sc))
+                    grid_tmpls.append(cv2.resize(tmpl_h, (th_px, th_px),
+                                                 interpolation=cv2.INTER_AREA))
+                    poses.append((sig, th, sc))
+        peaks = corr_small.peaks(grid_tmpls)
+        prescreen = [(peak, sig, th, sc)
+                     for peak, (sig, th, sc) in zip(peaks, poses)]
         prescreen.sort(key=lambda p: -p[0])
         wide_keys = []
         for _, sig, th, sc in prescreen[:cfg.prescreen_top_k]:
@@ -341,7 +352,7 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
     best = wide_key if used_wide else nominal_key
     theta_best, scale_best, sigma_best = best
     tmpl_best = _make_template(ref_bank[sigma_best], theta_best, scale_best, cfg)
-    resp = cv2.matchTemplate(search, tmpl_best, cv2.TM_CCOEFF_NORMED)
+    resp = corr.full(tmpl_best)
     score_best = float(resp.max())
 
     tol_wide = min(cfg.stage2_tolerance_cap,

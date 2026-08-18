@@ -68,7 +68,7 @@ def _confidence(diag):
     return float(np.clip(conf, 0.0, 1.0))
 
 
-def match_pair(reference_img, search_img, cfg=None, reranker_path=None):
+def match_pair(reference_img, search_img, cfg=None, reranker_path=None, device=None):
     """Locate the reference pattern and return position, confidence, diagnostics."""
     ref = np.asarray(reference_img)
     search = np.asarray(search_img)
@@ -77,6 +77,8 @@ def match_pair(reference_img, search_img, cfg=None, reranker_path=None):
         cfg = optical_config() if rgb else MatchConfig()
     if reranker_path:
         cfg.reranker_path = str(reranker_path)
+    if device:
+        cfg.device = device
     if ref.ndim == 3:
         ref = ref[..., :3].mean(axis=2).astype(np.uint8)
     if search.ndim == 3:

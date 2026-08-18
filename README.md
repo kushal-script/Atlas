@@ -12,6 +12,7 @@ The repository contains two deliverables plus the evidence behind them: a synthe
 | Search image | 1000 x 1000 grayscale, nominally 10 nm per pixel, 10 um field of view |
 | Scale relationship | nominally 10 to 1, handled explicitly over 9 to 1 through 11 to 1 |
 | Rotation | handled to plus or minus 6 degrees, refined to 0.09 degrees |
+| Runtime | 2.03 s per pair on one CPU core, 0.52 s on an accelerator, identical answers |
 | Output | centre coordinates x y in search image pixels, sub pixel |
 | Coordinate origin | centre of the top left pixel, x increases right, y increases down |
 | Multiple matches | the match closest to the search image centre is returned |
@@ -81,6 +82,14 @@ Batch over an explicit manifest with `reference_path` and `search_path` columns:
 .venv/bin/python localize.py --manifest pairs.csv --out results/predictions.csv
 ```
 
+Run on an accelerator instead of the CPU. The default is CPU and an accelerator is never selected implicitly, so a missing or mismatched CUDA install can never change what the default path does:
+
+```
+.venv/bin/python localize.py path/to/reference.png path/to/search.png --device auto
+```
+
+`--device` accepts `cpu`, `cuda`, `mps` or `auto`; a device that is not present is an error rather than a silent downgrade. The accelerator backend needs torch, which is already in `requirements_train.txt`; the CPU path does not.
+
 Batch over a flat directory whose files pair by shared prefix:
 
 ```
@@ -111,6 +120,12 @@ Pass rates per noise tier with confidence ranked precision recall curves:
 
 ```
 .venv/bin/python scripts/evaluate_tiers.py --dataset data/amat_tiers --name tier_report
+```
+
+Assert that every compute backend returns the same answer as the reference path, which is scipy for the blur and OpenCV for the correlation:
+
+```
+.venv/bin/python scripts/verify_backends.py
 ```
 
 Configuration ablation across every dataset at once:
@@ -147,6 +162,7 @@ src/drift_sense/
     imaging/optical.py     RGB brightfield image formation
     generator.py           pair generation and ground truth bookkeeping
     localize.py            matching pipeline
+    backend.py             cpu and accelerator compute backends
     reranker.py            optional learned decision, numpy inference
     api.py                 drop in matcher interface
     evaluate.py            metrics and plots

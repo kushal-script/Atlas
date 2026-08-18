@@ -37,6 +37,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 import numpy as np
 
 from drift_sense.api import _regime
+from drift_sense import backend
 from drift_sense.localize import MatchConfig, load_gray, locate, optical_config
 
 REPO = Path(__file__).resolve().parent
@@ -106,10 +107,11 @@ def read_manifest(path):
     return pairs
 
 
-def run_one(ref_path, search_path, use_reranker):
+def run_one(ref_path, search_path, use_reranker, device="cpu"):
     ref, ref_rgb = load_gray(ref_path)
     search, search_rgb = load_gray(search_path)
     cfg = optical_config() if (ref_rgb or search_rgb) else MatchConfig()
+    cfg.device = device
     if use_reranker:
         weights = REPO / "models" / "reranker.npz"
         if not weights.exists():
@@ -137,7 +139,12 @@ def main():
     ap.add_argument("--json", action="store_true", help="full diagnostics for a single pair")
     ap.add_argument("--reranker", action="store_true",
                     help="use the learned re-ranker for the stage two decision")
+    ap.add_argument("--device", default="cpu",
+                    choices=["cpu", "cuda", "mps", "auto"],
+                    help="compute backend; cpu is the default and needs no "
+                         "framework, an accelerator is never selected implicitly")
     args = ap.parse_args()
+    device = backend.resolve_device(args.device)
 
     if args.batch or args.manifest:
         if args.manifest:
@@ -153,7 +160,7 @@ def main():
 
         rows, t0 = [], time.perf_counter()
         for pid, ref_path, search_path in pairs:
-            x, y, diag = run_one(ref_path, search_path, args.reranker)
+            x, y, diag = run_one(ref_path, search_path, args.reranker, device)
             rows.append({
                 "pair_id": pid,
                 "reference_path": str(ref_path),
@@ -182,6 +189,7 @@ def main():
             "total_wall_clock_s": round(total, 2),
             "mean_runtime_s_per_pair": round(float(times.mean()), 3),
             "median_runtime_s_per_pair": round(float(np.median(times)), 3),
+            "device": device,
             "timing_method": "time.perf_counter around the full locate call, "
                              "single process, no warm up excluded",
             "python": platform.python_version(),
@@ -197,7 +205,7 @@ def main():
 
     if not args.reference or not args.search:
         ap.error("give reference and search paths, or use --batch or --manifest")
-    x, y, diag = run_one(args.reference, args.search, args.reranker)
+    x, y, diag = run_one(args.reference, args.search, args.reranker, device)
     if args.json:
         print(json.dumps({"x": x, "y": y,
                           "confidence_regime": confidence_regime(diag), **diag},

@@ -1,0 +1,69 @@
+{
+  "name": "backend_port",
+  "what": "compute backend abstraction for the blur bank and the correlation",
+  "devices_tested": [
+    "cpu",
+    "mps"
+  ],
+  "pairs": 150,
+  "datasets": [
+    "physics40",
+    "amat40",
+    "spec40",
+    "stress30"
+  ],
+  "runtime_median_s_per_pair": {
+    "baseline_scipy_cpu": {
+      "physics40": 3.65,
+      "amat40": 3.57,
+      "spec40": 3.53,
+      "stress30": 3.63
+    },
+    "cpu": {
+      "physics40": 2.03,
+      "amat40": 2.06,
+      "spec40": 2.1,
+      "stress30": 2.35
+    },
+    "mps": {
+      "physics40": 0.78,
+      "amat40": 0.83,
+      "spec40": 0.82,
+      "stress30": 0.81
+    }
+  },
+  "accuracy_unchanged": {
+    "physics40": {
+      "within_1px": 90.0,
+      "within_2px": 90.0,
+      "within_5px": 90.0,
+      "median_px": 0.13
+    },
+    "amat40": {
+      "within_1px": 20.0,
+      "within_2px": 40.0,
+      "within_5px": 60.0,
+      "median_px": 2.85
+    },
+    "spec40": {
+      "within_1px": 32.5,
+      "within_2px": 40.0,
+      "within_5px": 42.5,
+      "median_px": 18.83
+    },
+    "stress30": {
+      "within_1px": 43.3,
+      "within_2px": 46.7,
+      "within_5px": 53.3,
+      "median_px": 4.13
+    }
+  },
+  "worst_device_coordinate_disagreement_px": 0.001376,
+  "gpu_port_stages_s_per_pair": {
+    "per_call_offload": 17.48,
+    "batched_prescreen": 12.13,
+    "fft_correlator_cached_spectra": 0.52
+  },
+  "python": "3.14.0",
+  "platform": "macOS-26.5.1-arm64-arm-64bit-Mach-O"
+}

@@ -31,6 +31,18 @@ The domains where the localizer scores lowest are the ones deliberately built to
 
 Runtime is part of the accuracy component of the score, so it is measured rather than estimated. Every batch run writes a `.runtime.json` beside its predictions recording the number of pairs, mean and median seconds per pair, the timing method, the Python version, the platform and the processor. The timing method is `time.perf_counter` around the complete `locate` call in a single process with no warm up excluded.
 
+## Compute backend
+
+The blur bank and the correlation account for 97 percent of the runtime and are the only operations behind a backend. The default is numpy and OpenCV, so the submitted inference path needs no framework; `--device auto` uses an accelerator when one is present.
+
+| Backend | physics40 | amat40 | spec40 | stress30 |
+| --- | --- | --- | --- | --- |
+| baseline, scipy blur and per call correlation | 3.65 s | 3.57 s | 3.53 s | 3.63 s |
+| cpu | 2.03 s | 2.06 s | 2.10 s | 2.35 s |
+| accelerator | 0.78 s | 0.83 s | 0.82 s | 0.81 s |
+
+The accelerator measured is Apple MPS, the accelerator present on the development machine. The same code path selects CUDA, but no CUDA hardware was available to measure and no CUDA number is claimed. The naive port was eight and a half times slower than the CPU before the correlation was moved to the Fourier domain and the search spectrum cached across hypotheses; `experiments/20260818_100220_backend_port` records that in full.
+
 ## Files
 
 Result tables and figures are written under `experiments/<timestamp>_<name>/`, each folder holding the exact configuration used, a per pair results table, aggregate metrics and plots. Referencing a number therefore always means referencing a folder.
@@ -41,10 +53,12 @@ Pass rate at the thresholds the specification asks for, on the final configurati
 
 | Domain | What it tests | 1 px | 2 px | 4 px | 5 px | mean | median | worst | runtime |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `physics40` | primary physics generator | 90.0% | 90.0% | 90.0% | 90.0% | 3.14 px | 0.13 px | 52 px | 3.65 s |
-| `amat40` | faithful reference pipeline proxy | 20.0% | 40.0% | 60.0% | 60.0% | 49.25 px | 2.85 px | 532 px | 3.57 s |
-| `spec40` | organiser specification proxy | 32.5% | 40.0% | 42.5% | 42.5% | 154.10 px | 18.83 px | 826 px | 3.53 s |
-| `stress30` | adversarial generator | 43.3% | 46.7% | 50.0% | 53.3% | 202.00 px | 4.13 px | 724 px | 3.63 s |
+| `physics40` | primary physics generator | 90.0% | 90.0% | 90.0% | 90.0% | 3.14 px | 0.13 px | 52 px | 2.03 s |
+| `amat40` | faithful reference pipeline proxy | 20.0% | 40.0% | 60.0% | 60.0% | 49.25 px | 2.85 px | 532 px | 2.06 s |
+| `spec40` | organiser specification proxy | 32.5% | 40.0% | 42.5% | 42.5% | 154.10 px | 18.83 px | 826 px | 2.10 s |
+| `stress30` | adversarial generator | 43.3% | 46.7% | 50.0% | 53.3% | 202.00 px | 4.13 px | 724 px | 2.35 s |
+
+Runtime is the CPU backend, one core, median over the domain. The accuracy columns are unchanged from the earlier 3.5 to 3.65 s measurements; only the runtime moved, and the two backends agree to a worst coordinate disagreement of 0.0014 px over all 150 pairs.
 
 ## Where the errors are
 
