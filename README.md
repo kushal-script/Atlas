@@ -212,9 +212,11 @@ Also included beyond the required list: the complete experiment record under `ex
 
 A recorded run of the system, end to end and unedited.
 
-![Walkthrough](docs/images/demo.gif)
+### [Watch the full recording](https://drive.google.com/file/d/1t1uv_nKDmpo3YISUgpnWzXUI2qzN_WHd/view?usp=sharing)
 
-Twenty five seconds drawn from the three minute run: the localizer answering on one pair with its error against the recorded truth, then the success case, the honest failure and the runtime comparison. The full recording is [drift_sense_demo.mp4](drift_sense_demo.mp4), which also covers the environment check, dataset generation, the confidence diagnostics, the batch and accelerator forms and the test suite.
+[![Walkthrough](docs/images/demo.gif)](https://drive.google.com/file/d/1t1uv_nKDmpo3YISUgpnWzXUI2qzN_WHd/view?usp=sharing)
+
+The preview above is twenty five seconds drawn from the three minute run: the localizer answering on one pair with its error against the recorded truth, then the success case, the honest failure and the runtime comparison. The full recording additionally covers the environment check, dataset generation, the confidence diagnostics, and the batch, manifest and accelerator invocation forms, and ends with the test suite. A copy is in the repository as [drift_sense_demo.mp4](drift_sense_demo.mp4); GitHub cannot play an mp4 inside a readme, so the link above is the one to use.
 
 ## Repository layout
 
