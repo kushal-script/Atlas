@@ -77,9 +77,15 @@ class MatchConfig:
     impulse_detect_frac: float = 0.005
     impulse_detect_delta: int = 55
     tone_norm: str = "none"
-    coarse_rotations_deg: tuple = (-3.0, -1.5, 0.0, 1.5, 3.0)
-    coarse_scales: tuple = (0.90, 0.925, 0.95, 0.975, 1.0, 1.025, 1.05, 1.075, 1.10)
-    prescreen_downsample: int = 2
+    coarse_rotations_deg: tuple = (-5.0, -3.75, -2.5, -1.25, 0.0, 1.25, 2.5, 3.75, 5.0)
+    # Phase 2 draws the zoom ratio uniformly over 8 to 12 rather than jittering
+    # around ten to one, so the grid has to span that range or the pose is not
+    # reachable at all on roughly half the pairs. Widening it alone doubled the
+    # runtime, which the prescreen dominates; screening at quarter resolution
+    # instead of half recovers all of it and then some, measured at the same
+    # accuracy and a lower runtime than the narrow Phase 1 grid.
+    coarse_scales: tuple = (0.8, 0.825, 0.85, 0.875, 0.9, 0.925, 0.95, 0.975, 1.0, 1.025, 1.05, 1.075, 1.1, 1.125, 1.15, 1.175, 1.2)
+    prescreen_downsample: int = 4
     prescreen_top_k: int = 6
     refine_rot_step_deg: float = 0.375
     refine_scale_step: float = 0.0075
@@ -91,6 +97,21 @@ class MatchConfig:
     # accuracy. Measured over four generators, 0.003 beat 0.015 on three of
     # them and improved median error on all four.
     peak_tolerance: float = 0.003
+    # Wall clock ceiling. The scored run gives every pair a hard timeout, and a
+    # pair that overruns scores nothing at all, so the optional stages are
+    # skipped once the budget is nearly spent rather than risking the whole
+    # pair. Degrading to the answer already in hand always beats returning none.
+    time_budget_s: float = 9.0
+    # Sign of the reported rotation. The pose grid angle is the rotation applied
+    # to the reference to bring it onto the search image; the reported theta is
+    # asked for as the rotation of the reference pattern as it appears in the
+    # search image, counter clockwise positive, which is the opposite sense.
+    # Measured against this repository's own generator the two differ by exactly
+    # a sign: median error 2.62 degrees as the grid reports it against 0.25
+    # degrees negated. Which sign the organiser's ground truth uses is settled
+    # by the three sample pairs shipped with the addendum, not by assumption, so
+    # it is one constant here rather than a convention buried in the geometry.
+    theta_report_sign: float = -1.0
     stage2_tolerance_frac: float = 0.6
     stage2_tolerance_cap: float = 0.06
     peak_min_separation_px: int = 4
@@ -324,7 +345,8 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
     wide_score = nominal_score
     wide_key = nominal_key
     used_wide = False
-    if nominal_score < cfg.nominal_accept_score:
+    budget_left = lambda frac: (time.perf_counter() - t0) < cfg.time_budget_s * frac
+    if nominal_score < cfg.nominal_accept_score and budget_left(0.45):
         poses, grid_tmpls = [], []
         for sig in cfg.wide_sigma_bank_nm:
             for th in cfg.coarse_rotations_deg:
@@ -355,6 +377,19 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
     resp = corr.full(tmpl_best)
     score_best = float(resp.max())
 
+    # How far the best peak stands clear of the rest of the surface. The raw
+    # correlation value falls with noise, so an absolute threshold on it cannot
+    # separate a present reference in a degraded capture from an absent one in a
+    # clean capture. Prominence is scale free: it asks whether this peak is
+    # unlike the surface it sits on, which is the question the found flag is
+    # actually asking.
+    _rf = resp.ravel()
+    _med = float(np.median(_rf))
+    _mad = float(np.median(np.abs(_rf - _med)))
+    _p99 = float(np.quantile(_rf, 0.99))
+    peak_prominence = (score_best - _med) / max(1.4826 * _mad, 1e-6)
+    peak_over_p99 = score_best - _p99
+
     tol_wide = min(cfg.stage2_tolerance_cap,
                    max(cfg.peak_tolerance,
                        cfg.stage2_tolerance_frac * (1.0 - score_best)))
@@ -372,7 +407,8 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
               "tol_wide": float(tol_wide)}
     x = y = None
     r2 = med = rt0 = None
-    if cfg.residual_disambiguation and len(wide) >= cfg.residual_min_candidates:
+    if (cfg.residual_disambiguation and len(wide) >= cfg.residual_min_candidates
+            and budget_left(0.75)):
         ordered = sorted(([int(c[0]), int(c[1])] for c in wide),
                          key=lambda c: -resp[c[0], c[1]])
         r2, med, rt0 = _residual_score_map(search, tmpl_best, ordered, cfg)
@@ -448,6 +484,10 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
         "candidate_peaks_xy": [[float(c[1] + half), float(c[0] + half)]
                                for _, c in dists[:12]],
         "peak_value": float(resp[py, px]),
+        "resp_median": _med,
+        "resp_p99": _p99,
+        "peak_prominence": float(peak_prominence),
+        "peak_over_p99": float(peak_over_p99),
         "stage2": stage2,
         "runtime_s": time.perf_counter() - t0,
         "response_shape": list(resp.shape),

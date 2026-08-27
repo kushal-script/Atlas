@@ -38,11 +38,11 @@ def _uniform_site(rng, search_pose, margin_px, out_px):
     return u, v
 
 
-def generate_pair(seed, style, cfg=None, modality="sem"):
+def generate_pair(seed, style, cfg=None, modality="sem", absent=False):
     cfg = cfg or GeneratorConfig()
     seq = np.random.SeedSequence(seed)
-    rng_layout, rng_canvas, rng_pose, rng_ref, rng_search = [
-        np.random.default_rng(s) for s in seq.spawn(5)]
+    (rng_layout, rng_canvas, rng_pose, rng_ref, rng_search,
+     rng_layout2, rng_canvas2) = [np.random.default_rng(s) for s in seq.spawn(7)]
 
     size = cfg.canvas.size_px
     mat = np.zeros((size, size), dtype=np.uint8)
@@ -50,18 +50,29 @@ def generate_pair(seed, style, cfg=None, modality="sem"):
     style_params = cfg.dram if style == "dram" else cfg.finfet
     extent = cfg.canvas.extent_nm
     pp = cfg.pose
-    theta_s = float(np.clip(rng_pose.normal(0.0, np.deg2rad(pp.rotation_deg_sigma)),
-                            -np.deg2rad(pp.rotation_deg_max), np.deg2rad(pp.rotation_deg_max)))
     theta_r = float(rng_pose.normal(0.0, np.deg2rad(0.15)))
-    scale_err = float(np.clip(rng_pose.normal(0.0, pp.scale_err_sigma),
-                              -pp.scale_err_max, pp.scale_err_max))
+    if cfg.phase2:
+        # The relative rotation is drawn directly rather than as the difference
+        # of two capture angles, so it cannot land outside the disclosed range.
+        rel = float(rng_pose.uniform(-pp.rel_rotation_deg_max, pp.rel_rotation_deg_max))
+        theta_s = theta_r + np.deg2rad(rel)
+        zoom = float(rng_pose.uniform(pp.zoom_min, pp.zoom_max))
+        search_pixel_nm = cfg.reference.pixel_nm * zoom
+        scale_err = search_pixel_nm / cfg.search.pixel_nm - 1.0
+    else:
+        theta_s = float(np.clip(rng_pose.normal(0.0, np.deg2rad(pp.rotation_deg_sigma)),
+                                -np.deg2rad(pp.rotation_deg_max), np.deg2rad(pp.rotation_deg_max)))
+        scale_err = float(np.clip(rng_pose.normal(0.0, pp.scale_err_sigma),
+                                  -pp.scale_err_max, pp.scale_err_max))
+        search_pixel_nm = cfg.search.pixel_nm * (1.0 + scale_err)
+        zoom = search_pixel_nm / cfg.reference.pixel_nm
     search_pose = {
         "center_u_nm": extent / 2.0 + float(rng_pose.uniform(-pp.search_center_jitter_nm,
                                                              pp.search_center_jitter_nm)),
         "center_v_nm": extent / 2.0 + float(rng_pose.uniform(-pp.search_center_jitter_nm,
                                                              pp.search_center_jitter_nm)),
         "theta_rad": theta_s,
-        "pixel_nm": cfg.search.pixel_nm * (1.0 + scale_err),
+        "pixel_nm": search_pixel_nm,
     }
 
     # The reference site is drawn uniformly in the search frame first, and the
@@ -81,6 +92,25 @@ def generate_pair(seed, style, cfg=None, modality="sem"):
         se, se_info = build_se_canvas(mat, hgt, cfg.canvas.pixel_nm, rng_canvas,
                                       cfg.canvas)
 
+    # An absent pair takes its reference from a second, independently drawn
+    # specimen of the same architecture. The layout statistics and the imaging
+    # are identical, so the reference is plausible and periodically similar to
+    # the search image while genuinely having no instance inside it. Cropping a
+    # far corner of the same canvas would not do: the periodic lattice is
+    # continuous, so the same cell content really does appear in the frame.
+    ref_mat, ref_hgt, ref_se = mat, hgt, (se if modality == "sem" else None)
+    if absent:
+        ref_mat = np.zeros((size, size), dtype=np.uint8)
+        ref_hgt = np.zeros((size, size), dtype=np.float32)
+        ru = float(rng_layout2.uniform(extent * 0.3, extent * 0.7))
+        rv = float(rng_layout2.uniform(extent * 0.3, extent * 0.7))
+        zones = LAYOUT_BUILDERS[style](ref_mat, ref_hgt, cfg.canvas.pixel_nm,
+                                       rng_layout2, style_params,
+                                       target=(ru, rv), want=want)
+        if modality == "sem":
+            ref_se, _ = build_se_canvas(ref_mat, ref_hgt, cfg.canvas.pixel_nm,
+                                        rng_canvas2, cfg.canvas)
+
     ref_pose = {"center_u_nm": ru, "center_v_nm": rv,
                 "theta_rad": theta_r, "pixel_nm": cfg.reference.pixel_nm}
 
@@ -89,34 +119,39 @@ def generate_pair(seed, style, cfg=None, modality="sem"):
         opt_ref = sample_optical_settings(rng_ref, "reference")
         opt_search = sample_optical_settings(rng_search, "search")
         ref_img, ref_meta = render_optical_capture(
-            mat, hgt, cfg.canvas.pixel_nm, ref_pose, opt_ref, rng_ref)
+            ref_mat, ref_hgt, cfg.canvas.pixel_nm, ref_pose, opt_ref, rng_ref)
         search_img, search_meta = render_optical_capture(
             mat, hgt, cfg.canvas.pixel_nm, search_pose, opt_search, rng_search)
         zero = np.zeros(cfg.search.out_px, dtype=np.float32)
         dx_r = dy_r = dx_s = dy_s = zero
     else:
         ref_img, dx_r, dy_r, ref_meta = render_capture(
-            se, mat, cfg.canvas.pixel_nm, ref_pose, cfg.reference, rng_ref)
+            ref_se, ref_mat, cfg.canvas.pixel_nm, ref_pose, cfg.reference, rng_ref)
         search_img, dx_s, dy_s, search_meta = render_capture(
             se, mat, cfg.canvas.pixel_nm, search_pose, cfg.search, rng_search)
 
     nr = cfg.reference.out_px
     center = (nr - 1) / 2.0
-    pu, pv = capture_to_specimen(center, center, ref_pose, dx_r, dy_r, nr)
-    gt_c, gt_r = specimen_to_capture(pu, pv, search_pose, dx_s, dy_s, cfg.search.out_px)
-
     corners = []
-    for (rr, cc) in [(0.0, 0.0), (0.0, nr - 1.0), (nr - 1.0, nr - 1.0), (nr - 1.0, 0.0)]:
-        cu, cv2 = capture_to_specimen(rr, cc, ref_pose, dx_r, dy_r, nr)
-        sc, sr = specimen_to_capture(cu, cv2, search_pose, dx_s, dy_s, cfg.search.out_px)
-        corners.append([float(sc), float(sr)])
+    if absent:
+        # There is no true instance, so there is no centre and no footprint.
+        gt_c = gt_r = 0.0
+    else:
+        pu, pv = capture_to_specimen(center, center, ref_pose, dx_r, dy_r, nr)
+        gt_c, gt_r = specimen_to_capture(pu, pv, search_pose, dx_s, dy_s, cfg.search.out_px)
+        for (rr, cc) in [(0.0, 0.0), (0.0, nr - 1.0), (nr - 1.0, nr - 1.0), (nr - 1.0, 0.0)]:
+            cu, cv2 = capture_to_specimen(rr, cc, ref_pose, dx_r, dy_r, nr)
+            sc, sr = specimen_to_capture(cu, cv2, search_pose, dx_s, dy_s, cfg.search.out_px)
+            corners.append([float(sc), float(sr)])
 
     meta = {
         "seed": int(seed),
         "style": style,
         "modality": modality,
         "placement": strategy,
+        "found": 0 if absent else 1,
         "ground_truth": {"x": float(gt_c), "y": float(gt_r)},
+        "zoom": float(zoom),
         "gt_corners_xy": corners,
         "relative_rotation_deg": float(np.rad2deg(theta_s - theta_r)),
         "search_scale_error": scale_err,

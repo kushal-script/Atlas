@@ -34,6 +34,8 @@ import json
 import subprocess
 import sys
 import time
+
+import numpy as np
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent
@@ -41,16 +43,29 @@ sys.path.insert(0, str(REPO / "src"))
 
 from drift_sense import __version__
 from drift_sense.generator import generate_pair, save_pair
+from drift_sense.params import GeneratorConfig
 
 
 def _physics(args):
     rows = []
     t0 = time.time()
+    cfg = GeneratorConfig()
+    cfg.phase2 = bool(args.phase2)
+    # Which pairs carry no true instance is decided up front from the master
+    # seed, so the absent set is reproducible and evenly spread rather than
+    # clustered at the end of the run.
+    absent_flags = [False] * args.num
+    if args.phase2 and args.absent_fraction > 0:
+        rng = np.random.default_rng(args.seed * 7_919 + 11)
+        n_absent = int(round(args.num * args.absent_fraction))
+        for idx in rng.choice(args.num, size=n_absent, replace=False):
+            absent_flags[int(idx)] = True
     for i in range(args.num):
         style = args.style if args.style != "mixed" else ("dram" if i % 2 == 0 else "finfet")
         t = time.time()
         result = generate_pair(seed=args.seed * 1_000_003 + i, style=style,
-                               modality=args.modality)
+                               modality=args.modality, cfg=cfg,
+                               absent=absent_flags[i])
         pair_dir = save_pair(args.out, i, result, preview=args.previews)
         meta = result["meta"]
         gt = meta["ground_truth"]
@@ -61,16 +76,19 @@ def _physics(args):
             "search_path": str((pair_dir / "search.png").relative_to(args.out)),
             "style": style,
             "modality": args.modality,
+            "found": meta.get("found", 1),
             "gt_x": f"{gt['x']:.3f}",
             "gt_y": f"{gt['y']:.3f}",
+            "gt_zoom": f"{meta.get('zoom', 10.0):.5f}",
             "relative_rotation_deg": f"{meta['relative_rotation_deg']:.4f}",
             "search_scale_error": f"{meta['search_scale_error']:.5f}",
             "placement": meta["placement"],
             "search_dose_e": f"{settings.get('dose_e', settings.get('photon_dose', 0.0)):.1f}",
             "seed": meta["seed"],
         })
-        print(f"pair_{i:04d} {style:7s} gt=({gt['x']:.1f}, {gt['y']:.1f}) "
-              f"{meta['placement']:13s} {time.time() - t:.1f}s")
+        tag = "ABSENT" if meta.get("found", 1) == 0 else f"({gt['x']:.0f}, {gt['y']:.0f})"
+        print(f"pair_{i:04d} {style:7s} zoom {meta.get('zoom', 10.0):6.3f} "
+              f"rot {meta['relative_rotation_deg']:+6.2f} gt={tag:16s} {time.time() - t:.1f}s")
     return rows, time.time() - t0
 
 
@@ -102,6 +120,13 @@ def main():
     ap.add_argument("--num", type=int, default=30)
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--phase2", action="store_true",
+                    help="draw the zoom ratio and rotation from the disclosed "
+                         "Phase 2 ranges instead of jittering around ten to one")
+    ap.add_argument("--absent_fraction", type=float, default=0.0,
+                    help="fraction of pairs whose reference has no instance in "
+                         "the search image, taken from a second specimen of the "
+                         "same architecture; Phase 2 only")
     ap.add_argument("--previews", action="store_true",
                     help="also write search images with the ground truth region drawn on")
     ap.add_argument("--barrel_max", type=float, default=0.02,
