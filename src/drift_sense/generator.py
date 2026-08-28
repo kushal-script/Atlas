@@ -38,8 +38,35 @@ def _uniform_site(rng, search_pose, margin_px, out_px):
     return u, v
 
 
-def generate_pair(seed, style, cfg=None, modality="sem"):
+def _far_site(rng, search_pose, extent_nm, frame_radius_nm):
+    """Specimen coordinate of a site guaranteed to lie outside the search frame.
+
+    Used for Set C (no true instance): the reference structure is placed here so it
+    cannot appear in the search image, while the search still shows unrelated layout.
+    """
+    cu = search_pose["center_u_nm"]
+    cv = search_pose["center_v_nm"]
+    lo, hi = extent_nm * 0.12, extent_nm * 0.88
+    for _ in range(64):
+        u = rng.uniform(lo, hi)
+        v = rng.uniform(lo, hi)
+        if np.hypot(u - cu, v - cv) > 0.35 * extent_nm:
+            return u, v
+    return extent_nm - cu, extent_nm - cv
+
+
+def generate_pair(seed, style, cfg=None, modality="sem", absent=False, phase2=False):
     cfg = cfg or GeneratorConfig()
+    if phase2:
+        # Phase 2 widens the unknown zoom to 8..12x (scale error +/-0.20) and the
+        # unknown rotation to +/-5 deg (CCW positive). The localizer's grid is
+        # built to match these ranges (see phase2_config()).
+        import copy
+        cfg = copy.deepcopy(cfg)
+        cfg.pose.rotation_deg_sigma = 2.5
+        cfg.pose.rotation_deg_max = 5.0
+        cfg.pose.scale_err_sigma = 0.1
+        cfg.pose.scale_err_max = 0.2
     seq = np.random.SeedSequence(seed)
     rng_layout, rng_canvas, rng_pose, rng_ref, rng_search = [
         np.random.default_rng(s) for s in seq.spawn(5)]
@@ -72,8 +99,17 @@ def generate_pair(seed, style, cfg=None, modality="sem"):
     # favours the frame centre.
     strategies, weights = zip(*cfg.placement_mix)
     strategy = str(rng_pose.choice(strategies, p=np.array(weights) / sum(weights)))
-    ru, rv = _uniform_site(rng_pose, search_pose, pp.ref_margin_px, cfg.search.out_px)
-    want = {"deep_array": "deep", "near_boundary": "boundary"}.get(strategy)
+    if absent:
+        # Set C: no true instance. Draw the reference site well outside the search
+        # frame so the reference structure never appears in the search image; the
+        # search still carries unrelated layout, so a matcher may still emit a
+        # spurious peak that rejection must catch.
+        ru, rv = _far_site(rng_pose, search_pose, extent,
+                           cfg.search.out_px * cfg.search.pixel_nm * 1.5)
+        want = None
+    else:
+        ru, rv = _uniform_site(rng_pose, search_pose, pp.ref_margin_px, cfg.search.out_px)
+        want = {"deep_array": "deep", "near_boundary": "boundary"}.get(strategy)
     zones = LAYOUT_BUILDERS[style](mat, hgt, cfg.canvas.pixel_nm, rng_layout,
                                    style_params, target=(ru, rv), want=want)
     se_info = {}
@@ -116,8 +152,10 @@ def generate_pair(seed, style, cfg=None, modality="sem"):
         "style": style,
         "modality": modality,
         "placement": strategy,
-        "ground_truth": {"x": float(gt_c), "y": float(gt_r)},
-        "gt_corners_xy": corners,
+        "present": (not absent),
+        "ground_truth": ({"x": None, "y": None}
+                        if absent else {"x": float(gt_c), "y": float(gt_r)}),
+        "gt_corners_xy": (None if absent else corners),
         "relative_rotation_deg": float(np.rad2deg(theta_s - theta_r)),
         "search_scale_error": scale_err,
         "layout": zones["info"],

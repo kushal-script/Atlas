@@ -10,3 +10,7 @@ unpacked/
 local/
 *.pptx
 *.pdf
+
+data/phase2_mixed/
+data/phase2_smoke/
+
