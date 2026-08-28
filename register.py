@@ -15,8 +15,9 @@ Conventions (verified by tests/test_pose_conventions.py, Day 1):
     returns the negated rotation, so we output theta = -diag["theta_deg"].
   * scale is the magnification (8, 10, 12); the localizer works in `scale`
     relative to the 10x nominal, so output scale = 10.0 * diag["scale"].
-  * found is hard-coded to 1 today (Day 1 de-risking). The rejection decision
-    drops in on Day 3; see the marked TODO below.
+   * found is decided by the trained presence model (Day 4, T1+T3) via
+     decide_found(diag, REJECTION_THRESHOLD); Set C no-instance pairs are
+     rejected (found = 0, pose columns zeroed, score kept).
 
 Constraints honoured:
   * CPU only. Any --device request other than cpu is ignored; we never import
@@ -37,8 +38,15 @@ sys.path.insert(0, str(REPO / "src"))
 import numpy as np
 
 from drift_sense.localize import load_gray, locate, optical_config, phase2_config
+from drift_sense.api import decide_found
 
 OUTPUT_COLUMNS = ["pair_id", "x", "y", "theta", "scale", "found", "score"]
+
+# Rejection decision threshold on the trained presence probability (Phase 2, Day 4).
+# The logistic model (api.py) reaches Rejection F1 = 0.9058 on the 200-pair mixed
+# set at threshold 0.5. Lower it to trade precision for recall if the operating
+# point changes.
+REJECTION_THRESHOLD = 0.5
 
 
 def _read_manifest(path):
@@ -86,14 +94,13 @@ def _process(ref_path, search_path, pid):
     theta = -diag["theta_deg"]          # CCW-positive about match centre
     scale = 10.0 * diag["scale"]        # magnification units (8, 10, 12)
     score = float(diag["score"])
-    # TODO(Day3): apply rejection threshold here. The found decision (e.g. from
-    # the confidence regime / residual margin) will set found = 0 for Set C
-    # no-instance pairs. Today every pair is reported found = 1.
-    found = 1
-    # found=0 contract (Day 3 will set the flag; the column rule is locked now):
-    # when a pair is rejected the rubric requires the pose columns to be zeroed,
-    # but `score` is KEPT as diag["score"] (NOT zeroed) so the calibration AUC has
-    # a continuous, monotonic ranking across present and absent pairs.
+    # Rejection decision (Day 4, T1+T3): the trained presence model decides whether
+    # a true instance underlies the peak. Set C (no-instance) pairs are rejected.
+    found = decide_found(diag, REJECTION_THRESHOLD)
+    # found=0 contract (Day 3): when a pair is rejected the rubric requires the
+    # pose columns to be zeroed, but `score` is KEPT as diag["score"] (NOT zeroed)
+    # so the calibration AUC has a continuous, monotonic ranking across present and
+    # absent pairs.
     if found == 0:
         x = y = theta = scale = 0.0
     return pid, x, y, theta, scale, found, score

@@ -128,6 +128,7 @@ def main():
         result["logistic_regression"] = {
             "f1": f1, "precision": p, "recall": r,
             "tp": tp, "fp": fp, "fn": fn, "weights": w.tolist(),
+            "mu": mu.tolist()[0], "sd": sd.tolist()[0],
         }
         print(f"[logistic regression] F1={f1:.4f} precision={p:.3f} recall={r:.3f} "
               f"(tp={tp} fp={fp} fn={fn})")
