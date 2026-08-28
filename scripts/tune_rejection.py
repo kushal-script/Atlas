@@ -26,7 +26,7 @@ from drift_sense.api import match_pair, presence_score, presence_features  # noq
 
 FEATURE_KEYS = ["peak_score", "num_candidates_wide", "uniqueness",
                 "stage2_identifiability", "margin_strength",
-                "peak_contrast", "peak_contrast_ratio",
+                "peak_contrast", "peak_contrast_ratio", "geo_consistency",
                 "search_noise_sigma", "inverted_contrast"]
 
 

@@ -98,6 +98,7 @@ def presence_features(diag):
     regime                  -- which evidence regime produced the answer
     """
     peak = float(np.clip(diag["score"], 0.0, 1.0))
+    geo = float(np.clip(diag.get("geo_consistency", 0.0), 0.0, 1.0))
     strict = int(diag["num_candidates"])
     wide = int(diag.get("num_candidates_wide", strict))
     stage2 = diag.get("stage2") or {}
@@ -126,6 +127,7 @@ def presence_features(diag):
         "margin_strength": margin_strength,
         "peak_contrast": float(diag.get("peak_contrast", 0.0)),
         "peak_contrast_ratio": float(diag.get("peak_contrast_ratio", 1.0)),
+        "geo_consistency": geo,
         "inverted_contrast": bool(diag.get("inverted_contrast")),
         "search_noise_sigma": float(diag.get("search_noise_sigma", 0.0)),
         "regime": _regime(diag),
@@ -135,16 +137,16 @@ def presence_features(diag):
 def presence_score(diag):
     """Transparent weighted combination of presence_features in [0, 1].
 
-    peak_contrast dominates: a true match leaves one dominant correlation peak,
-    while a spurious match over noise/substrate spreads mass over many comparable
-    local maxima, giving a small contrast.
+    geo_consistency dominates (the only signal that is positively correlated with
+    true presence at 8..12x); peak_contrast and the prior correlation features are
+    secondary tie-breakers. The logistic-regression tune can reweight freely.
     """
     f = presence_features(diag)
-    s = (PRESENCE_WEIGHTS["peak_score"] * f["peak_score"]
-         + PRESENCE_WEIGHTS["uniqueness"] * f["uniqueness"]
-         + PRESENCE_WEIGHTS["stage2_identifiability"] * f["stage2_identifiability"]
-         + PRESENCE_WEIGHTS["margin_strength"] * f["margin_strength"]
-         + 0.45 * np.clip(f["peak_contrast"], 0.0, 1.0))
+    s = (0.55 * f["geo_consistency"]
+         + 0.15 * f["peak_contrast"]
+         + 0.10 * f["peak_score"]
+         + 0.10 * f["uniqueness"]
+         + 0.10 * f["stage2_identifiability"])
     return float(np.clip(s, 0.0, 1.0))
 
 

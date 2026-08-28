@@ -494,6 +494,45 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
         x = px + dx + half
         y = py + dy + half
 
+    # Geometric-consistency verification (Day 4, T1). Correlation strength is
+    # anti-correlated with true presence at 8..12x (a coincidental match to a
+    # different CDU, or to substrate noise, scores higher than the degraded true
+    # instance). The only signal that reverses this is whether the recovered pose
+    # actually aligns the reference at full resolution. We reuse the EXACT warp
+    # that _make_template applies (scipy affine_transform on the un-bandpassed
+    # full-resolution reference, same theta/scale) so the warped crop is
+    # geometrically aligned with the predicted (x, y). Full-resolution CCOEFF_NORMED
+    # against the search patch is then positively correlated with true presence: a
+    # true instance's fine detail aligns (high); a distractor or substrate does not
+    # (low).
+    _tc = cfg.template_px
+    _half = (_tc - 1) / 2.0
+    _ang = np.deg2rad(float(theta_best))
+    _zoom = cfg.zoom * float(scale_best)
+    _rot = np.array([[np.cos(_ang), -np.sin(_ang)],
+                     [np.sin(_ang), np.cos(_ang)]])
+    _matrix = _rot * _zoom
+    _center_ref = (ref_img.shape[0] - 1) / 2.0
+    _offset = _center_ref - _matrix @ np.array([_half, _half])
+    _ref_full = ref_img.astype(np.float64)
+    _tmpl_geo = affine_transform(_ref_full, _matrix, offset=_offset,
+                                 output_shape=(_tc, _tc), order=1,
+                                 mode="constant", cval=float(np.mean(_ref_full)))
+    _hc_i = int(round(_half))
+    _x0 = int(round(x)) - _hc_i; _y0 = int(round(y)) - _hc_i
+    _x1 = _x0 + _tc; _y1 = _y0 + _tc
+    _sx0 = max(0, _x0); _sy0 = max(0, _y0)
+    _sx1 = min(search_img.shape[1], _x1); _sy1 = min(search_img.shape[0], _y1)
+    _geo = 0.0
+    if _sx1 - _sx0 >= _tc // 2 and _sy1 - _sy0 >= _tc // 2:
+        _sp = search_img[_sy0:_sy1, _sx0:_sx1].astype(np.float32)
+        _rx0 = _sx0 - _x0; _ry0 = _sy0 - _y0
+        _rw = _tmpl_geo[_ry0:_sy1 - _y0, _rx0:_sx1 - _x0].astype(np.float32)
+        if _sp.shape == _rw.shape and _sp.size > 0:
+            _v = cv2.matchTemplate(_sp, _rw, cv2.TM_CCOEFF_NORMED)
+            _geo = float(_v.item())
+    geo_consistency = float(np.clip(_geo, -1.0, 1.0))
+
     diag = {
         "score": score_best,
         "theta_deg": float(theta_best),
@@ -510,6 +549,7 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
         "num_candidates_wide": int(len(wide)),
         "peak_contrast": float(peak_contrast),
         "peak_contrast_ratio": float(peak_contrast_ratio),
+        "geo_consistency": geo_consistency,
         "candidate_peaks_xy": [[float(c[1] + half), float(c[0] + half)]
                                for _, c in dists[:12]],
         "peak_value": float(resp[py, px]),
