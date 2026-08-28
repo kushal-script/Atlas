@@ -264,48 +264,27 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
     search, search_noise = _preprocess(search_img, cfg, denoise=True)
     corr = backend.make_correlator(search, cfg.device)
 
-    # Magnification-cliff fix (T1). The affine warp in _make_template scales the
-    # template PSF by `scale`, so a fixed-zoom reference blur no longer matches the
-    # search image's fixed-pixel PSF off-nominal. Compensate per scale:
-    #   * scale <= 1.0 (8..10x): blur the warped template in template space by
-    #     base*sqrt(1-scale^2). This is exactly equivalent to pre-blurring the
-    #     reference by base/scale and is O(template) cheap (~112 px), so it adds
-    #     essentially no runtime.
-    #   * scale > 1.0 (12x): the warp overshoots the blur, so the reference must be
-    #     *sharpened* (base/scale < base); a template-space blur cannot do that, so
-    #     build a half-resolution scale-aware band (one extra build per pair).
-    # At scale == 1.0 the path is the exact original bank with no extra blur, so the
-    # nominal 10x answer is unchanged (equivalence gate, tests/test_*.py).
-    _blur_ds = 2
-    ref_small = cv2.resize(ref, None, fx=1.0 / _blur_ds, fy=1.0 / _blur_ds,
-                           interpolation=cv2.INTER_AREA)
-    ref_low_small = cv2.resize(ref_low, None, fx=1.0 / _blur_ds, fy=1.0 / _blur_ds,
-                               interpolation=cv2.INTER_AREA)
+    # Magnification-cliff fix (T1 + Day 4 T3). The affine warp in _make_template
+    # scales the template by `zoom = cfg.zoom*scale`, so the template PSF must match
+    # the search image's PSF at the *effective* zoom cfg.zoom*scale, not the nominal
+    # cfg.zoom. Blur the reference at exactly that effective-zoom blur, per scale
+    # group, so the template PSF equals the search PSF at every hypothesis zoom.
+    # At scale == 1.0 this reduces to the original _effective_sigma (box uses
+    # cfg.zoom), so the nominal 10x answer is unchanged (equivalence gate in
+    # tests/test_template_magnification.py).
     _band_cache = {}
     def _band(sig, scale):
         k = (sig, round(scale, 5))
         b = _band_cache.get(k)
         if b is None:
-            base = _effective_sigma(sig, cfg)
-            sig_small = base / (scale * _blur_ds)
-            small = backend.gaussian(ref_small, sig_small, cfg.device) - ref_low_small
-            b = cv2.resize(small, (ref.shape[1], ref.shape[0]),
-                           interpolation=cv2.INTER_LINEAR)
+            _box = cfg.zoom * scale / np.sqrt(12.0)
+            _sig = float(np.hypot(sig, _box)) if cfg.antialias else float(sig)
+            b = backend.gaussian(ref, _sig, cfg.device) - ref_low
             _band_cache[k] = b
         return b
 
     def _search_template(sig, theta, scale):
-        if scale > 1.0 + 1e-9:
-            band = _band(sig, scale)
-        else:
-            band = ref_bank[sig]
-        tmpl = _make_template(band, theta, scale, cfg)
-        if scale <= 1.0 + 1e-9:
-            base = _effective_sigma(sig, cfg)
-            extra = base * math.sqrt(max(0.0, 1.0 - scale * scale))
-            if extra > 1e-3:
-                tmpl = backend.gaussian(tmpl, extra, cfg.device)
-        return tmpl
+        return _make_template(_band(sig, scale), theta, scale, cfg)
 
     tried = {}
 
