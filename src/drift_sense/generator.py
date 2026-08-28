@@ -38,11 +38,45 @@ def _uniform_site(rng, search_pose, margin_px, out_px):
     return u, v
 
 
-def generate_pair(seed, style, cfg=None, modality="sem", absent=False):
+# Severity ladder for the Phase 2 degraded set. The addendum names the
+# degradations, charging, scan distortion, defocus, elevated shot noise and
+# polygon scaling to twenty percent, and discloses that there are four severity
+# levels, but not the parameters. These values are therefore this repository's
+# own reading, spanning from mild to well past where the Phase 1 noise sits.
+# Every factor scales the search capture only: in the organiser pipeline the
+# reference is a clean crop and the degradations corrupt the wide image, so a
+# degradation shared by both captures would train against the wrong problem.
+DEGRADE_LADDER = {
+    1: {"dose": 0.70, "psf": 1.3, "charge": 1.5, "drift_px": 2.0, "jitter": 2.0, "poly": 0.05},
+    2: {"dose": 0.45, "psf": 1.7, "charge": 2.2, "drift_px": 4.0, "jitter": 3.0, "poly": 0.10},
+    3: {"dose": 0.28, "psf": 2.2, "charge": 3.0, "drift_px": 7.0, "jitter": 4.0, "poly": 0.15},
+    4: {"dose": 0.15, "psf": 3.0, "charge": 4.0, "drift_px": 10.0, "jitter": 6.0, "poly": 0.20},
+}
+
+
+def _scale_widths(style_params, factor):
+    """Style params with every drawn feature width scaled, pitches untouched.
+
+    Widths are sampled as pitch times a fraction drawn from a range, so scaling
+    the range endpoints scales the drawn width by exactly the factor while the
+    rng call sequence, and with it the lattice pitch and phase, is unchanged.
+    """
+    from dataclasses import replace
+    fields = {}
+    for name in ("wl_duty", "bl_duty", "contact_radius_f",
+                 "fin_width_frac", "gate_width_frac"):
+        if hasattr(style_params, name):
+            lo, hi = getattr(style_params, name)
+            fields[name] = (min(lo * factor, 0.95), min(hi * factor, 0.95))
+    return replace(style_params, **fields)
+
+
+def generate_pair(seed, style, cfg=None, modality="sem", absent=False, degrade=0):
     cfg = cfg or GeneratorConfig()
     seq = np.random.SeedSequence(seed)
+    children = seq.spawn(8)
     (rng_layout, rng_canvas, rng_pose, rng_ref, rng_search,
-     rng_layout2, rng_canvas2) = [np.random.default_rng(s) for s in seq.spawn(7)]
+     rng_layout2, rng_canvas2, rng_degrade) = [np.random.default_rng(s) for s in children]
 
     size = cfg.canvas.size_px
     mat = np.zeros((size, size), dtype=np.uint8)
@@ -92,6 +126,43 @@ def generate_pair(seed, style, cfg=None, modality="sem", absent=False):
         se, se_info = build_se_canvas(mat, hgt, cfg.canvas.pixel_nm, rng_canvas,
                                       cfg.canvas)
 
+    # A degraded pair renders the search capture from a second specimen whose
+    # feature widths are scaled by the drawn polygon factor, built from the same
+    # seed stream so the lattice is identical, and through a capture whose dose,
+    # beam spot, charging and scan stability are pushed by the severity level.
+    degrade_info = None
+    search_src_mat, search_src_hgt, search_src_se = mat, hgt, None
+    search_capture_params = cfg.search
+    if degrade:
+        lad = DEGRADE_LADDER[int(degrade)]
+        poly = float(1.0 + rng_degrade.uniform(-lad["poly"], lad["poly"]))
+        from dataclasses import replace as _rep
+        sp2 = _scale_widths(style_params, poly)
+        search_src_mat = np.zeros((size, size), dtype=np.uint8)
+        search_src_hgt = np.zeros((size, size), dtype=np.float32)
+        LAYOUT_BUILDERS[style](search_src_mat, search_src_hgt, cfg.canvas.pixel_nm,
+                               np.random.default_rng(children[0]), sp2,
+                               target=(ru, rv), want=want)
+        cap = cfg.search
+        search_capture_params = _rep(
+            cap,
+            dose_e=(cap.dose_e[0] * lad["dose"], cap.dose_e[1] * lad["dose"]),
+            psf_sigma_nm=(cap.psf_sigma_nm[0] * lad["psf"], cap.psf_sigma_nm[1] * lad["psf"]),
+            charging_amp=(min(cap.charging_amp[0] * lad["charge"], 0.35),
+                          min(cap.charging_amp[1] * lad["charge"], 0.35)),
+            drift_total_px=(lad["drift_px"] * 0.5, lad["drift_px"]),
+            jitter_sigma_px=(cap.jitter_sigma_px[0] * lad["jitter"],
+                             cap.jitter_sigma_px[1] * lad["jitter"]),
+        )
+        if modality == "sem":
+            search_src_se, _ = build_se_canvas(search_src_mat, search_src_hgt,
+                                               cfg.canvas.pixel_nm,
+                                               np.random.default_rng(children[1]),
+                                               cfg.canvas)
+        degrade_info = {"severity": int(degrade), "poly_scale": poly,
+                        "dose_factor": lad["dose"], "psf_factor": lad["psf"],
+                        "charge_factor": lad["charge"], "drift_px": lad["drift_px"]}
+
     # An absent pair takes its reference from a second, independently drawn
     # specimen of the same architecture. The layout statistics and the imaging
     # are identical, so the reference is plausible and periodically similar to
@@ -121,14 +192,17 @@ def generate_pair(seed, style, cfg=None, modality="sem", absent=False):
         ref_img, ref_meta = render_optical_capture(
             ref_mat, ref_hgt, cfg.canvas.pixel_nm, ref_pose, opt_ref, rng_ref)
         search_img, search_meta = render_optical_capture(
-            mat, hgt, cfg.canvas.pixel_nm, search_pose, opt_search, rng_search)
+            search_src_mat, search_src_hgt, cfg.canvas.pixel_nm, search_pose,
+            opt_search, rng_search)
         zero = np.zeros(cfg.search.out_px, dtype=np.float32)
         dx_r = dy_r = dx_s = dy_s = zero
     else:
         ref_img, dx_r, dy_r, ref_meta = render_capture(
             ref_se, ref_mat, cfg.canvas.pixel_nm, ref_pose, cfg.reference, rng_ref)
         search_img, dx_s, dy_s, search_meta = render_capture(
-            se, mat, cfg.canvas.pixel_nm, search_pose, cfg.search, rng_search)
+            search_src_se if search_src_se is not None else se,
+            search_src_mat, cfg.canvas.pixel_nm, search_pose,
+            search_capture_params, rng_search)
 
     nr = cfg.reference.out_px
     center = (nr - 1) / 2.0
@@ -150,6 +224,7 @@ def generate_pair(seed, style, cfg=None, modality="sem", absent=False):
         "modality": modality,
         "placement": strategy,
         "found": 0 if absent else 1,
+        "degrade": degrade_info,
         "ground_truth": {"x": float(gt_c), "y": float(gt_r)},
         "zoom": float(zoom),
         "gt_corners_xy": corners,

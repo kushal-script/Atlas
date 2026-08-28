@@ -1,0 +1,8 @@
+# Frozen from a Python 3.11 environment, the reference machine version.
+# numpy 2.5 has no 3.11 wheels, so the Phase 1 pins do not install there;
+# these are the versions the resolver selects under 3.11, and register.py
+# was verified to produce byte identical predictions under both 3.11 and 3.14.
+numpy==2.4.6
+opencv-python==5.0.0.93
+pillow==12.3.0
+scipy==1.17.1

@@ -89,7 +89,10 @@ class MatchConfig:
     prescreen_top_k: int = 6
     refine_rot_step_deg: float = 0.375
     refine_scale_step: float = 0.0075
-    refine_levels: int = 2
+    # Five levels take the final rotation step to 0.047 degrees and the final
+    # scale step to 0.09 percent, both inside the Phase 2 full credit bands of
+    # 0.25 degrees and 1 percent, at eight extra correlations per pair.
+    refine_levels: int = 5
     # The equal match set the centre tie break applies to. Kept tight on
     # purpose: the reference crop origin is sampled uniformly, so proximity to
     # the frame centre carries no information about correctness, and applying
