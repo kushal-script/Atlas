@@ -56,6 +56,12 @@ def main():
         style = "dram" if rng.random() < 0.5 else "finfet"
         severity = int(rng.integers(1, 5)) if set_name == "B_degraded" else 0
         absent = set_name == "C_absent"
+        # Half the absent pairs are degraded across the same severity ladder.
+        # With every absent pair clean, measured noise separates presence from
+        # absence on this suite alone, and a decision fitted to that shortcut
+        # would collapse on any blind set whose absent pairs are degraded too.
+        if absent and rng.random() < 0.5:
+            severity = int(rng.integers(1, 5))
         modality = "optical" if set_name == "D_optical" else "sem"
         t = time.time()
         result = generate_pair(seed=args.seed * 1_000_003 + i, style=style,

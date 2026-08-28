@@ -25,6 +25,7 @@ the same peak statistics the Phase 1 confidence regimes already used.
 
 import argparse
 import csv
+import json
 import sys
 from pathlib import Path
 
@@ -33,13 +34,26 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 import numpy as np
 
 from drift_sense.localize import MatchConfig, load_gray, locate
+from drift_sense.presence import features_from_diag, presence_probability
 
-# Presence decision and score calibration, tuned on this repository's own
-# Phase 2 style generated suite, never on organiser data. found_threshold is
-# the peak correlation below which a pair is reported absent; score_width sets
-# how sharply confidence saturates on either side of that boundary.
-FOUND_THRESHOLD = 0.603
+# The presence decision. A single peak threshold cannot separate a degraded
+# present pair from a clean absent one, because an impostor reference from the
+# same architecture lets the scale search rescale its lattice onto the search
+# lattice and correlate respectably. The decision is therefore a small logistic
+# model over the diagnostics the localizer already produces, fitted on this
+# repository's own generated suite, never on organiser data, and shipped with
+# the submission as models/presence_model.json. The fallback threshold below is
+# used only if that file is somehow missing.
+MODEL_PATH = Path(__file__).resolve().parent / "models" / "presence_model.json"
+FOUND_THRESHOLD = 0.55
 SCORE_WIDTH = 0.08
+
+
+def _load_model():
+    try:
+        return json.load(open(MODEL_PATH))
+    except Exception:
+        return None
 
 
 def _read_pairs(path):
@@ -85,6 +99,7 @@ def main():
     args = ap.parse_args()
 
     cfg = MatchConfig()
+    model = _load_model()
     rows = []
     for pid, ref_path, search_path in _read_pairs(args.input):
         try:
@@ -92,11 +107,16 @@ def main():
             search, search_rgb = load_gray(search_path)
             x, y, diag, _ = locate(ref, search, cfg)
             peak = float(diag["score"])
-            found = 1 if peak >= FOUND_THRESHOLD else 0
+            if model is not None:
+                p_present = presence_probability(model, features_from_diag(diag))
+                found = 1 if p_present >= model["prob_threshold"] else 0
+                score = float(max(p_present, 1.0 - p_present))
+            else:
+                found = 1 if peak >= FOUND_THRESHOLD else 0
+                score = _score(peak, float(diag.get("peak_prominence", 0.0)),
+                               diag.get("num_candidates_wide", 1))
             theta = cfg.theta_report_sign * float(diag["theta_deg"])
             scale = float(diag["scale"]) * cfg.zoom
-            score = _score(peak, float(diag.get("peak_prominence", 0.0)),
-                           diag.get("num_candidates_wide", 1))
             if found:
                 rows.append({"pair_id": pid, "x": f"{x:.3f}", "y": f"{y:.3f}",
                              "theta": f"{theta:.3f}", "scale": f"{scale:.4f}",

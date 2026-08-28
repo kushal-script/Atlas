@@ -51,9 +51,12 @@ def rot_credit(err_deg):
 
 
 def f1_at(recs, thr):
-    tp = sum(1 for r in recs if r["truth_found"] and r["peak"] >= thr)
-    fp = sum(1 for r in recs if not r["truth_found"] and r["peak"] >= thr)
-    fn = sum(1 for r in recs if r["truth_found"] and r["peak"] < thr)
+    """F1 of the reject class: the addendum's statement that a team which
+    never rejects scores zero is only true of the reject class, since the
+    present class F1 of an unconditional argmax is far from zero."""
+    tp = sum(1 for r in recs if not r["truth_found"] and r["peak"] < thr)
+    fp = sum(1 for r in recs if r["truth_found"] and r["peak"] < thr)
+    fn = sum(1 for r in recs if not r["truth_found"] and r["peak"] >= thr)
     prec = tp / max(tp + fp, 1)
     rec = tp / max(tp + fn, 1)
     return 2 * prec * rec / max(prec + rec, 1e-9), prec, rec, tp, fp, fn
@@ -87,10 +90,23 @@ def main():
                 if truth_found else None)
         rerr = (abs(cfg.theta_report_sign * d["theta_deg"] - float(r["gt_rotation_deg"]))
                 if truth_found else None)
+        s2 = d.get("stage2") or {}
         recs.append({"pair_id": r["pair_id"], "set": r["set"], "severity": int(r["severity"]),
                      "truth_found": truth_found, "err": err, "zerr": zerr, "rerr": rerr,
                      "peak": float(d["score"]), "prom": float(d.get("peak_prominence", 0)),
-                     "wide": int(d.get("num_candidates_wide", 1)), "runtime": rt})
+                     "wide": int(d.get("num_candidates_wide", 1)),
+                     "strict": int(d.get("num_candidates", 1)),
+                     "noise": float(d.get("search_noise_sigma", 0.0)),
+                     "nominal": float(d.get("nominal_score", 0.0)),
+                     "wide_score": float(d.get("wide_score", 0.0)),
+                     "pose_source": d.get("pose_source", ""),
+                     "over_p99": float(d.get("peak_over_p99", 0.0)),
+                     "resp_median": float(d.get("resp_median", 0.0)),
+                     "z": (float(s2["z"]) if s2.get("z") is not None else None),
+                     "margin": (float(s2["margin"]) if s2.get("margin") is not None else None),
+                     "mad": (float(s2["mad"]) if s2.get("mad") is not None else None),
+                     "s2_used": bool(s2.get("used")),
+                     "runtime": rt})
         print(f"{r['pair_id']} {r['set']:10s} peak {d['score']:.3f} "
               f"err {err if err is None else round(err, 1)}", flush=True)
 

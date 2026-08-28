@@ -120,7 +120,7 @@ class MatchConfig:
     peak_min_separation_px: int = 4
     residual_disambiguation: bool = True
     residual_pad_px: int = 3
-    residual_min_candidates: int = 3
+    residual_min_candidates: int = 2
     residual_margin: float = 0.035
     residual_z_thresh: float = 5.0
     residual_z_pool_min: int = 9
@@ -428,6 +428,7 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
             z = (float(vals[wi]) - med_v) / max(1.4826 * mad, 1e-6)
             order = np.argsort(-vals)
             stage2.update(evaluated=int(len(vals)), margin=margin, z=float(z),
+                          mad=float(mad), residual_median=med_v,
                           best_residual_score=float(vals[wi]),
                           top_scores=[float(v) for v in vals[order[:8]]])
             # The classical rule is the decision. An enabled re-ranker may
