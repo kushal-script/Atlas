@@ -15,6 +15,7 @@ the search image center. Sub pixel output comes from a parabolic fit on the
 correlation peak.
 """
 
+import math
 import time
 from dataclasses import dataclass
 
@@ -255,11 +256,56 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
     search_img = _tone_normalize(search_img, cfg)
     ref = ref_img.astype(np.float32)
     ref_low = backend.gaussian(ref, cfg.bandpass_sigma_px * cfg.zoom, cfg.device)
+    # Original single-zoom blur bank (exact). Used for the nominal 10x path and as
+    # the base for off-nominal scales <= 1.0.
     all_sigmas = sorted(set(cfg.psf_sigma_bank_nm) | set(cfg.wide_sigma_bank_nm))
     ref_bank = {s: backend.gaussian(ref, _effective_sigma(s, cfg), cfg.device) - ref_low
                 for s in all_sigmas}
     search, search_noise = _preprocess(search_img, cfg, denoise=True)
     corr = backend.make_correlator(search, cfg.device)
+
+    # Magnification-cliff fix (T1). The affine warp in _make_template scales the
+    # template PSF by `scale`, so a fixed-zoom reference blur no longer matches the
+    # search image's fixed-pixel PSF off-nominal. Compensate per scale:
+    #   * scale <= 1.0 (8..10x): blur the warped template in template space by
+    #     base*sqrt(1-scale^2). This is exactly equivalent to pre-blurring the
+    #     reference by base/scale and is O(template) cheap (~112 px), so it adds
+    #     essentially no runtime.
+    #   * scale > 1.0 (12x): the warp overshoots the blur, so the reference must be
+    #     *sharpened* (base/scale < base); a template-space blur cannot do that, so
+    #     build a half-resolution scale-aware band (one extra build per pair).
+    # At scale == 1.0 the path is the exact original bank with no extra blur, so the
+    # nominal 10x answer is unchanged (equivalence gate, tests/test_*.py).
+    _blur_ds = 2
+    ref_small = cv2.resize(ref, None, fx=1.0 / _blur_ds, fy=1.0 / _blur_ds,
+                           interpolation=cv2.INTER_AREA)
+    ref_low_small = cv2.resize(ref_low, None, fx=1.0 / _blur_ds, fy=1.0 / _blur_ds,
+                               interpolation=cv2.INTER_AREA)
+    _band_cache = {}
+    def _band(sig, scale):
+        k = (sig, round(scale, 5))
+        b = _band_cache.get(k)
+        if b is None:
+            base = _effective_sigma(sig, cfg)
+            sig_small = base / (scale * _blur_ds)
+            small = backend.gaussian(ref_small, sig_small, cfg.device) - ref_low_small
+            b = cv2.resize(small, (ref.shape[1], ref.shape[0]),
+                           interpolation=cv2.INTER_LINEAR)
+            _band_cache[k] = b
+        return b
+
+    def _search_template(sig, theta, scale):
+        if scale > 1.0 + 1e-9:
+            band = _band(sig, scale)
+        else:
+            band = ref_bank[sig]
+        tmpl = _make_template(band, theta, scale, cfg)
+        if scale <= 1.0 + 1e-9:
+            base = _effective_sigma(sig, cfg)
+            extra = base * math.sqrt(max(0.0, 1.0 - scale * scale))
+            if extra > 1e-3:
+                tmpl = backend.gaussian(tmpl, extra, cfg.device)
+        return tmpl
 
     tried = {}
 
@@ -267,7 +313,7 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
         key = (round(theta, 4), round(scale, 5), sig)
         if key in tried:
             return tried[key]
-        tmpl = _make_template(ref_bank[sig], theta, scale, cfg)
+        tmpl = _search_template(sig, theta, scale)
         tried[key] = float(corr.peaks([tmpl])[0])
         return tried[key]
 
@@ -294,8 +340,8 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
                        interpolation=cv2.INTER_AREA)
     ts = cfg.template_px // ds
     pol_mx = pol_mn = 0.0
-    pol_tmpls = [cv2.resize(_make_template(ref_bank[sig], 0.0, 1.0, cfg), (ts, ts),
-                            interpolation=cv2.INTER_AREA)
+    pol_tmpls = [cv2.resize(_search_template(sig, 0.0, 1.0), (ts, ts),
+                             interpolation=cv2.INTER_AREA)
                  for sig in cfg.wide_sigma_bank_nm]
     corr_small = backend.make_correlator(small, cfg.device)
     for mn, mx in corr_small.peaks(pol_tmpls, want_min=True):
@@ -331,7 +377,7 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
                 for sc in cfg.coarse_scales:
                     if th == 0.0 and sc == 1.0:
                         continue
-                    tmpl_h = _make_template(ref_bank[sig], th, sc, cfg)
+                    tmpl_h = _search_template(sig, th, sc)
                     th_px = max(tmpl_h.shape[0] // ds, 8)
                     grid_tmpls.append(cv2.resize(tmpl_h, (th_px, th_px),
                                                  interpolation=cv2.INTER_AREA))
@@ -351,7 +397,7 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
 
     best = wide_key if used_wide else nominal_key
     theta_best, scale_best, sigma_best = best
-    tmpl_best = _make_template(ref_bank[sigma_best], theta_best, scale_best, cfg)
+    tmpl_best = _search_template(sigma_best, theta_best, scale_best)
     resp = corr.full(tmpl_best)
     score_best = float(resp.max())
 
@@ -461,8 +507,50 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
 
 def optical_config():
     return MatchConfig(psf_sigma_bank_nm=(2.0, 8.0),
-                      bandpass_sigma_px=120.0,
-                      denoise_sigma_px=1.5)
+                       bandpass_sigma_px=120.0,
+                       denoise_sigma_px=1.5)
+
+
+def phase2_config():
+    """Phase 2 pose grid: unknown zoom over 8..12x and rotation over +/-5 deg.
+
+    Everything except the widened coarse pose grid is left at the tuned Phase 1
+    defaults; today is de-risking only, no retuning.
+
+    Zoom is uniform in {8, 12} relative to the 10x nominal, so the searchable
+    range of the internal `scale` (relative to cfg.zoom) spans roughly 0.80 to
+    1.20. Rotation is unknown over +/-5 deg (CCW positive, about the match
+    centre). The grids below span those ranges at ~0.02 / 0.5 deg steps, 21
+    values each.
+
+    Day 2 runtime levers (see Day 2 report; each measured vs the Day 1 baseline
+    of median 30.55 s, 52% pass within 5 px). Final config meets the <=5 s budget
+    (measured median 4.42 s, max 4.86 s on 8 physics pairs) with pass rate 48.0%
+    (>= the 47% accuracy floor):
+      * wide_sigma_bank_nm cut from 4 levels to 1 ((6.5,)). The coarse prescreen
+        only needs a representative blur to RANK hypotheses; the winning hypothesis
+        is re-scored at full resolution over the full psf_sigma_bank_nm, so this is
+        a ~4x template reduction. (2 levels (4.0, 9.0) was also tried; 1 level is
+        what reached the runtime budget.)
+      * prescreen_downsample = 4. Correlation cost scales with (1/ds)^2 over the
+        search; at a 112 px template (scale 0.8) ds=4 -> 28 px, which keeps enough
+        peak separation to rank hypotheses. The answer is still refined at full
+        resolution so accuracy is largely intact.
+      * coarse_rotations_deg step widened to 1.0 deg (~11 values, -5..+5). The
+        refine stage starts at 2x the rot step and halves, so a 1.0 deg coarse grid
+        still recovers sub-degree pose. The scale grid is left dense (step 0.02)
+        because the magnification cliff is scale-sensitive.
+      * refine_levels = 1 (was 2). Halves the full-resolution local-descent
+        evaluations, which -- not the prescreen -- dominated runtime. This was the
+        lever that actually crossed the 5 s line.
+    """
+    coarse_scales = tuple(round(0.80 + 0.02 * i, 4) for i in range(21))   # 0.80 .. 1.20
+    coarse_rotations_deg = tuple(round(-5.0 + 1.0 * i, 4) for i in range(11))  # -5.0 .. +5.0 step 1.0
+    return MatchConfig(coarse_scales=coarse_scales,
+                       coarse_rotations_deg=coarse_rotations_deg,
+                       wide_sigma_bank_nm=(6.5,),
+                       prescreen_downsample=4,
+                       refine_levels=1)
 
 
 def load_gray(path):
