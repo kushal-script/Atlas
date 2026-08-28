@@ -19,12 +19,14 @@ DIAG = {
     "score": 0.71, "peak_prominence": 6.2, "num_candidates_wide": 14,
     "num_candidates": 2, "search_noise_sigma": 5.5, "nominal_score": 0.64,
     "peak_over_p99": 0.21, "pose_source": "wide",
+    "quad_disp": 1.5, "quad_agree": 3,
     "stage2": {"z": 3.1, "margin": 120.0, "mad": 40.0},
 }
 RECORD = {
     "peak": 0.71, "prom": 6.2, "wide": 14, "strict": 2, "noise": 5.5,
     "nominal": 0.64, "over_p99": 0.21, "pose_source": "wide",
     "z": 3.1, "margin": 120.0, "mad": 40.0,
+    "quad_disp": 1.5, "quad_agree": 3,
 }
 
 

@@ -106,6 +106,8 @@ def main():
                      "margin": (float(s2["margin"]) if s2.get("margin") is not None else None),
                      "mad": (float(s2["mad"]) if s2.get("mad") is not None else None),
                      "s2_used": bool(s2.get("used")),
+                     "quad_disp": float(d.get("quad_disp", -1.0)),
+                     "quad_agree": int(d.get("quad_agree", -1)),
                      "runtime": rt})
         print(f"{r['pair_id']} {r['set']:10s} peak {d['score']:.3f} "
               f"err {err if err is None else round(err, 1)}", flush=True)

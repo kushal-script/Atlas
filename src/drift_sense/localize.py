@@ -115,6 +115,9 @@ class MatchConfig:
     # by the three sample pairs shipped with the addendum, not by assumption, so
     # it is one constant here rather than a convention buried in the geometry.
     theta_report_sign: float = -1.0
+    # Half width of the local window, in search pixels, over which each
+    # template quadrant is independently re matched for the presence check.
+    quadrant_window_px: int = 12
     stage2_tolerance_frac: float = 0.6
     stage2_tolerance_cap: float = 0.06
     peak_min_separation_px: int = 4
@@ -471,6 +474,40 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
         x = px + dx + half
         y = py + dy + half
 
+    # Quadrant consistency, an absolute presence check. Each quadrant of the
+    # matched template is correlated independently in a small window around the
+    # winning site. A true match pins every quadrant to the same offset,
+    # because the aperiodic content agrees quadrant by quadrant; an impostor
+    # matches only the shared lattice, so any lattice aligned offset serves any
+    # quadrant equally and their best offsets scatter across cells. The
+    # dispersion of the four offsets is scale free and survives degradation.
+    quad_disp, quad_agree = -1.0, -1
+    th, tw = tmpl_best.shape
+    if min(th, tw) >= 32:
+        qy, qx = int(py), int(px)
+        m = cfg.quadrant_window_px
+        offs = []
+        for qi in range(2):
+            for qj in range(2):
+                q = tmpl_best[qi * th // 2:(qi + 1) * th // 2,
+                              qj * tw // 2:(qj + 1) * tw // 2]
+                oy, ox = qi * th // 2, qj * tw // 2
+                sub = search[max(qy + oy - m, 0):qy + oy + q.shape[0] + m,
+                             max(qx + ox - m, 0):qx + ox + q.shape[1] + m]
+                if sub.shape[0] <= q.shape[0] or sub.shape[1] <= q.shape[1]:
+                    continue
+                r = cv2.matchTemplate(np.ascontiguousarray(sub),
+                                      np.ascontiguousarray(q),
+                                      cv2.TM_CCOEFF_NORMED)
+                ry, rx = np.unravel_index(int(np.argmax(r)), r.shape)
+                base_y = max(qy + oy - m, 0)
+                base_x = max(qx + ox - m, 0)
+                offs.append(((base_y + ry) - (qy + oy), (base_x + rx) - (qx + ox)))
+        if len(offs) == 4:
+            d = [float(np.hypot(dy_, dx_)) for dy_, dx_ in offs]
+            quad_disp = float(np.median(d))
+            quad_agree = int(sum(1 for v in d if v <= 2.0))
+
     diag = {
         "score": score_best,
         "theta_deg": float(theta_best),
@@ -491,6 +528,8 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
         "resp_median": _med,
         "resp_p99": _p99,
         "peak_prominence": float(peak_prominence),
+        "quad_disp": float(quad_disp),
+        "quad_agree": int(quad_agree),
         "peak_over_p99": float(peak_over_p99),
         "stage2": stage2,
         "runtime_s": time.perf_counter() - t0,

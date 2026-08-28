@@ -16,11 +16,12 @@ at all, which is the question presence actually turns on.
 import numpy as np
 
 FEATURES = ("peak", "prom_l", "wide_l", "strict_l", "noise", "nominal",
-            "gap", "over_p99", "z_fill", "z_missing", "mom", "pose_wide")
+            "gap", "over_p99", "z_fill", "z_missing", "mom", "pose_wide",
+            "quad_disp", "quad_agree", "quad_missing")
 
 
 def _assemble(peak, prom, wide, strict, noise, nominal, over_p99,
-              z, margin, mad, pose_source):
+              z, margin, mad, pose_source, quad_disp=-1.0, quad_agree=-1):
     mom = 0.0
     if margin is not None and mad is not None:
         mom = float(margin) / max(1.4826 * float(mad), 1e-6)
@@ -37,6 +38,9 @@ def _assemble(peak, prom, wide, strict, noise, nominal, over_p99,
         0.0 if z is not None else 1.0,
         float(np.clip(mom, -20.0, 20.0)),
         1.0 if pose_source == "wide" else 0.0,
+        float(np.clip(quad_disp, 0.0, 17.0)) if quad_disp >= 0 else 0.0,
+        float(quad_agree) if quad_agree >= 0 else 0.0,
+        1.0 if quad_disp < 0 else 0.0,
     ]
 
 
@@ -49,7 +53,8 @@ def features_from_diag(diag):
                      diag.get("nominal_score", 0.0),
                      diag.get("peak_over_p99", 0.0),
                      s2.get("z"), s2.get("margin"), s2.get("mad"),
-                     diag.get("pose_source", ""))
+                     diag.get("pose_source", ""),
+                     diag.get("quad_disp", -1.0), diag.get("quad_agree", -1))
 
 
 def features_from_record(rec):
@@ -57,7 +62,8 @@ def features_from_record(rec):
                      rec.get("strict", 1), rec.get("noise", 0.0),
                      rec.get("nominal", 0.0), rec.get("over_p99", 0.0),
                      rec.get("z"), rec.get("margin"), rec.get("mad"),
-                     rec.get("pose_source", ""))
+                     rec.get("pose_source", ""),
+                     rec.get("quad_disp", -1.0), rec.get("quad_agree", -1))
 
 
 def presence_probability(model, feats):

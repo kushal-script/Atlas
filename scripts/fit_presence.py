@@ -64,16 +64,51 @@ def main():
         idx = np.where(y == cls)[0]; rng.shuffle(idx)
         for k, i in enumerate(idx): folds[i] = k % 5
 
-    print("=== stratified 5 fold cross validation, reject class F1 ===")
+    print("=== stratified 5 fold cross validation ===")
     probs = np.zeros(len(y))
     for k in range(5):
         tr, te = folds != k, folds == k
         w = fit_logistic(Xs[tr], y[tr])
         probs[te] = 1 / (1 + np.exp(-(Xs[te] @ w[:-1] + w[-1])))
-    best = max(((rej_f1(y, (probs >= t).astype(int))[0], t) for t in np.arange(0.05, 0.95, 0.01)))
-    f1, p, rc, tp, fp, fn = rej_f1(y, (probs >= best[1]).astype(int))
-    print(f"  logistic (cv): reject F1 {f1:.3f}  precision {p:.2f} recall {rc:.2f} "
-          f"(tp {tp} fp {fp} fn {fn}) at p>={best[1]:.2f}")
+
+    # The threshold is chosen on the estimated total score, not on rejection F1
+    # alone: a present pair reported absent zeroes its pose columns, so a false
+    # reject forfeits that pair's localization and pose credit on top of the
+    # rejection penalty. Optimizing F1 in isolation traded a third of the
+    # present pairs' localization for two rejection points.
+    def loc_credit(e):
+        return 1.0 if e <= 1 else 0.8 if e <= 2 else 0.6 if e <= 3 else 0.4 if e <= 5 else 0.0
+    def sc_credit(zp):
+        return 1.0 if zp <= 1 else 0.6 if zp <= 2 else 0.3 if zp <= 5 else 0.0
+    def rc_credit(rd):
+        return 1.0 if rd <= 0.25 else 0.6 if rd <= 0.5 else 0.3 if rd <= 1.0 else 0.0
+
+    def total_score(found):
+        credits = {"A_nominal": [], "B_degraded": []}
+        pose = []
+        for r, f in zip(recs, found):
+            if not r["truth_found"]:
+                continue
+            c = loc_credit(r["err"]) if (f and r["err"] is not None) else 0.0
+            credits[r["set"]].append(c)
+            if f and c > 0:
+                pose.append((sc_credit(r["zerr"]), rc_credit(r["rerr"])))
+        loc = 40 * (0.45 * np.mean(credits["A_nominal"]) + 0.55 * np.mean(credits["B_degraded"]))
+        pp = (10 * np.mean([p_ for p_, _ in pose]) + 10 * np.mean([q for _, q in pose])) if pose else 0.0
+        f1v = rej_f1(y, np.asarray(found, int))[0]
+        return loc + pp + 15 * f1v, loc, pp, 15 * f1v
+
+    grid = np.arange(0.02, 0.99, 0.01)
+    totals = [(total_score((probs >= t).astype(int))[0], t) for t in grid]
+    t_best = max(totals)[1]
+    tot, loc, pp, rj = total_score((probs >= t_best).astype(int))
+    f1, p, rc, tp, fp, fn = rej_f1(y, (probs >= t_best).astype(int))
+    f1best = max(rej_f1(y, (probs >= t).astype(int))[0] for t in grid)
+    print(f"  total optimal threshold p>={t_best:.2f}: est core {tot:.1f} "
+          f"(loc {loc:.1f} pose {pp:.1f} rej {rj:.1f})")
+    print(f"  at that point: reject F1 {f1:.3f} precision {p:.2f} recall {rc:.2f} "
+          f"(tp {tp} fp {fp} fn {fn}); best pure F1 on the sweep was {f1best:.3f}")
+    best = (f1, t_best)
 
     peak = X[:, 0]
     b = max(((rej_f1(y, (peak >= t).astype(int))[0], t) for t in np.unique(np.round(peak, 3))))
