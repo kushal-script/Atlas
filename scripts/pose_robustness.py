@@ -34,10 +34,12 @@ sys.path.insert(0, str(REPO / "src"))
 sys.path.insert(0, str(REPO / "scripts"))
 
 from drift_sense.api import match_pair
+from drift_sense.localize import phase2_config
 from generate_amat_proxy import BASE_PARAMS, TIERS, generate_pair
 
-MAGNIFICATIONS = (9.0, 9.5, 10.0, 10.5, 11.0)
-ROTATIONS = (-2.0, -1.0, 0.0, 1.0, 2.0)
+# Extended to the Phase 2 ranges (Day 1, T4): zoom 8..12x and rotation +/-5 deg.
+MAGNIFICATIONS = (8.0, 9.0, 10.0, 11.0, 12.0)
+ROTATIONS = (-5.0, -2.5, 0.0, 2.5, 5.0)
 TOL = 5.0
 ACCENT = "#2a78d6"
 
@@ -92,10 +94,9 @@ def main():
                     seed=90000 + seed * 31, kind=kind, params=params,
                     rotation_deg=rot, scale=mag / 10.0, boundary_bias=1.0)
                 cfg_kwargs = ({"prescreen_top_k": args.top_k}
-                              if args.top_k else {})
-                from drift_sense.localize import MatchConfig
+                               if args.top_k else {})
                 res = match_pair(ref, search,
-                                 cfg=MatchConfig(**cfg_kwargs) if cfg_kwargs else None)
+                                  cfg=phase2_config(**cfg_kwargs) if cfg_kwargs else phase2_config())
                 g = meta["ground_truth"]
                 err = float(np.hypot(res["x"] - g["x"], res["y"] - g["y"]))
                 rows.append({"magnification": mag, "rotation_deg": rot,

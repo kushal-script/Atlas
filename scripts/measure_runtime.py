@@ -27,7 +27,7 @@ import numpy as np
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 
-from drift_sense.localize import MatchConfig, load_gray, locate
+from drift_sense.localize import MatchConfig, load_gray, locate, phase2_config
 
 
 def _cpu_mem():
@@ -57,7 +57,7 @@ def main():
     if len(pairs) < args.n + args.warmup:
         raise SystemExit("not enough pairs in the dataset")
 
-    cfg = MatchConfig()
+    cfg = phase2_config()
     times = []
     for i, pd in enumerate(pairs):
         ref, _ = load_gray(pd / "reference.png")
