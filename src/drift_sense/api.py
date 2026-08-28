@@ -15,6 +15,8 @@ is a calibrated continuous value rather than the raw correlation score.
     result = zncc_match(reference_img, search_img)
 """
 
+import math
+
 import numpy as np
 
 from .localize import MatchConfig, locate, optical_config
@@ -66,6 +68,89 @@ def _confidence(diag):
         identified = 0.0
     conf = 0.55 * peak + 0.30 * uniqueness + 0.15 * identified
     return float(np.clip(conf, 0.0, 1.0))
+
+
+# ---------------------------------------------------------------------------
+# Presence / rejection (Phase 2, Day 3, T3)
+# ---------------------------------------------------------------------------
+# ~20% of Phase 2 pairs (Set C) have no true instance. The localizer still emits
+# a (spurious) peak on those, so a presence decision is required. The features
+# below are deliberately interpretable and cheap so a single threshold can do the
+# job; if a sweep shows one threshold cannot reach F1 >= 0.90, escalate to a tiny
+# numpy logistic regression on these same features (no torch).
+
+PRESENCE_WEIGHTS = {
+    "peak_score": 0.45,
+    "uniqueness": 0.25,
+    "stage2_identifiability": 0.20,
+    "margin_strength": 0.10,
+}
+
+
+def presence_features(diag):
+    """Interpretable signals of whether a true instance underlies the peak.
+
+    peak_score              -- raw correlation peak (high when well matched)
+    num_candidates_wide     -- competing peaks in the wide pool (more => ambiguous)
+    stage2_used / z / margin-- residual disambiguation decisiveness
+    inverted_contrast       -- polarity flip (informative, not penalized)
+    search_noise_sigma      -- acquisition noise level
+    regime                  -- which evidence regime produced the answer
+    """
+    peak = float(np.clip(diag["score"], 0.0, 1.0))
+    strict = int(diag["num_candidates"])
+    wide = int(diag.get("num_candidates_wide", strict))
+    stage2 = diag.get("stage2") or {}
+    z = stage2.get("z")
+    margin = stage2.get("margin")
+    s2_used = bool(stage2.get("used"))
+    uniqueness = 1.0 / (1.0 + math.log1p(max(wide - 1, 0)))
+    if s2_used and z is not None:
+        ident = float(np.clip(z / 20.0, 0.0, 1.0))
+    elif wide <= 2:
+        ident = 1.0
+    else:
+        ident = 0.0
+    margin_strength = 0.0
+    if margin is not None:
+        margin_strength = float(np.clip(margin / 0.1, 0.0, 1.0))
+    return {
+        "peak_score": peak,
+        "num_candidates_wide": wide,
+        "num_candidates_strict": strict,
+        "uniqueness": uniqueness,
+        "stage2_used": s2_used,
+        "stage2_z": (float(z) if z is not None else 0.0),
+        "stage2_margin": (float(margin) if margin is not None else 0.0),
+        "stage2_identifiability": ident,
+        "margin_strength": margin_strength,
+        "peak_contrast": float(diag.get("peak_contrast", 0.0)),
+        "peak_contrast_ratio": float(diag.get("peak_contrast_ratio", 1.0)),
+        "inverted_contrast": bool(diag.get("inverted_contrast")),
+        "search_noise_sigma": float(diag.get("search_noise_sigma", 0.0)),
+        "regime": _regime(diag),
+    }
+
+
+def presence_score(diag):
+    """Transparent weighted combination of presence_features in [0, 1].
+
+    peak_contrast dominates: a true match leaves one dominant correlation peak,
+    while a spurious match over noise/substrate spreads mass over many comparable
+    local maxima, giving a small contrast.
+    """
+    f = presence_features(diag)
+    s = (PRESENCE_WEIGHTS["peak_score"] * f["peak_score"]
+         + PRESENCE_WEIGHTS["uniqueness"] * f["uniqueness"]
+         + PRESENCE_WEIGHTS["stage2_identifiability"] * f["stage2_identifiability"]
+         + PRESENCE_WEIGHTS["margin_strength"] * f["margin_strength"]
+         + 0.45 * np.clip(f["peak_contrast"], 0.0, 1.0))
+    return float(np.clip(s, 0.0, 1.0))
+
+
+def decide_found(diag, threshold):
+    """Rejection decision: 1 = present, 0 = no instance (Set C)."""
+    return 1 if presence_score(diag) >= threshold else 0
 
 
 def match_pair(reference_img, search_img, cfg=None, reranker_path=None, device=None):

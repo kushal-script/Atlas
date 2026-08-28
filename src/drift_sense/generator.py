@@ -113,9 +113,22 @@ def generate_pair(seed, style, cfg=None, modality="sem", absent=False, phase2=Fa
     zones = LAYOUT_BUILDERS[style](mat, hgt, cfg.canvas.pixel_nm, rng_layout,
                                    style_params, target=(ru, rv), want=want)
     se_info = {}
+    se_sub = None
+    sub_mat = None
     if modality == "sem":
         se, se_info = build_se_canvas(mat, hgt, cfg.canvas.pixel_nm, rng_canvas,
                                       cfg.canvas)
+        se_sub = None
+        if absent:
+            # Set C must be a *genuine* negative: render the search over a
+            # substrate-only canvas so no CDU-like structure can produce a
+            # spurious match. A correlation matcher cannot distinguish a true
+            # CDU instance from a *different* CDU of the same type, so negatives
+            # are defined as regions with no reference-like structure.
+            sub_mat = np.zeros_like(mat)
+            sub_hgt = np.zeros_like(hgt)
+            se_sub, _ = build_se_canvas(sub_mat, sub_hgt, cfg.canvas.pixel_nm,
+                                        rng_canvas, cfg.canvas)
 
     ref_pose = {"center_u_nm": ru, "center_v_nm": rv,
                 "theta_rad": theta_r, "pixel_nm": cfg.reference.pixel_nm}
@@ -133,8 +146,11 @@ def generate_pair(seed, style, cfg=None, modality="sem", absent=False, phase2=Fa
     else:
         ref_img, dx_r, dy_r, ref_meta = render_capture(
             se, mat, cfg.canvas.pixel_nm, ref_pose, cfg.reference, rng_ref)
+        search_src = se_sub if (absent and se_sub is not None) else se
+        search_mat = sub_mat if (absent and se_sub is not None) else mat
         search_img, dx_s, dy_s, search_meta = render_capture(
-            se, mat, cfg.canvas.pixel_nm, search_pose, cfg.search, rng_search)
+            search_src, search_mat, cfg.canvas.pixel_nm, search_pose, cfg.search,
+            rng_search)
 
     nr = cfg.reference.out_px
     center = (nr - 1) / 2.0

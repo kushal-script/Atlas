@@ -14,3 +14,7 @@ local/
 data/phase2_mixed/
 data/phase2_smoke/
 
+
+experiments/
+phase2_run.log
+

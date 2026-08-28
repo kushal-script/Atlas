@@ -407,6 +407,23 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
     local_max = maximum_filter(resp, size=cfg.peak_min_separation_px) == resp
     wide = np.argwhere(local_max & (resp >= score_best - tol_wide))
     strict = np.argwhere(local_max & (resp >= score_best - cfg.peak_tolerance))
+    # Peak-to-sidelobe contrast over the full response map: a true match leaves
+    # one dominant peak, while a spurious match over noise/substrate spreads
+    # correlation mass over many comparable local maxima. This is the cheapest
+    # usable presence signal (available even when no stage2 residual can run).
+    _lm_vals = resp[local_max]
+    if _lm_vals.size >= 2:
+        _order = np.argsort(-_lm_vals)
+        _top1 = float(_lm_vals[_order[0]])
+        _top2 = float(_lm_vals[_order[1]])
+        peak_contrast = _top1 - _top2
+        peak_contrast_ratio = _top1 / _top2 if _top2 > 1e-6 else 10.0
+    elif _lm_vals.size == 1:
+        peak_contrast = float(_lm_vals[0])
+        peak_contrast_ratio = 10.0
+    else:
+        peak_contrast = 0.0
+        peak_contrast_ratio = 1.0
     t = tmpl_best.shape[0]
     half = (t - 1) / 2.0
     center = (search.shape[1] - 1) / 2.0, (search.shape[0] - 1) / 2.0
@@ -491,6 +508,8 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
         "template_px_used": int(t),
         "num_candidates": int(len(strict)),
         "num_candidates_wide": int(len(wide)),
+        "peak_contrast": float(peak_contrast),
+        "peak_contrast_ratio": float(peak_contrast_ratio),
         "candidate_peaks_xy": [[float(c[1] + half), float(c[0] + half)]
                                for _, c in dists[:12]],
         "peak_value": float(resp[py, px]),
