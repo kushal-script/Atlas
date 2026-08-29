@@ -59,7 +59,10 @@ def render_optical_capture(mat_canvas, hgt_canvas, canvas_pixel_nm, pose, opt, r
         refl = lut[mat_s, c]
         film = 0.75 + 0.25 * np.cos(4.0 * np.pi * opt["film_index"] * t_film / lam)
         signal = refl * (oxide * film + (1.0 - oxide))
-        sigma_px = 0.21 * lam / opt["na"] / p
+        # Shorter wavelengths resolve slightly better, so the sampled spot is
+        # scaled by wavelength about the green channel, preserving the colour
+        # dependent sharpness an optical instrument shows.
+        sigma_px = opt["psf_sigma_px"] * (lam / 540.0)
         signal = gaussian_filter(signal.astype(np.float32), sigma_px)
         signal = signal * vignette * tilt
         dose = opt["photon_dose"]
@@ -81,10 +84,30 @@ def render_optical_capture(mat_canvas, hgt_canvas, canvas_pixel_nm, pose, opt, r
 
 
 def sample_optical_settings(rng, role):
+    """Settings for one optical capture.
+
+    On resolution, and why this is an analogue rather than a literal
+    microscope. Taken literally, an Abbe limited point spread of 0.21 lambda
+    over the numerical aperture is about 126 nm wide, which at the reference
+    scale of 1 nm per pixel is a 126 pixel blur across a 1000 pixel frame: the
+    reference becomes a smooth colour gradient carrying no structure at all,
+    and the registration task it is supposed to pose stops existing, since the
+    high magnification image would hold less information than the wide one.
+    Real optical inspection never images a 1 micron field for exactly this
+    reason. The addendum asks for an optical microscope analogue with the
+    reference present and scores it, so the analogue keeps what makes optical
+    imaging distinctive, three colour channels whose contrast comes from thin
+    film interference rather than topography, photon limited noise, vignetting
+    and illumination tilt, and samples the point spread relative to the pixel
+    the way the electron model does, instead of applying an absolute
+    diffraction limit that would annihilate one of the two images.
+    """
     doses = {"reference": (6000.0, 20000.0), "search": (400.0, 1500.0)}
+    psf_px = {"reference": (1.1, 2.2), "search": (1.8, 4.0)}
     return {
         "out_px": 1000,
         "wavelengths_nm": (620.0, 540.0, 460.0),
+        "psf_sigma_px": float(rng.uniform(*psf_px[role])),
         "na": float(rng.uniform(0.85, 0.95)),
         "photon_dose": float(rng.uniform(*doses[role])),
         "read_noise": float(rng.uniform(1.0, 4.0)),

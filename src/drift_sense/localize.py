@@ -584,3 +584,30 @@ def load_gray(path):
     if img.ndim == 3:
         return cv2.cvtColor(img[:, :, :3], cv2.COLOR_BGR2GRAY), True
     return img, False
+
+
+def load_colour(path):
+    """Returns (planes, is_rgb) where planes is a list of matching planes.
+
+    In an optical capture the contrast between materials comes from thin film
+    interference, so two materials can share a luminance and differ only in
+    colour. Measured on generated optical pairs the standard deviation of the
+    channel differences is comparable to the standard deviation of the
+    luminance itself, which is half the available signal thrown away by
+    collapsing to grey before matching. Correlating each plane and summing the
+    surfaces keeps it, at the cost of one correlation per plane.
+    """
+    img = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
+    if img is None:
+        raise FileNotFoundError(path)
+    if img.ndim != 3:
+        return [img], False
+    bgr = img[:, :, :3].astype(np.float32)
+    lum = cv2.cvtColor(img[:, :, :3], cv2.COLOR_BGR2GRAY).astype(np.float32)
+    planes = [lum, bgr[:, :, 0] - bgr[:, :, 1], bgr[:, :, 1] - bgr[:, :, 2]]
+    out = []
+    for pl in planes:
+        lo, hi = float(pl.min()), float(pl.max())
+        out.append(np.ascontiguousarray(
+            ((pl - lo) / max(hi - lo, 1e-6) * 255.0).astype(np.uint8)))
+    return out, True
