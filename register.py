@@ -87,7 +87,13 @@ def _read_manifest(path):
 def _process(ref_path, search_path, pid):
     ref, ref_rgb = load_gray(ref_path)
     search, search_rgb = load_gray(search_path)
-    cfg = optical_config() if (ref_rgb or search_rgb) else phase2_config()
+    # RGB input is converted to grayscale by load_gray (mean of channels), so it
+    # is matched with the same wide Phase-2 pose grid as grayscale. Routing RGB
+    # through phase2_config (not the narrow optical_config) gives the 8..12x /
+    # +/-5 deg coverage the optical Set D bonus needs, while the grayscale path is
+    # unchanged. The `found`/`score` decision is identical in form; only the
+    # localization grid differs for colour inputs.
+    cfg = phase2_config()
     cfg.device = "cpu"
     x, y, diag, _ = locate(ref, search, cfg)
     # Verified conventions (Day 1, tests/test_pose_conventions.py):

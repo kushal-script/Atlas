@@ -140,3 +140,21 @@ correctness label), while the product reaches **calibration AUC 0.77**. The
 `found = 0` contract zeros the pose columns but keeps `score`. Cool median
 runtime is 3.85 s/pair (<= 5 s). Optical Set D scored 0.0 (confident false
 detections) and is recorded as a bonus-only known limitation.
+
+## 2026 08 29, Phase 2 (Day 6): hardening and packaging
+
+Day 6 made the submission provably runnable blind and documented the carried
+artifacts. `register.py` now reads only `pair_id` + reference/search columns and
+decides `found` from the images alone; `tests/test_register_blind.py` proves the
+output is byte-identical with or without `present`/`gt_*` columns (no leakage).
+RGB inputs route through `phase2_config` (the wide 8–12× / ±5° grid) rather than
+the narrow `optical_config`, which lifted the optical Set D credit from 0.0 to
+**0.40 (8/20 within 5 px)**, qualifying the +6 bonus while remaining marginal
+(worst off-grid ~727 px at 8.7×). The rejection LR was re-checked on a 70/30 split
+(seed 7): **held-out F1 = 0.9072**, confirming it generalizes rather than
+memorizing the 200 self-check pairs, so `REJECTION_THRESHOLD = 0.5` stands. A
+clean venv install + register run reproduced the full scorecard end-to-end
+(F1 0.9068, calibration AUC 0.77, ~4.97 s/pair) with no torch on the CPU path. A
+citable PDF artifact, `docs/phase2_analysis.pdf`, was rendered offline from the
+markdown analysis via matplotlib `PdfPages` (pandoc is present but has no PDF
+engine).
