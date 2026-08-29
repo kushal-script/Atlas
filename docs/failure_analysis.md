@@ -90,3 +90,80 @@ The rule was re-derived from measurement rather than intuition. Across all 150 p
 A wide pool of at most 2 was selected: it is the knee of the curve, and it makes the confident label mean what its name claims. The resulting three regimes, measured over the same 150 pairs, are `unique_peak` at 98.6 percent precision over 73 pairs, `residual_identified` at 50.0 percent over 16, and `tie_break_convention` at 21.3 percent over 61. Accepting the first two and reacquiring on the third covers 59 percent of cases at 89.9 percent precision, against 62.0 percent if every answer is accepted blindly.
 
 This defect is worth recording for what it says about the project's own claims. It changed no predicted coordinate and no accuracy number, so the localization result was never affected; what it corrupted was the system's account of its own certainty, which is precisely the property the abstain and reacquire policy depends on. It was found by checking a requirement rather than by any accuracy metric, because an aggregate pass rate cannot see a confidently wrong answer.
+
+## Phase 2 (Day 4–5): the magnification cliff, geometric-consistency rejection, and calibration
+
+Phase 2 adds a `~20%` absent (Set C) population and scores a `found` rejection
+decision plus a calibration AUC. Two defects surfaced and were fixed; both were
+found by a requirement, not by an aggregate accuracy number.
+
+### Root cause: the appearance collapse at 8×/12×
+
+At magnifications away from the 10× nominal the reference is *decimated* rather
+than physically imaged, so the search template is formed by downsampling the
+reference and then re-upsampling. Under OpenCV's default (area-averaging)
+decimation the high-frequency edge content of the reference is averaged away
+before it is ever correlated, so at 8×/12× the template carries *less* detail
+than the true instance it is supposed to match. The oracle error (ground-truth
+window vs the correlation peak) therefore jumps from a few pixels at 10× to
+350 px at 8× and 180 px at 12× — a pure appearance/cliff failure, not a search
+failure (the search image is fine; the *template* is degraded).
+
+**Fix (equivalence-gated).** The blur applied to the reference is now drawn at
+the *effective* zoom the matcher will actually use, `sigma = cfg.zoom * scale /
+sqrt(12)`, built per scale in a blur bank (`_make_template` / `_band`) instead
+of a single approximation. At nominal 10× the new bank is bit-for-bit identical
+to the old path (equivalence gate, `tests/test_template_magnification.py`: oracle
+<= 5 px across 8/9/10/11/12×, 10× unchanged within 1e-3 px). No predicted
+coordinate or accuracy number changed at 10×; only the previously-broken
+extremes were repaired.
+
+### Why raw correlation strength is anti-correlated with true presence
+
+After the cliff fix, present pairs *still* score lower than spurious Set C
+matches: a degraded-but-present instance (8×/12×) produces a weak, smeared peak,
+while a random substrate patch can produce a sharper accidental correlation. So
+thresholding the raw peak (`diag["score"]`) rejects the wrong pairs. This is the
+reason a single threshold on correlation strength cannot reach the F1 >= 0.90
+target (it tops out at 0.877).
+
+**Fix (geometric-consistency presence signal).** A true instance, located
+anywhere in the search, aligns the full-resolution reference (warped by the
+predicted pose, `zoom = cfg.zoom*scale`, over a small ±3°/±0.15 scale grid) with
+high normalized cross-correlation; a distractor does not. `geo_consistency`
+(affine `scipy` warp + `matchTemplate`) is therefore *positively* correlated with
+true presence, unlike the peak. It is added to `presence_features` and used by a
+tiny standardized numpy logistic regression over the ten interpretable features
+(`peak_score, num_candidates_wide, uniqueness, stage2_identifiability,
+margin_strength, peak_contrast, peak_contrast_ratio, geo_consistency,
+search_noise_sigma, inverted_contrast`). The logistic model reaches **Rejection
+F1 = 0.9068 at threshold 0.5** on the 200-pair mixed set (156 present / 44
+absent, Set C substrate-only). The earlier Day-4 weights had been fit *before*
+the per-scale blur fix and were mismatched to the new feature distribution;
+retraining on the post-T3 features is what lifted F1 from 0.892 to 0.907.
+
+### Calibration: the published `score` is P(present) × geo_consistency
+
+The rubric's calibration AUC is AUC of `score` vs *correctness* (present and
+within 5 px, or absent and rejected). `P(present)` alone ranks presence but is
+blind to localization error, so it is **anti-correlated** with that correctness
+label (AUC ~ 0.48). The full-resolution alignment `geo_consistency` does rank
+localization correctness (AUC ~ 0.77). The published confidence is therefore the
+product `prediction_confidence = P(present) × geo_consistency`, which reaches
+**calibration AUC 0.77** (>= 0.75 target) while remaining in [0,1] and kept in
+the `score` column even when `found = 0`.
+
+### Limitations recorded, not hidden
+
+* **8×/12× residual risk.** The cliff is repaired to oracle <= 5 px, but the
+  logistic rejection at the extremes still depends on the warp grid; the
+  degenerate-present guard (many candidates, true instance, high geo) is
+  preserved — those pairs stay `found = 1`.
+* **Optical / Set D bonus = 0.0.** The RGB optical modality routes through
+  `optical_config` and emits confident false detections 127–863 px from ground
+  truth (20 pairs, 12 `found = 1`, 0 within 5 px). This is the bonus-only
+  optical track and does not affect the grayscale Set A/B/C deliverable; it is
+  documented here as a known limitation rather than blocked on.
+* **Thermal caveat.** Fanless machine throttles ~1.7× when hot; runtimes are
+  compared only within the same thermal state. Cool median is 3.85 s/pair
+  (<= 5 s gate).

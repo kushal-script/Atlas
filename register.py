@@ -38,7 +38,7 @@ sys.path.insert(0, str(REPO / "src"))
 import numpy as np
 
 from drift_sense.localize import load_gray, locate, optical_config, phase2_config
-from drift_sense.api import decide_found
+from drift_sense.api import decide_found, prediction_confidence
 
 OUTPUT_COLUMNS = ["pair_id", "x", "y", "theta", "scale", "found", "score"]
 
@@ -93,7 +93,14 @@ def _process(ref_path, search_path, pid):
     # Verified conventions (Day 1, tests/test_pose_conventions.py):
     theta = -diag["theta_deg"]          # CCW-positive about match centre
     scale = 10.0 * diag["scale"]        # magnification units (8, 10, 12)
-    score = float(diag["score"])
+    # The published confidence is the calibrated prediction-correctness score
+    # (Day 5, T1): P(present) x geo_consistency. P(present) alone ranks presence
+    # but is blind to localization error; multiplying by the full-resolution
+    # alignment at (x, y) makes the score monotonic with correctness, lifting the
+    # calibration AUC to >= 0.75 (vs ~0.48 for P(present) alone). It stays in the
+    # score column even when found=0, so the calibration AUC ranks correct
+    # predictions above incorrect.
+    score = prediction_confidence(diag)
     # Rejection decision (Day 4, T1+T3): the trained presence model decides whether
     # a true instance underlies the peak. Set C (no-instance) pairs are rejected.
     found = decide_found(diag, REJECTION_THRESHOLD)

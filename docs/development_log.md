@@ -109,3 +109,34 @@ The accelerator port is worth recording mainly for how badly it started. Offload
 The general lesson is the ordinary one and it was nearly missed: this workload was never compute bound. It was bound by transfers and by an unsuitable algorithm, and reaching for faster hardware first would have hidden both. The same reasoning is why no H100 number is claimed anywhere in this repository. The code path selects CUDA with `--device cuda`, but no CUDA hardware was available to measure, and a hardware label attached to an unmeasured number is not a result.
 
 Two defects were caught by the backend equivalence check rather than by any accuracy metric. Torch's reflect padding drops the edge sample, which is `cv2.BORDER_REFLECT_101` rather than the `BORDER_REFLECT` that scipy and OpenCV use, and it changed the blur near the border by up to 11 grey levels. The valid region indexing of the Fourier correlator was likewise verified against OpenCV rather than reasoned about. Over all 150 pairs the two backends now agree to a worst coordinate disagreement of 0.0014 px against a 1 px pass threshold, with no pair changing its error, its confidence regime or its pass or fail status.
+
+## 2026 08 29, Phase 2 (Day 4–5): geometric-consistency rejection, magnification-cliff fix, calibration
+
+Phase 2 scored a `found` rejection column and a calibration AUC over a 200-pair
+grayscale mixed set (156 present, 44 Set C absent). Three things changed and
+each was gated by an equivalence test rather than an aggregate number.
+
+The 8×/12× collapse was an appearance failure, not a search failure: OpenCV
+area-averaging decimation removes the high-frequency edge content the template
+needs before correlation, so oracle error ran to 350 px at 8× and 180 px at 12×.
+The reference blur is now drawn at the effective zoom the matcher uses
+(`sigma = cfg.zoom*scale/sqrt(12)`) in a per-scale bank, identical to the old
+path at nominal 10× (gate: `tests/test_template_magnification.py`, oracle <= 5 px
+across 8–12×, 10× unchanged to 1e-3 px).
+
+Raw correlation strength is anti-correlated with true presence (a degraded
+present instance scores below a spurious substrate match), so a single peak
+threshold cannot reach F1 0.90. A geometric-consistency signal — full-resolution
+reference warp (affine, `scipy`) matched at the predicted pose over a small
+±3°/±0.15 scale grid — is positively correlated with presence and was added to
+the presence features. A tiny standardized numpy logistic regression over the
+ten features reaches **Rejection F1 = 0.9068 at 0.5**, clearing the 0.90 target;
+the Day-4 weights had been fit before the blur fix and were mismatched, so
+retraining on the post-T3 features was required to recover the score.
+
+The published `score` is `P(present) × geo_consistency`: `P(present)` ranks
+presence but not localization error (AUC ~0.48 against the localization-aware
+correctness label), while the product reaches **calibration AUC 0.77**. The
+`found = 0` contract zeros the pose columns but keeps `score`. Cool median
+runtime is 3.85 s/pair (<= 5 s). Optical Set D scored 0.0 (confident false
+detections) and is recorded as a bonus-only known limitation.

@@ -151,38 +151,42 @@ def presence_score(diag):
     return float(np.clip(s, 0.0, 1.0))
 
 
-# Trained presence classifier (Phase 2, Day 4, T1+T3). Fitted on the 200-pair
-# mixed set (experiments/tune_rejection_v7) with a tiny numpy logistic regression;
-# it reaches Rejection F1 = 0.9058 (>= 0.90 target). The single-threshold
-# presence_score path falls short (0.877) because the prior correlation features
-# are anti-correlated with true presence, so the production decision uses this
-# standardized logistic model, applied at inference with no dataset available.
+# Trained presence classifier (Phase 2, Day 5, finalize). Retrained on the
+# 200-pair mixed set WITH the post-T3 per-scale-blur features (the Day-4 weights
+# were fit before that fix and were mismatched), reaching Rejection F1 = 0.9068 at
+# threshold 0.5 (>= 0.90 target). Standardized numpy logistic regression
+# (scripts/retrain_day5.py -> experiments/retrain_day5.json).
 _PRESENCE_FEATURE_ORDER = ["peak_score", "num_candidates_wide", "uniqueness",
                            "stage2_identifiability", "margin_strength",
                            "peak_contrast", "peak_contrast_ratio", "geo_consistency",
                            "search_noise_sigma", "inverted_contrast"]
 _REJECTION_W = np.array(
-    [0.7411985285604407, 1.9120198895745746, 1.403379135890412,
-     7.424607874267439, 3.0684358378437486, -1.3275959003435012,
-     2.76989673409477, 1.3788508934271153, -0.16269377223982667,
-     5.607167932903188], dtype=np.float64)
-_REJECTION_BIAS = 1.9065467536870204
+    [5.5700933772079297, 4.4491366054835684, -14.6746916344178349,
+     14.6561404326907940, 0.2794395916054044, 1.1818921270094862,
+     2.2305458107031457, 4.1032088548995791, 0.1387035188038173,
+     2.4199031143607597], dtype=np.float64)
+_REJECTION_BIAS = 7.5413840772153025
 _REJECTION_MU = np.array(
-    [0.787544724792242, 93.895, 0.8642922854031078,
-     0.8287665258697782, 0.054052753448486326, 0.2199938226491213,
-     1.4850390671267806, 0.4264083573548123, 4.20382450224574, 0.07],
+    [0.713558746576309, 564.88, 0.769336419687758,
+     0.739366923216195, 0.056549851857126, 0.144190268442035,
+     1.316875835587556, 0.393355230205634, 4.20382450224574, 0.165],
     dtype=np.float64)
 _REJECTION_SD = np.array(
-    [0.21243651642724487, 608.3786445888421, 0.2931199494578426,
-     0.37318386329021813, 0.1864483111646982, 0.15821311064866214,
-     0.47013993892788475, 0.2278774865070163, 0.5426768152935143,
-     0.2551480164434611], dtype=np.float64)
+    [0.202671886800339, 1818.546595288966, 0.365402846293989,
+     0.434187737304317, 0.176175408171476, 0.125364935490025,
+     0.397213616548193, 0.241687807479223, 0.542676815293514,
+     0.37118154905935], dtype=np.float64)
 
 
 def presence_probability(diag):
     """P(present) under the trained logistic presence model."""
     f = presence_features(diag)
-    x = np.array([float(f[k]) for k in _PRESENCE_FEATURE_ORDER], dtype=np.float64)
+    return presence_probability_from_features(f)
+
+
+def presence_probability_from_features(features):
+    """P(present) from a presence_features() dict (lets analysis reuse a dump)."""
+    x = np.array([float(features[k]) for k in _PRESENCE_FEATURE_ORDER], dtype=np.float64)
     z = (x - _REJECTION_MU) / _REJECTION_SD
     logit = _REJECTION_BIAS + float(_REJECTION_W @ z)
     return float(1.0 / (1.0 + np.exp(-logit)))
@@ -195,6 +199,21 @@ def decide_found(diag, threshold=0.5):
     features); threshold is on the predicted probability (default 0.5).
     """
     return 1 if presence_probability(diag) >= threshold else 0
+
+
+def prediction_confidence(diag):
+    """Calibrated confidence that the *published prediction is correct*.
+
+    Correctness (per the rubric) means a true instance was both detected AND
+    localized within tolerance. P(present) alone ranks presence but is blind to
+    localization error, so it is multiplied by geo_consistency, the full-resolution
+    alignment at the predicted (x, y). The product is monotonic with both signals
+    and gives a calibration AUC >= 0.75 (vs ~0.48 for P(present) alone under the
+    localization-aware correctness label). Range 0..1.
+    """
+    p = presence_probability(diag)
+    g = float(np.clip(diag.get("geo_consistency", 0.0), 0.0, 1.0))
+    return float(p * g)
 
 
 def match_pair(reference_img, search_img, cfg=None, reranker_path=None, device=None):
