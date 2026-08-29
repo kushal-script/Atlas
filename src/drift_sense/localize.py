@@ -474,6 +474,33 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
         x = px + dx + half
         y = py + dy + half
 
+    # Final rotation polish. The grid quantizes rotation and the parabolic
+    # refinement inherits that lattice; a euclidean ECC alignment between the
+    # matched template and the window under it recovers the residual rotation
+    # continuously. The motion model is deliberately euclidean rather than
+    # affine: on a periodic lattice an affine fit can slide scale by pitch
+    # fractions and made the scale estimate worse, while rotation has no such
+    # aliasing channel at this window size. Applied only when the fit converges
+    # to a small residual, otherwise the grid answer stands.
+    theta_polished = theta_best
+    py0, px0 = int(round(y - half)), int(round(x - half))
+    t_pol = tmpl_best.shape[0]
+    if (0 <= py0 and 0 <= px0 and py0 + t_pol <= search.shape[0]
+            and px0 + t_pol <= search.shape[1]):
+        win_pol = np.ascontiguousarray(search[py0:py0 + t_pol,
+                                              px0:px0 + t_pol], dtype=np.float32)
+        try:
+            warp = np.eye(2, 3, dtype=np.float32)
+            _, warp = cv2.findTransformECC(
+                np.ascontiguousarray(tmpl_best, dtype=np.float32), win_pol,
+                warp, cv2.MOTION_EUCLIDEAN,
+                (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 60, 1e-5))
+            r_res = float(np.degrees(np.arctan2(warp[1, 0], warp[0, 0])))
+            if abs(r_res) <= 1.5:
+                theta_polished = theta_best + r_res
+        except cv2.error:
+            pass
+
     # Quadrant consistency, an absolute presence check. Each quadrant of the
     # matched template is correlated independently in a small window around the
     # winning site. A true match pins every quadrant to the same offset,
@@ -510,7 +537,8 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
 
     diag = {
         "score": score_best,
-        "theta_deg": float(theta_best),
+        "theta_deg": float(theta_polished),
+        "theta_grid_deg": float(theta_best),
         "scale": float(scale_best),
         "psf_sigma_nm": float(sigma_best),
         "pose_source": "wide_grid" if used_wide else "nominal",
