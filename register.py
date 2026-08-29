@@ -38,18 +38,15 @@ from drift_sense.localize import MatchConfig, load_gray, locate, optical_config
 from drift_sense.presence import features_from_diag, presence_probability
 from scipy.ndimage import grey_dilation, grey_erosion
 
-# Polygon scaling is one of the disclosed degradations: the search capture's
-# feature widths can differ from the reference by up to twenty percent, which
-# decorrelates edge dominated correlation. When the first pass shows the
-# mislock signature, a weak peak on a degenerate surface that is still called
-# present, the reference is re matched under small morphological width
-# changes, the imaging analogue of a CD offset, and the strongest answer
-# wins. Probing severe pairs rescued three of eleven mislocks this way. The
-# rescue is skipped once the pair's wall clock budget is nearly spent, since
-# an overrun scores zero for certain.
+# Width rescue. Polygon scaling changes feature widths between the two
+# captures, so when the first pass shows the mislock signature, a weak peak on
+# a degenerate surface, the reference is re matched under a small morphological
+# width change and the higher scoring answer is kept. Two variants rather than
+# four: measured on a held out suite the pass is worth about one point of
+# localization, and every extra variant is another full pass over the pose
+# grid, so the cheapest form that keeps the gain is the one that ships.
 RESCUE_PEAK_BELOW = 0.62
 RESCUE_MARGIN = 0.02
-RESCUE_DEADLINE_S = 10.0
 
 # The presence decision. A single peak threshold cannot separate a degraded
 # present pair from a clean absent one, because an impostor reference from the
@@ -122,18 +119,12 @@ def main():
             ref, ref_rgb = load_gray(ref_path)
             search, search_rgb = load_gray(search_path)
             active_cfg = cfg_optical if (ref_rgb or search_rgb) else cfg
-            t_pair = time.perf_counter()
             x, y, diag, _ = locate(ref, search, active_cfg)
             if (float(diag["score"]) < RESCUE_PEAK_BELOW
                     and int(diag.get("num_candidates_wide", 1)) > 1
                     and not (ref_rgb or search_rgb)):
-                # strongest variants first, so a slow machine that hits the
-                # deadline after one variant still ran the most valuable one
-                for op, k in ((grey_erosion, 3), (grey_dilation, 3),
-                              (grey_erosion, 2), (grey_dilation, 2)):
-                    if time.perf_counter() - t_pair > RESCUE_DEADLINE_S:
-                        break
-                    ref_cd = op(ref, size=(k, k)).astype(ref.dtype)
+                for op in (grey_erosion, grey_dilation):
+                    ref_cd = op(ref, size=(3, 3)).astype(ref.dtype)
                     x2, y2, d2, _ = locate(ref_cd, search, active_cfg)
                     if float(d2["score"]) > float(diag["score"]) + RESCUE_MARGIN:
                         x, y, diag = x2, y2, d2
