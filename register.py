@@ -102,10 +102,10 @@ def _process(ref_path, search_path, pid):
     # The published confidence is the calibrated prediction-correctness score
     # (Day 5, T1): P(present) x geo_consistency. P(present) alone ranks presence
     # but is blind to localization error; multiplying by the full-resolution
-    # alignment at (x, y) makes the score monotonic with correctness, lifting the
-    # calibration AUC to >= 0.75 (vs ~0.48 for P(present) alone). It stays in the
-    # score column even when found=0, so the calibration AUC ranks correct
-    # predictions above incorrect.
+    # alignment at (x, y) makes the score monotonic with correctness. It stays in
+    # the score column even when found=0, so the calibration AUC ranks correct
+    # predictions above incorrect. The AUC is computed present-only by
+    # scripts/score_phase2.py.
     score = prediction_confidence(diag)
     # Rejection decision (Day 4, T1+T3): the trained presence model decides whether
     # a true instance underlies the peak. Set C (no-instance) pairs are rejected.

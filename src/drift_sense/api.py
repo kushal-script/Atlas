@@ -207,13 +207,14 @@ def prediction_confidence(diag):
     Correctness (per the rubric) means a true instance was both detected AND
     localized within tolerance. P(present) alone ranks presence but is blind to
     localization error, so it is multiplied by geo_consistency, the full-resolution
-    alignment at the predicted (x, y). The product is monotonic with both signals
-    and gives a calibration AUC >= 0.75 (vs ~0.48 for P(present) alone under the
-    localization-aware correctness label). Range 0..1.
+    alignment at the predicted (x, y). The product is monotonic with both signals.
+    The calibration AUC is computed over PRESENT pairs (correctly-localized vs
+    not) by scripts/score_phase2.py and reported there.
     """
     p = presence_probability(diag)
     g = float(np.clip(diag.get("geo_consistency", 0.0), 0.0, 1.0))
     return float(p * g)
+
 
 
 def match_pair(reference_img, search_img, cfg=None, reranker_path=None, device=None):

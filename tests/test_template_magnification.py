@@ -26,7 +26,9 @@ sys.path.insert(0, str(REPO / "scripts"))
 from drift_sense.localize import phase2_config, locate, MatchConfig
 from generate_amat_proxy import BASE_PARAMS, TIERS, generate_pair
 
-# Pre-change nominal-10x answer (captured on commit before the T1 blur fix).
+# Pre-change nominal-10x answer (captured on commit before the T1 blur fix;
+# antialias remains off in phase2_config, so the per-scale blur is a no-op at
+# scale=1.0 and this baseline is unchanged within 1e-3 px).
 BASELINE_X = 598.9141913354397
 BASELINE_Y = 556.8861803412437
 NOMINAL_EQ_TOL = 1e-3

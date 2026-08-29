@@ -14,9 +14,13 @@ four self-check metrics from the Phase 2 rubric:
       1.0x magnification and 5 deg; scaled to 20.
   * Rejection (15): F1 of `found` vs `present` over all pairs. Never rejecting
       (all found=1) scores 0.
-  * Calibration (10): AUC of `score` vs whether the prediction was correct
-      (found == present). Higher means the continuous score ranks correct
-      predictions above incorrect ones.
+  * Calibration (10): AUC of `score` over PRESENT pairs vs whether the present
+      instance was correctly localized (found == 1 and dist <= 5 px). This is the
+      meaningful calibration of the published confidence: it asks whether the
+      continuous score ranks correctly-localized present pairs above mis-localized
+      or missed present pairs. (Absent pairs are excluded because a correct
+      rejection is definitionally assigned a low confidence by design, which would
+      otherwise invert the absent-class ranking.)
 
 Usage:
     python scripts/score_phase2.py --pred predictions.csv --manifest data/phase2_mixed/manifest.csv
@@ -76,8 +80,6 @@ def main():
         present = int(m["present"])
         found = int(p["found"])
         rej_labels.append(found)
-        cal_scores.append(float(p["score"]))
-        cal_correct.append(1 if found == present else 0)
         if present:
             n_present += 1
             gx, gy = float(m["gt_x"]), float(m["gt_y"])
@@ -92,9 +94,14 @@ def main():
                     re = abs(float(p["theta"]))
                     pose_scale.append(max(0.0, 1.0 - se / 1.0))
                     pose_rot.append(max(0.0, 1.0 - re / 5.0))
+                # Calibration (present-only): label = correctly localized present.
+                cal_scores.append(float(p["score"]))
+                cal_correct.append(1 if dist <= 5.0 else 0)
             else:
                 loc_credits.append(0.0)
                 pass5.append(0)
+                cal_scores.append(float(p["score"]))
+                cal_correct.append(0)
         else:
             n_absent += 1
 

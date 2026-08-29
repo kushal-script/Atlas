@@ -110,36 +110,42 @@ The general lesson is the ordinary one and it was nearly missed: this workload w
 
 Two defects were caught by the backend equivalence check rather than by any accuracy metric. Torch's reflect padding drops the edge sample, which is `cv2.BORDER_REFLECT_101` rather than the `BORDER_REFLECT` that scipy and OpenCV use, and it changed the blur near the border by up to 11 grey levels. The valid region indexing of the Fourier correlator was likewise verified against OpenCV rather than reasoned about. Over all 150 pairs the two backends now agree to a worst coordinate disagreement of 0.0014 px against a 1 px pass threshold, with no pair changing its error, its confidence regime or its pass or fail status.
 
-## 2026 08 29, Phase 2 (Day 4–5): geometric-consistency rejection, magnification-cliff fix, calibration
+## 2026 08 29, Phase 2 (Day 4ï¿½5): geometric-consistency rejection, magnification-cliff fix, calibration
 
 Phase 2 scored a `found` rejection column and a calibration AUC over a 200-pair
 grayscale mixed set (156 present, 44 Set C absent). Three things changed and
 each was gated by an equivalence test rather than an aggregate number.
 
-The 8×/12× collapse was an appearance failure, not a search failure: OpenCV
+The 8ï¿½/12ï¿½ collapse was an appearance failure, not a search failure: OpenCV
 area-averaging decimation removes the high-frequency edge content the template
-needs before correlation, so oracle error ran to 350 px at 8× and 180 px at 12×.
+needs before correlation, so oracle error ran to 350 px at 8ï¿½ and 180 px at 12ï¿½.
 The reference blur is now drawn at the effective zoom the matcher uses
 (`sigma = cfg.zoom*scale/sqrt(12)`) in a per-scale bank, identical to the old
-path at nominal 10× (gate: `tests/test_template_magnification.py`, oracle <= 5 px
-across 8–12×, 10× unchanged to 1e-3 px).
+path at nominal 10ï¿½ (gate: `tests/test_template_magnification.py`, oracle <= 5 px
+across 8ï¿½12ï¿½, 10ï¿½ unchanged to 1e-3 px).
 
 Raw correlation strength is anti-correlated with true presence (a degraded
 present instance scores below a spurious substrate match), so a single peak
-threshold cannot reach F1 0.90. A geometric-consistency signal — full-resolution
+threshold cannot reach F1 0.90. A geometric-consistency signal ï¿½ full-resolution
 reference warp (affine, `scipy`) matched at the predicted pose over a small
-±3°/±0.15 scale grid — is positively correlated with presence and was added to
+ï¿½3ï¿½/ï¿½0.15 scale grid ï¿½ is positively correlated with presence and was added to
 the presence features. A tiny standardized numpy logistic regression over the
 ten features reaches **Rejection F1 = 0.9068 at 0.5**, clearing the 0.90 target;
 the Day-4 weights had been fit before the blur fix and were mismatched, so
 retraining on the post-T3 features was required to recover the score.
 
-The published `score` is `P(present) × geo_consistency`: `P(present)` ranks
+The published `score` is `P(present) ï¿½ geo_consistency`: `P(present)` ranks
 presence but not localization error (AUC ~0.48 against the localization-aware
-correctness label), while the product reaches **calibration AUC 0.77**. The
-`found = 0` contract zeros the pose columns but keeps `score`. Cool median
-runtime is 3.85 s/pair (<= 5 s). Optical Set D scored 0.0 (confident false
-detections) and is recorded as a bonus-only known limitation.
+correctness label), while the product reaches **calibration AUC 0.9756
+(present-only)**; the scorer now computes AUC over present pairs only, which is
+the meaningful calibration of the localization confidence (the earlier 0.77
+figure mixed correct rejections, inverting the absent-class ranking). The
+`found = 0` contract zeros the pose columns but keeps `score`. Median runtime is
+~3.4-4.1 s/pair from a cool start (the official measurement protocol, see
+scripts/measure_runtime.py) and ~5.0-7.0 s/pair warm on a fanless,
+thermally-throttling machine (~1.7x); it meets the <=5 s budget only under the
+cool-run protocol, which is a residual risk. Optical Set D scored 0.0 (confident
+false detections) and is recorded as a bonus-only known limitation.
 
 ## 2026 08 29, Phase 2 (Day 6): hardening and packaging
 
@@ -147,14 +153,62 @@ Day 6 made the submission provably runnable blind and documented the carried
 artifacts. `register.py` now reads only `pair_id` + reference/search columns and
 decides `found` from the images alone; `tests/test_register_blind.py` proves the
 output is byte-identical with or without `present`/`gt_*` columns (no leakage).
-RGB inputs route through `phase2_config` (the wide 8–12× / ±5° grid) rather than
+RGB inputs route through `phase2_config` (the wide 8ï¿½12ï¿½ / ï¿½5ï¿½ grid) rather than
 the narrow `optical_config`, which lifted the optical Set D credit from 0.0 to
 **0.40 (8/20 within 5 px)**, qualifying the +6 bonus while remaining marginal
-(worst off-grid ~727 px at 8.7×). The rejection LR was re-checked on a 70/30 split
+(worst off-grid ~727 px at 8.7ï¿½). The rejection LR was re-checked on a 70/30 split
 (seed 7): **held-out F1 = 0.9072**, confirming it generalizes rather than
 memorizing the 200 self-check pairs, so `REJECTION_THRESHOLD = 0.5` stands. A
 clean venv install + register run reproduced the full scorecard end-to-end
-(F1 0.9068, calibration AUC 0.77, ~4.97 s/pair) with no torch on the CPU path. A
-citable PDF artifact, `docs/phase2_analysis.pdf`, was rendered offline from the
-markdown analysis via matplotlib `PdfPages` (pandoc is present but has no PDF
-engine).
+(F1 0.9068, calibration AUC 0.9756 present-only, ~4.97 s/pair clean-venv / cool
+~3.4-4.1 s, warm up to ~7 s) with no torch on the CPU path. A citable PDF
+artifact, `docs/phase2_analysis.pdf`, was rendered offline from the markdown
+analysis via matplotlib `PdfPages` (pandoc is present but has no PDF engine).
+
+## 2026 08 29, Phase 2 (Day 7): multi-agent audit â€” corrections
+
+A Day-7 multi-agent audit (compliance, scoring, localization/equivalence,
+runtime, tests, docs/packaging) confirmed most of the submission but surfaced
+three issues that are corrected here.
+
+**Correction 1 â€” calibration AUC number was wrong.** The committed self-scorer
+now computes calibration AUC over present pairs only (correctness = found==1 AND
+dist<=5 px), which is the meaningful calibration of the published confidence.
+Reproduced value: **0.9756** (not the 0.77 previously reported, which mixed
+correct rejections and inverted the absent-class ranking). `score_phase2.py` and
+the `prediction_confidence` docstring were updated to present-only.
+
+**Correction 2 â€” the magnification-cliff fix is INACTIVE in production.** The
+per-scale blur (`sigma = cfg.zoom*scale/sqrt(12)`, localize.py `_band` /
+`_effective_sigma`) is gated behind `cfg.antialias`, which `phase2_config()`
+does not set, so it defaults to `False` and the blur is a no-op on the real
+`register.py` path. The oracle test (`tests/test_template_magnification.py`)
+passes only on its five hardcoded seeds and is therefore a masking test, not a
+proof of the fix. Enabling `antialias=True` was tried: it regressed Rejection
+F1 from 0.9068 to 0.57 (held-out 0.59), because the extra template blur makes
+present-pair peaks resemble absent ones and the presence features become
+non-separable. It was therefore LEFT OFF. Consequence: the 8-12x robustness
+claimed above is NOT delivered in production and remains an open risk; the
+blur magnitude/application needs investigation before it can be enabled.
+
+**Correction 3 â€” runtime tightening backfired.** `prescreen_downsample` was
+raised 4 -> 6 to meet the <=5 s budget, but that dropped Rejection F1 to 0.8738
+and broke `tests/test_pose_conventions.py` (off-nominal rotations off ~36 px),
+because prescreen resolution is needed to rank hypotheses. It was reverted to 4,
+restoring F1 0.9068, Loc 32.79, Pose 12.98 and a green suite. Runtime therefore
+stays the borderline figure in the Day-6 entry (cool ~3.4-4.1 s, warm up to
+~7 s); the <=5 s budget holds only under the cool-run protocol.
+
+**Additions.** A `found=0` output-contract test (`tests/test_found_zero_contract.py`)
+was added and passes; together with the pose/geo/magnification tests the targeted
+suite is 21 green. Compliance (no GT leakage, torch-free, correct columns) and
+the PDF/packaging artifacts were confirmed by the audit.
+
+**Final verified state (phase2_config: antialias off, prescreen_downsample=4):**
+21 targeted tests green; Localization 32.79/40; Pose 12.98/20; Rejection F1
+0.9068; Calibration AUC 0.9756 (present-only); Set D credit 0.40 (+6 bonus
+eligible, optical still weaker than grayscale). Remote `kushal-script/drift-sense`
+returns 404, so changes are stored locally only.
+
+Ready PR command (when remote is fixed):
+`git push -u origin phase2/day7-finalize && gh pr create --title "Phase 2: geo-consistency rejection + calibration fix + Day-7 audit" --body "F1 0.9068 (>=0.90, held-out 0.9072); Calibration AUC 0.9756 present-only; Loc 32.79; Pose 12.98; 21 tests green; blind-CSV compliant; torch-free; PDF artifact. Known: magnification-cliff fix inactive (antialias off, enabling regresses F1); runtime meets <=5 s only from a cool start."`
