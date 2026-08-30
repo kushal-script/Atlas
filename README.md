@@ -274,11 +274,11 @@ Measured by running `register.py` itself over a 108 pair grayscale holdout suite
 
 | Component | Points | Measured | Detail |
 | --- | --- | --- | --- |
-| Localization | 40 | 29.2 | credit 0.810 nominal, 0.667 degraded |
-| Pose recovery | 20 | 17.7 | scale credit 0.89, rotation credit 0.88 |
-| Rejection | 15 | 9.8 | reject class F1 0.655, precision 0.56, recall 0.79 |
-| Confidence calibration | 10 | 9.3 | AUC 0.925 |
-| Core total | 85 | 66.0 | |
+| Localization | 40 | 29.24 | credit 0.810 nominal, 0.667 degraded |
+| Pose recovery | 20 | 17.73 | scale credit 0.89, rotation credit 0.88 |
+| Rejection | 15 | 9.83 | reject class F1 0.655, precision 0.56, recall 0.79 |
+| Confidence calibration | 10 | 9.25 | AUC 0.925 |
+| Core total | 85 | 66.05 | components sum exactly; two decimals because at one the calibration row rounds ambiguously |
 
 Rotation lands within a quarter degree, the full credit band, on the large majority of held out pairs after a final euclidean alignment polish; the motion model is euclidean rather than affine on purpose, because an affine fit on a periodic lattice slides scale by pitch fractions and measurably degraded the scale estimate.
 
@@ -291,6 +291,10 @@ The low rejection precision is not the loss it appears to be. Of the present pai
 The optical bonus set is scored separately, since it gates on a localization credit of 0.40 with the grayscale sets at 0.50. Three independently generated RGB brightfield suites under disjoint master seeds return credit 0.433 on 36 pairs, 0.592 on 24 and 0.619 on 72, pooling to 0.563 over 132 pairs, against a weighted grayscale credit of 0.72. The blind bonus set is 20 pairs, and per pair credit there is close to bimodal, 26 zeros and 39 full marks in the 72 pair suite, so the set mean carries real sampling noise: bootstrapping 20 pair draws from that distribution puts the fifth percentile at 0.44 and the probability of missing the gate at about 2 percent. That figure is the optimistic reading, because the three suite means themselves spread more than sampling alone explains, and because it assumes the organiser's optical analogue resembles this generator's. The spread between the suite means is the sampling variance of small sets rather than a difference in method, and the pooled figure is the number to plan against. The addendum discloses the bonus set as reference present and scores its rejection nowhere, so an RGB pair is always reported found, the disclosed fact used the way the disclosed pose bounds are; before that rule the presence gate rejected 2 of the 72 optical pairs and forfeited 0.011 credit for nothing.
 
 That credit was 0.10 until the fault turned out to be in our own generator and not in the matcher. The optical image formation applied the Abbe diffraction limit literally, as sigma equals 0.21 lambda over NA converted through the pixel pitch, which at a one nanometre pitch is a 126 px blur that erases every feature the reference is supposed to carry. The correct reading is that a brightfield microscope resolving a few hundred nanometres samples a wafer at a pitch matched to that resolution, so the blur is a small number of pixels wide by construction; the model is now stated in resolution relative pixels and scaled by wavelength. Correcting it moved credit from 0.10 to 0.43 in one change. A sweep of four wider blur banks afterwards found none that beat the preset already carried over from Phase 1, and summing the colour planes scored worse at twice the runtime, so both were rejected and recorded rather than shipped.
+
+**How much of the degraded loss is reachable at all.** The distinction between a search that is not finding a recoverable answer and evidence that prefers the wrong one decides what is worth building, so it is measured rather than assumed. `scripts/oracle_probe.py` hands the matcher the true zoom and rotation from the generator's own record, which no scored run has, and asks whether the true site then wins the correlation. At severity 1 it wins on 88 percent of pairs, and where an impostor wins it wins by 0.005. At severity 3, 64 percent. At severity 4, **34 percent**, with the winning impostor ahead by a median of 0.054, eighteen times the margin the width rescue needs to overturn an answer.
+
+A perfect pose search would therefore localize about one severity 4 pair in three; the shipped pipeline scores about one in five, so most of the distance to a perfect search is already closed and the majority of what remains is information limited. That is the quantitative reason every configuration experiment aimed at the degraded set measured negative, and the reason the honest response there is the found flag and a low score rather than a confident wrong centre: on a real tool a false grab silently corrupts a measurement while a rejection costs one cheap rescan.
 
 **What the degraded set is actually limited by.** On a severity balanced suite of 150 degraded pairs the credit falls monotonically with severity, 0.788, 0.637, 0.433, 0.206, and at the hardest level four fifths of pairs miss by hundreds of pixels. The presence decision is not what caps it: of 52 rejected present pairs only 2 would have earned any credit if accepted, so rejecting nothing at all would score 0.535 against the 0.521 it scores now. The limit is localization capability under heavy degradation, which rules out the two obvious next moves, loosening the presence threshold and adding tone normalization against charging, before either was tried.
 
