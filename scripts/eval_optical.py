@@ -66,6 +66,7 @@ def main():
     ap.add_argument("--denoise", type=float, default=None)
     ap.add_argument("--label", default="")
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--dump", type=Path, default=None)
     args = ap.parse_args()
 
     rows = [r for r in csv.DictReader(open(args.dataset / "ground_truth.csv"))
@@ -99,6 +100,11 @@ def main():
             e = float(np.hypot(x - float(r["gt_x"]), y - float(r["gt_y"])))
             errs.append(e); creds.append(credit(e))
         e = np.array(errs)
+        if args.dump:
+            with open(args.dump, "w", newline="") as fh:
+                w = csv.writer(fh); w.writerow(["pair_id", "err", "credit"])
+                for r_, e_, c_ in zip(rows, errs, creds):
+                    w.writerow([r_["pair_id"], f"{e_:.3f}", c_])
         tag = args.label or strat
         print(f"  {tag:28s} credit {np.mean(creds):.3f}  within5px {(e <= 5).mean()*100:3.0f}%  "
               f"median {np.median(e):7.2f}px  {np.median(ts):.2f}s/pair", flush=True)

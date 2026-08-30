@@ -42,6 +42,10 @@ MIX = (("A_nominal", 0.35), ("B_degraded", 0.35), ("C_absent", 0.20), ("D_optica
 MIXES = {
     "blind": MIX,
     "degraded": (("A_nominal", 0.25), ("B_degraded", 0.75)),
+    # The bonus set is a tenth of a proportional suite, so confirming its gate
+    # margin on a proportional draw means generating ten times the pairs that
+    # bear on the question. This mix draws the bonus set alone.
+    "optical": (("D_optical", 1.0),),
 }
 
 
