@@ -34,7 +34,7 @@ one pixel as soon as the electrons are there to see with.
 
 ## What follows from it
 
-Seventy four percent of the collapse is shot noise and optical blur. Neither is
+Sixty five percent of the whole loss is shot noise and optical blur, seventy four percent of the part any single factor explains; the twelve percent gap is interaction this design cannot split. Neither is
 corruption applied to information that exists; both are information that was
 never collected, so no filter, deconvolution or learned prior recovers it. The
 remaining twenty six percent is structured and inverts in principle.

@@ -26,6 +26,8 @@ the same peak statistics the Phase 1 confidence regimes already used.
 import argparse
 import csv
 import json
+import math
+import signal
 import sys
 import time
 from pathlib import Path
@@ -45,6 +47,37 @@ from scipy.ndimage import grey_dilation, grey_erosion
 # four: measured on a held out suite the pass is worth about one point of
 # localization, and every extra variant is another full pass over the pose
 # grid, so the cheapest form that keeps the gain is the one that ships.
+# The scored run gives every pair a hard twenty second timeout and a pair that
+# overruns scores zero. The internal budget gates optional stages but cannot
+# abort work already running, so a wall clock alarm is armed per pair as the
+# last line of defence: it fires below the limit, unwinds into the handler that
+# already writes a conservative row, and leaves the remaining pairs to run. On
+# a platform without SIGALRM the alarm is simply absent and the internal budget
+# is all there is, which is the behaviour this file had before.
+PAIR_HARD_TIMEOUT_S = 18.0
+_HAS_ALARM = hasattr(signal, "SIGALRM") and hasattr(signal, "setitimer")
+
+
+class _PairTimeout(Exception):
+    pass
+
+
+def _on_alarm(signum, frame):
+    raise _PairTimeout()
+
+
+def _finite(v, fallback=0.0):
+    """Never write nan or inf into the predictions file.
+
+    A degenerate pair, a constant image or an all zero variance window can put
+    a nan through normalized correlation, and the row formatting would render
+    it as the literal text nan, which is not a number the scorer can read and
+    may cost more than the pair itself.
+    """
+    v = float(v)
+    return v if math.isfinite(v) else float(fallback)
+
+
 RESCUE_PEAK_BELOW = 0.62
 RESCUE_MARGIN = 0.02
 # Fraction of the pair's budget past which no further rescue pass is started.
@@ -64,9 +97,22 @@ SCORE_WIDTH = 0.08
 
 
 def _load_model():
+    """The fitted presence decision, or None to fall back to a peak threshold.
+
+    The fallback is much weaker, reject class F1 about 0.46 against 0.655, so a
+    silent fall back would quietly cost points with nothing in the output to
+    say why. Any failure to load is therefore reported on stderr, which does
+    not disturb the predictions file.
+    """
     try:
-        return json.load(open(MODEL_PATH))
-    except Exception:
+        model = json.load(open(MODEL_PATH))
+        if len(model.get("weights", [])) != len(model.get("features", [])):
+            raise ValueError("weights and features disagree in length")
+        return model
+    except Exception as exc:
+        print(f"WARNING: presence model at {MODEL_PATH} unusable ({exc}); "
+              f"falling back to the peak threshold rule, which scores worse",
+              file=sys.stderr, flush=True)
         return None
 
 
@@ -85,7 +131,21 @@ def _read_pairs(path):
             sk = next((keys[k] for k in ("search_path", "search", "wide_path", "wide")
                        if k in keys), None)
             if not rk or not sk:
-                raise SystemExit("pairs csv needs reference and search path columns")
+                # A manifest whose path columns cannot be recognised used to
+                # end the process before a single row was written, which turns
+                # one unreadable header into a zero on every pair. The run
+                # continues instead: each row still gets an id and a pair of
+                # paths that will fail to load, which the per pair handler
+                # turns into a conservative rejection, so the absent pairs
+                # still score and the failure is reported rather than fatal.
+                if i == 0:
+                    print("WARNING: pairs csv has no recognised reference and "
+                          "search path columns; every row will be reported "
+                          f"absent. Columns seen: {sorted(row)}",
+                          file=sys.stderr, flush=True)
+                pid = row.get(keys.get("pair_id", ""), "") or f"row_{i:04d}"
+                pairs.append((pid, Path(""), Path("")))
+                continue
             pid = row.get(keys.get("pair_id", ""), "") or f"row_{i:04d}"
             # One unreadable row must not cost the other hundred and ninety
             # nine. A row whose paths are missing or malformed still gets a
@@ -129,9 +189,13 @@ def main():
     cfg_optical = optical_config()
     model = _load_model()
     rows = []
+    if _HAS_ALARM:
+        signal.signal(signal.SIGALRM, _on_alarm)
     for pid, ref_path, search_path in _read_pairs(args.input):
         try:
             t_pair = time.perf_counter()
+            if _HAS_ALARM:
+                signal.setitimer(signal.ITIMER_REAL, PAIR_HARD_TIMEOUT_S)
             ref, ref_rgb = load_gray(ref_path)
             search, search_rgb = load_gray(search_path)
             active_cfg = cfg_optical if (ref_rgb or search_rgb) else cfg
@@ -185,6 +249,9 @@ def main():
                                diag.get("num_candidates_wide", 1))
             theta = active_cfg.theta_report_sign * float(diag["theta_deg"])
             scale = float(diag["scale"]) * active_cfg.zoom
+            x, y = _finite(x), _finite(y)
+            theta, scale = _finite(theta), _finite(scale, active_cfg.zoom)
+            score = _finite(score)
             if found:
                 rows.append({"pair_id": pid, "x": f"{x:.3f}", "y": f"{y:.3f}",
                              "theta": f"{theta:.3f}", "scale": f"{scale:.4f}",
@@ -192,12 +259,23 @@ def main():
             else:
                 rows.append({"pair_id": pid, "x": 0, "y": 0, "theta": 0,
                              "scale": 0, "found": 0, "score": f"{score:.5f}"})
+        except _PairTimeout:
+            # The pair reached the wall clock limit. Its row is written and the
+            # loop moves on, so one slow pair costs one pair rather than every
+            # pair that would have followed it.
+            print(f"WARNING: {pid} exceeded {PAIR_HARD_TIMEOUT_S:.0f}s and was "
+                  f"reported absent", file=sys.stderr, flush=True)
+            rows.append({"pair_id": pid, "x": 0, "y": 0, "theta": 0,
+                         "scale": 0, "found": 0, "score": "0.00000"})
         except Exception:
             # A pair that fails still gets its row: a missing row scores zero
             # for certain, a conservative rejection at least scores the pairs
             # where rejection was the right call.
             rows.append({"pair_id": pid, "x": 0, "y": 0, "theta": 0,
                          "scale": 0, "found": 0, "score": "0.00000"})
+        finally:
+            if _HAS_ALARM:
+                signal.setitimer(signal.ITIMER_REAL, 0.0)
         print(f"{pid} found={rows[-1]['found']} score={rows[-1]['score']}", flush=True)
 
     with open(args.output, "w", newline="") as fh:

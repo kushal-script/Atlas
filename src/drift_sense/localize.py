@@ -446,6 +446,20 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
     tmpl_best = _make_template(ref_bank[sigma_best], theta_best, scale_best, cfg)
     resp = corr.full(tmpl_best)
     score_best = float(resp.max())
+    # Pose stability: where does the argmax go when the rotation is perturbed
+    # by one refine step. A true match is pinned by aperiodic content and its
+    # argmax stays put; a lattice alias lock is free to jump to another cell.
+    # Diagnostic only, measured for the presence decision; it does not touch
+    # the answer.
+    _py0, _px0 = np.unravel_index(int(np.argmax(resp)), resp.shape)
+    _stab = []
+    for _dth in (-cfg.refine_rot_step_deg, cfg.refine_rot_step_deg):
+        _tp = _make_template(ref_bank[sigma_best], theta_best + _dth, scale_best, cfg)
+        _rp = corr.full(_tp)
+        if _rp.shape == resp.shape:
+            _pyy, _pxx = np.unravel_index(int(np.argmax(_rp)), _rp.shape)
+            _stab.append(float(np.hypot(_pxx - _px0, _pyy - _py0)))
+    pose_stability_px = float(np.median(_stab)) if _stab else -1.0
 
     # How far the best peak stands clear of the rest of the surface. The raw
     # correlation value falls with noise, so an absolute threshold on it cannot
@@ -638,6 +652,7 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
         "resp_median": _med,
         "resp_p99": _p99,
         "peak_prominence": float(peak_prominence),
+        "pose_stability_px": float(pose_stability_px),
         "quad_disp": float(quad_disp),
         "quad_agree": int(quad_agree),
         "peak_over_p99": float(peak_over_p99),

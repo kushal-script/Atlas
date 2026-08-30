@@ -15,6 +15,16 @@ import json
 import numpy as np
 
 
+def _pct(v):
+    """Quartiles and tails, because a credit tier hides where inside it a value fell."""
+    if not v:
+        return {}
+    a = np.asarray(v, float)
+    return {"n": int(a.size), "median": float(np.median(a)),
+            "p25": float(np.percentile(a, 25)), "p75": float(np.percentile(a, 75)),
+            "p90": float(np.percentile(a, 90)), "max": float(a.max())}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pred", required=True)
@@ -31,6 +41,13 @@ def main():
     pose_s, pose_r = [], []
     tp = fp = fn = tn = 0
     scores, labels = [], []
+    # A single aggregate hides where the method is and is not making progress.
+    # The degraded set is four populations with very different ceilings, the
+    # pose credit tiers hide whether an error sat just outside a band or far
+    # from it, and the area under the curve rewards ranking while saying
+    # nothing about whether the probabilities themselves are honest.
+    by_sev = {}
+    raw_scale, raw_rot, raw_err = [], [], []
     for pid, t in truth.items():
         p = preds.get(pid)
         t_found = int(t["found"]) == 1
@@ -46,6 +63,11 @@ def main():
                 rerr = abs(float(p["theta"]) - float(t["gt_rotation_deg"]))
                 pose_s.append(1.0 if zerr <= 1 else 0.6 if zerr <= 2 else 0.3 if zerr <= 5 else 0.0)
                 pose_r.append(1.0 if rerr <= 0.25 else 0.6 if rerr <= 0.5 else 0.3 if rerr <= 1.0 else 0.0)
+                raw_scale.append(zerr); raw_rot.append(rerr)
+            if p_found and err < 1e8:
+                raw_err.append(err)
+            key = f"{t['set']}/sev{t['severity']}"
+            by_sev.setdefault(key, []).append(c)
             ok = p_found and err <= 5
         else:
             ok = not p_found
@@ -73,6 +95,30 @@ def main():
     auc = ((sum(ranks[i] for i in pos) - len(pos) * (len(pos) + 1) / 2)
            / max(len(pos) * len(neg), 1)) if pos and neg else 1.0
 
+    # Brier score over the same rows the area under the curve uses. The two
+    # answer different questions: a model can rank perfectly and still be
+    # systematically over confident, which the ranking metric cannot see.
+    sc = np.asarray(scores, float); lb = np.asarray(labels, float)
+    brier = float(np.mean((sc - lb) ** 2)) if len(sc) else 0.0
+    base = float(lb.mean()) if len(lb) else 0.0
+    brier_ref = float(np.mean((base - lb) ** 2)) if len(lb) else 0.0
+    # Murphy's two term decomposition over deciles of the reported score:
+    # reliability is how far each bin's mean score sits from its own hit rate,
+    # resolution is how far the bins separate from the base rate.
+    rel = res = 0.0
+    if len(sc):
+        edges = np.linspace(0.0, 1.0 + 1e-9, 11)
+        idx = np.clip(np.digitize(sc, edges) - 1, 0, 9)
+        for b in range(10):
+            m = idx == b
+            if not m.any():
+                continue
+            w = m.sum() / len(sc)
+            rel += w * (sc[m].mean() - lb[m].mean()) ** 2
+            res += w * (lb[m].mean() - base) ** 2
+    cdf = {f"within_{q}px": float(np.mean(np.asarray(raw_err) <= q)) if raw_err else 0.0
+           for q in (0.5, 1.0, 2.0, 5.0)}
+
     rep = {"pairs": len(truth),
            "localization": {"credit_A": credit_A, "credit_B": credit_B, "points": loc_pts},
            "pose": {"scale_credit": float(np.mean(pose_s)) if pose_s else 0,
@@ -80,7 +126,16 @@ def main():
                     "points": pose_pts},
            "rejection": {"f1": f1, "precision": prec, "recall": rec,
                          "tp": tp, "fp": fp, "fn": fn, "points": 15 * f1},
-           "calibration": {"auc": float(auc), "points": 10 * float(auc)},
+           "calibration": {"auc": float(auc), "points": 10 * float(auc),
+                           "brier": brier, "brier_vs_base_rate": brier_ref,
+                           "brier_reliability": rel, "brier_resolution": res},
+           "per_severity_credit": {k: {"n": len(v), "credit": float(np.mean(v))}
+                                   for k, v in sorted(by_sev.items())},
+           "error_distribution": {
+               "localization_px": _pct(raw_err),
+               "scale_error_pct": _pct(raw_scale),
+               "rotation_error_deg": _pct(raw_rot),
+               "localization_cdf": cdf},
            "estimated_core": loc_pts + pose_pts + 15 * f1 + 10 * float(auc)}
     print(json.dumps(rep, indent=2))
 

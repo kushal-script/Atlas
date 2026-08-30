@@ -133,6 +133,11 @@ def main():
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--harvest", type=Path, default=None,
                     help="reuse a previous harvest instead of running the localizer again")
+    ap.add_argument("--pool", type=Path, nargs="*", default=[],
+                    help="additional harvests to pool into the sweep. One suite of forty odd "
+                         "degraded pairs carries enough spread that a threshold chosen on it "
+                         "is chosen partly on its draw; pooling several disjoint seeds picks "
+                         "an operating point that does not depend on which one was measured")
     args = ap.parse_args()
     model = json.loads(MODEL.read_text())
 
@@ -146,6 +151,15 @@ def main():
         target.parent.mkdir(parents=True, exist_ok=True)
         with open(target, "w", newline="") as fh:
             w = csv.DictWriter(fh, fieldnames=list(rows[0].keys())); w.writeheader(); w.writerows(rows)
+
+    for extra in args.pool:
+        add = list(csv.DictReader(open(extra)))
+        rows += [dict(r, truth_found=int(r["truth_found"]), quad_agree=int(r["quad_agree"]))
+                 for r in add]
+        print(f"  pooled in {extra} ({len(add)} pairs)")
+    if args.pool:
+        n_abs = sum(1 for r in rows if r["truth_found"] == 0)
+        print(f"  sweeping over {len(rows)} pairs, {n_abs} of them absent")
 
     shipped = float(model["prob_threshold"])
     grid = sorted(set(list(np.round(np.arange(0.05, 0.96, 0.025), 4)) + [shipped]))
