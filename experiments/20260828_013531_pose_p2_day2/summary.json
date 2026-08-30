@@ -1,0 +1,97 @@
+{
+  "tolerance_px": 5.0,
+  "tier": "medium",
+  "n_pairs": 25,
+  "boundary_bias": 1.0,
+  "note": "every site straddles a boundary so content is identifiable, isolating pose sensitivity from periodic ambiguity",
+  "overall": {
+    "pass_rate_pct": 48.0,
+    "median_px": 9.312,
+    "mean_px": 206.07,
+    "worst_px": 1186.7
+  },
+  "by_magnification": [
+    {
+      "value": 8.0,
+      "n": 5,
+      "pass_rate_pct": 20.0,
+      "median_px": 109.638,
+      "mean_px": 406.44,
+      "worst_px": 1186.7
+    },
+    {
+      "value": 9.0,
+      "n": 5,
+      "pass_rate_pct": 40.0,
+      "median_px": 31.566,
+      "mean_px": 391.22,
+      "worst_px": 988.6
+    },
+    {
+      "value": 10.0,
+      "n": 5,
+      "pass_rate_pct": 60.0,
+      "median_px": 1.995,
+      "mean_px": 18.09,
+      "worst_px": 55.3
+    },
+    {
+      "value": 11.0,
+      "n": 5,
+      "pass_rate_pct": 100.0,
+      "median_px": 1.532,
+      "mean_px": 1.64,
+      "worst_px": 2.0
+    },
+    {
+      "value": 12.0,
+      "n": 5,
+      "pass_rate_pct": 20.0,
+      "median_px": 59.682,
+      "mean_px": 212.95,
+      "worst_px": 485.3
+    }
+  ],
+  "by_rotation": [
+    {
+      "value": -5.0,
+      "n": 5,
+      "pass_rate_pct": 40.0,
+      "median_px": 9.312,
+      "mean_px": 285.92,
+      "worst_px": 932.8
+    },
+    {
+      "value": -2.5,
+      "n": 5,
+      "pass_rate_pct": 20.0,
+      "median_px": 59.682,
+      "mean_px": 360.94,
+      "worst_px": 988.6
+    },
+    {
+      "value": 0.0,
+      "n": 5,
+      "pass_rate_pct": 60.0,
+      "median_px": 1.862,
+      "mean_px": 32.75,
+      "worst_px": 109.6
+    },
+    {
+      "value": 2.5,
+      "n": 5,
+      "pass_rate_pct": 60.0,
+      "median_px": 2.146,
+      "mean_px": 101.31,
+      "worst_px": 468.8
+    },
+    {
+      "value": 5.0,
+      "n": 5,
+      "pass_rate_pct": 60.0,
+      "median_px": 1.911,
+      "mean_px": 249.41,
+      "worst_px": 1186.7
+    }
+  ]
+}

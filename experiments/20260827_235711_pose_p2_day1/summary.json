@@ -1,0 +1,97 @@
+{
+  "tolerance_px": 5.0,
+  "tier": "medium",
+  "n_pairs": 25,
+  "boundary_bias": 1.0,
+  "note": "every site straddles a boundary so content is identifiable, isolating pose sensitivity from periodic ambiguity",
+  "overall": {
+    "pass_rate_pct": 52.0,
+    "median_px": 2.136,
+    "mean_px": 186.54,
+    "worst_px": 1186.7
+  },
+  "by_magnification": [
+    {
+      "value": 8.0,
+      "n": 5,
+      "pass_rate_pct": 20.0,
+      "median_px": 109.637,
+      "mean_px": 406.7,
+      "worst_px": 1186.7
+    },
+    {
+      "value": 9.0,
+      "n": 5,
+      "pass_rate_pct": 40.0,
+      "median_px": 31.51,
+      "mean_px": 391.26,
+      "worst_px": 988.8
+    },
+    {
+      "value": 10.0,
+      "n": 5,
+      "pass_rate_pct": 60.0,
+      "median_px": 2.006,
+      "mean_px": 18.15,
+      "worst_px": 55.3
+    },
+    {
+      "value": 11.0,
+      "n": 5,
+      "pass_rate_pct": 80.0,
+      "median_px": 1.814,
+      "mean_px": 6.83,
+      "worst_px": 27.5
+    },
+    {
+      "value": 12.0,
+      "n": 5,
+      "pass_rate_pct": 60.0,
+      "median_px": 1.2,
+      "mean_px": 109.77,
+      "worst_px": 485.2
+    }
+  ],
+  "by_rotation": [
+    {
+      "value": -5.0,
+      "n": 5,
+      "pass_rate_pct": 40.0,
+      "median_px": 9.302,
+      "mean_px": 285.9,
+      "worst_px": 932.8
+    },
+    {
+      "value": -2.5,
+      "n": 5,
+      "pass_rate_pct": 40.0,
+      "median_px": 30.588,
+      "mean_px": 349.5,
+      "worst_px": 988.8
+    },
+    {
+      "value": 0.0,
+      "n": 5,
+      "pass_rate_pct": 60.0,
+      "median_px": 1.972,
+      "mean_px": 28.25,
+      "worst_px": 109.6
+    },
+    {
+      "value": 2.5,
+      "n": 5,
+      "pass_rate_pct": 60.0,
+      "median_px": 2.136,
+      "mean_px": 19.65,
+      "worst_px": 60.8
+    },
+    {
+      "value": 5.0,
+      "n": 5,
+      "pass_rate_pct": 60.0,
+      "median_px": 1.94,
+      "mean_px": 249.42,
+      "worst_px": 1186.7
+    }
+  ]
+}

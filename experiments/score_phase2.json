@@ -1,0 +1,19 @@
+{
+  "n_pairs": 200,
+  "n_present": 156,
+  "n_absent": 44,
+  "localization": 32.82,
+  "loc_A_pass5": 0.8205,
+  "loc_B_tiered": 0.8205,
+  "pose": 12.51,
+  "rejection_f1": 0.8916,
+  "rejection_precision": 0.8623,
+  "rejection_recall": 0.9231,
+  "rejection_tp_fp_fn": [
+    144,
+    23,
+    12
+  ],
+  "calibration_auc": 0.5699,
+  "weighted_total": 64.4
+}

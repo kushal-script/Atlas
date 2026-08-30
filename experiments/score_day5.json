@@ -1,0 +1,121 @@
+{
+  "chosen_threshold": 0.5,
+  "sweep": [
+    {
+      "thr": 0.3,
+      "f1_run1": 0.9174,
+      "prec1": 0.8772,
+      "rec1": 0.9615,
+      "tp_fp_fn_1": [
+        150,
+        21,
+        6
+      ],
+      "f1_run2": 0.9174,
+      "min_f1": 0.9174
+    },
+    {
+      "thr": 0.35,
+      "f1_run1": 0.9141,
+      "prec1": 0.8765,
+      "rec1": 0.9551,
+      "tp_fp_fn_1": [
+        149,
+        21,
+        7
+      ],
+      "f1_run2": 0.9141,
+      "min_f1": 0.9141
+    },
+    {
+      "thr": 0.4,
+      "f1_run1": 0.904,
+      "prec1": 0.8743,
+      "rec1": 0.9359,
+      "tp_fp_fn_1": [
+        146,
+        21,
+        10
+      ],
+      "f1_run2": 0.904,
+      "min_f1": 0.904
+    },
+    {
+      "thr": 0.45,
+      "f1_run1": 0.904,
+      "prec1": 0.8743,
+      "rec1": 0.9359,
+      "tp_fp_fn_1": [
+        146,
+        21,
+        10
+      ],
+      "f1_run2": 0.904,
+      "min_f1": 0.904
+    },
+    {
+      "thr": 0.5,
+      "f1_run1": 0.9068,
+      "prec1": 0.8795,
+      "rec1": 0.9359,
+      "tp_fp_fn_1": [
+        146,
+        20,
+        10
+      ],
+      "f1_run2": 0.9068,
+      "min_f1": 0.9068
+    },
+    {
+      "thr": 0.52,
+      "f1_run1": 0.9068,
+      "prec1": 0.8795,
+      "rec1": 0.9359,
+      "tp_fp_fn_1": [
+        146,
+        20,
+        10
+      ],
+      "f1_run2": 0.9068,
+      "min_f1": 0.9068
+    },
+    {
+      "thr": 0.55,
+      "f1_run1": 0.9034,
+      "prec1": 0.8788,
+      "rec1": 0.9295,
+      "tp_fp_fn_1": [
+        145,
+        20,
+        11
+      ],
+      "f1_run2": 0.9034,
+      "min_f1": 0.9034
+    }
+  ],
+  "t1_calibration_auc": {
+    "before_raw_peak_vs_loc_correct": 0.7326,
+    "after_presence_prob_vs_loc_correct": 0.559,
+    "geo_consistency_vs_loc_correct": 0.775,
+    "presence_prob_vs_rejection_correct": 0.6808,
+    "geo_vs_rejection_correct": 0.6437,
+    "combined_prob_x_geo_vs_loc_correct": 0.7685
+  },
+  "t4_scorecard": {
+    "localization": 32.79,
+    "loc_A_pass5": 0.8269,
+    "loc_B_tiered": 0.8141,
+    "pose": 12.98,
+    "rejection_f1": 0.9068,
+    "rejection_precision": 0.8795,
+    "rejection_recall": 0.9359,
+    "rejection_tp_fp_fn": [
+      146,
+      20,
+      10
+    ],
+    "calibration_auc": 0.7685,
+    "n_present": 156,
+    "n_absent": 44
+  }
+}
