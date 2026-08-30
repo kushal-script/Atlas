@@ -125,7 +125,15 @@ def _read_pairs(path):
     # joins to nothing and scores zero on a run that otherwise looks perfect.
     with open(path, newline="", encoding="utf-8-sig") as fh:
         for i, row in enumerate(csv.DictReader(fh)):
-            keys = {k.lower().strip(): k for k in row}
+            # A data row carrying more fields than the header puts the surplus
+            # under DictReader's restkey, which is None, and a row carrying
+            # fewer leaves a None value. Both arrive from a manifest a person
+            # edited by hand or joined without quoting, and neither is a reason
+            # to abandon the run: the None key is dropped here so the row is
+            # read on its recognised columns alone, because raising instead
+            # would escape this loop before the per row handler below and cost
+            # every pair rather than the one that is malformed.
+            keys = {k.lower().strip(): k for k in row if isinstance(k, str)}
             rk = next((keys[k] for k in ("reference_path", "reference", "ref_path", "ref")
                        if k in keys), None)
             sk = next((keys[k] for k in ("search_path", "search", "wide_path", "wide")
@@ -141,7 +149,7 @@ def _read_pairs(path):
                 if i == 0:
                     print("WARNING: pairs csv has no recognised reference and "
                           "search path columns; every row will be reported "
-                          f"absent. Columns seen: {sorted(row)}",
+                          f"absent. Columns seen: {sorted(str(k) for k in row)}",
                           file=sys.stderr, flush=True)
                 pid = row.get(keys.get("pair_id", ""), "") or f"row_{i:04d}"
                 pairs.append((pid, Path(""), Path("")))
@@ -184,6 +192,14 @@ def main():
     ap.add_argument("--input", type=Path, required=True)
     ap.add_argument("--output", type=Path, required=True)
     args = ap.parse_args()
+
+    # The reference machine runs 3.11. A different interpreter is reported and
+    # then tolerated rather than refused, because aborting the scored run would
+    # forfeit every pair to defend against a difference that may not matter.
+    if sys.version_info[:2] != (3, 11):
+        print(f"warning: running on Python {sys.version_info.major}."
+              f"{sys.version_info.minor}, the reference machine is 3.11",
+              file=sys.stderr)
 
     cfg = MatchConfig()
     cfg_optical = optical_config()

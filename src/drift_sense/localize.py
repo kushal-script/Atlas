@@ -3,11 +3,15 @@
 The reference is blurred to a bank of plausible search optics resolutions,
 resampled onto the search pixel grid through a single affine transform per
 rotation and scale hypothesis, and matched with normalized cross correlation.
-A wide hypothesis grid (rotation to plus minus 6 deg, scale to plus minus
-4 percent, three blur levels) is screened at half resolution, the top
-hypotheses are rescored at full resolution and the best is refined on a
-shrinking grid. Contrast polarity is detected from the signed correlation
-scores so inverted tone conventions still match. Candidate peaks within a
+A hypothesis grid is screened at quarter resolution, the top six hypotheses
+are rescored at full resolution and the best is refined on a shrinking grid of
+five levels. The grid covers the Phase 2 constraints directly: rotation over
+plus minus 5 deg in nine steps, and scale over 0.8 to 1.2 of the nominal ten
+times zoom in seventeen steps, which spans the disclosed eight to twelve range
+rather than assuming a fixed magnification. The reference is blurred to six
+resolutions, and a low confidence pair is retried against four wider ones.
+Contrast polarity is detected from the signed correlation scores so inverted
+tone conventions still match. Candidate peaks within a
 tolerance of the best score are collected; a residual disambiguation stage
 separates lattice degenerate candidates by their deviation fields, and when
 indecisive the problem statement tie break returns the candidate closest to

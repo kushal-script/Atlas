@@ -101,10 +101,10 @@ The four documented noise tiers, with average precision obtained by ranking pred
 
 | Acquisition tier | n | within 5 px | average precision | median |
 | --- | --- | --- | --- | --- |
-| low | 10 | 70.0% | 0.559 | 0.86 px |
-| medium | 10 | 70.0% | 0.583 | 1.43 px |
-| high | 10 | 40.0% | 0.238 | 20.83 px |
-| severe | 10 | 50.0% | 0.330 | 11.28 px |
+| low | 10 | 80.0% | 0.800 | 0.82 px |
+| medium | 10 | 70.0% | 0.601 | 1.43 px |
+| high | 10 | 50.0% | 0.406 | 4.73 px |
+| severe | 10 | 40.0% | 0.243 | 29.37 px |
 
 ## Pose robustness over the stated ranges
 
@@ -136,7 +136,7 @@ Overall pass rate within 5 px across the grid: **78.0%**, median 1.62 px, mean 3
 | Memory | 16 GiB |
 | Accelerator | none, CPU only, no GPU used at inference |
 | Operating system | macOS-26.5.1-arm64-arm-64bit-Mach-O |
-| Python | 3.14.0 |
+| Python | 3.14.0, the development interpreter |
 | numpy | 2.5.1 |
 | scipy | 1.18.0 |
 | OpenCV | 5.0.0 |
@@ -144,3 +144,5 @@ Overall pass rate within 5 px across the grid: **78.0%**, median 1.62 px, mean 3
 | Runs per pair | 1, and each reported runtime is the mean over the pairs in that domain (40, 40, 40, 30 pairs) |
 | Reported statistic | mean seconds per image pair; batch runs also record the median in their `.runtime.json` |
 | Tables regenerated | 2026-08-13 by `scripts/build_results_tables.py` |
+
+These Phase 1 tables were measured on the development interpreter. The scored Phase 2 entry point is timed separately on the reference machine stack, Python 3.11.14 with numpy 2.4.6 and scipy 1.17.1, in `results/runtime_protocol.json`; the two are not comparable, and the reference stack is about 12 percent slower at the median for identical credit (`experiments/20260831_python311_reference_stack`).

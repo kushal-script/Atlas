@@ -1,6 +1,6 @@
 {
   "phase": 1,
-  "note": "This is the Phase 1 protocol, timing the localizer directly on a Phase 1 dataset. It is not comparable to the Phase 2 figures in the readme, which time the scored entry point over a Phase 2 proportional holdout including the absent pairs; see phase2 below and experiments/20260830_bank_factorial.",
+  "note": "This is the Phase 1 protocol, timing the localizer directly on a Phase 1 dataset. It is not comparable to the Phase 2 figures in the readme, which time the scored entry point over a Phase 2 proportional holdout including the absent pairs; see phase2 below and experiments/20260830_bank_factorial. The phase 1 block below was measured on the development interpreter, Python 3.14 with numpy 2.5.1 and scipy 1.18.0, and its stack is recorded in measured_on rather than in the top level fields, which now name the reference machine stack the phase 2 figures were taken on.",
   "protocol": "cool start, discard warmup runs, time N localizations with time.perf_counter around the complete locate call, single process, report median and mean",
   "measured_at": "2026-08-14T13:25:12",
   "dataset": "data/physics40",
@@ -14,16 +14,36 @@
   "memory": "16 GiB",
   "accelerator": "none, CPU only",
   "os": "macOS-26.5.1-arm64-arm-64bit-Mach-O",
-  "python": "3.14.0",
-  "numpy": "2.5.1",
-  "scipy": "1.18.0",
+  "python": "3.11.14",
+  "numpy": "2.4.6",
+  "scipy": "1.17.1",
   "opencv": "5.0.0",
   "phase2": {
-    "protocol": "register.py over data/p2holdout, all 108 grayscale pairs including absent, wall clock per pair inside the entry point",
-    "median_s_per_pair": 3.0,
-    "p90_s": 5.7,
-    "max_s": 6.1,
-    "threads_4_median_s_per_pair": 3.04,
-    "note": "capping opencv to the reference machine's four cores moves the median by 0.15 s"
+    "protocol": "register.py over data/p2holdout2, all 120 pairs of a proportional holdout including absent and optical, wall clock per pair inside the entry point, sole occupant of the machine, opencv capped to the reference machine's four cores",
+    "stack": "the reference machine stack: Python 3.11.14, numpy 2.4.6, scipy 1.17.1, opencv 5.0.0",
+    "median_s_per_pair": 4.02,
+    "p90_s": 5.6,
+    "max_s": 6.35,
+    "over_5s_pct": 25,
+    "requirement_median_s": 5.0,
+    "hard_timeout_s": 20.0,
+    "development_stack_comparison": {
+      "python": "3.14.0",
+      "numpy": "2.5.1",
+      "scipy": "1.18.0",
+      "median_s_per_pair": 3.59,
+      "p90_s": 5.29,
+      "max_s": 5.74,
+      "over_5s_pct": 20,
+      "note": "same dataset, same code, interpreter and its numpy and scipy the only variable. The reference stack is 12.0 percent slower at the median, 5.9 at p90 and 10.6 at the worst pair, while returning identical credit, so accuracy measured during development transfers and runtime measured during development does not."
+    },
+    "note": "These are the figures the scored run will produce. Headroom against the five second median requirement is 0.98 s rather than the 1.41 s the development stack implied, and the worst pair finishes 13.65 s inside the twenty second timeout that would forfeit it. See experiments/20260831_python311_reference_stack."
+  },
+  "measured_on": {
+    "python": "3.14.0",
+    "numpy": "2.5.1",
+    "scipy": "1.18.0",
+    "opencv": "5.0.0",
+    "note": "the phase 1 timings above only"
   }
 }

@@ -1,0 +1,20 @@
+GUMBEL_START
+}
+wrote /Users/kushalsathyanarayan/Desktop/semicon_india_hackathon/drift-sense-research/experiments/20260830_234927_p2_gumbel
+  records: experiments/20260830_234927_p2_gumbel/records.json
+/Users/kushalsathyanarayan/Desktop/semicon_india_hackathon/PS2/.venv/lib/python3.14/site-packages/numpy/lib/_function_base_impl.py:3036: RuntimeWarning: invalid value encountered in divide
+  c /= stddev[:, None]
+/Users/kushalsathyanarayan/Desktop/semicon_india_hackathon/PS2/.venv/lib/python3.14/site-packages/numpy/lib/_function_base_impl.py:3037: RuntimeWarning: invalid value encountered in divide
+  c /= stddev[None, :]
+  gumbel_z correlation against the existing features, strongest first:
+    prom_l         r = +0.856
+    over_p99       r = +0.709
+    peak           r = +0.239
+    wide_l         r = -0.199
+    nominal        r = +0.198
+  16 features, with gumbel_z               cv REJECT F1 0.7037
+  15 features, shipped set                 cv REJECT F1 0.7040
+
+  gumbel_z contributes -0.0003 cv reject F1
+  for scale: pose_stability +0.0114, all ten test1 features +0.0075, pce 0.0000
+GUMBEL_DONE

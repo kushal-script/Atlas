@@ -1,0 +1,15 @@
+CMP314_START Python 3.14.0
+  stack: numpy 2.5.1 scipy 1.18.0 cv2 5.0.0 pillow 12.3.0
+
+  development stack python 3.14
+  set / severity       n   credit   median err  rejected  median s   max s
+  A_nominal / 0       42    0.690         0.16         9      3.53    5.40
+  B_degraded / 1      15    0.867         0.18         0      3.51    4.98
+  B_degraded / 2       7    0.429         0.37         2      3.40    5.74
+  B_degraded / 3       6    0.167       378.66         4      4.36    5.27
+  B_degraded / 4      14    0.157       372.47         7      5.03    5.60
+  SET A credit              0.690
+  SET B credit              0.457
+  weighted                  0.562   localization 22.49 / 40
+  runtime  median 3.59s   p90 5.29s   max 5.74s   over 5s 20%
+CMP314_DONE

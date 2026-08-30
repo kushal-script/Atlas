@@ -13,12 +13,15 @@ produce one row per pair with the exact required columns.
 
 import argparse
 import csv
+import re
 import subprocess
+import sys
 import tempfile
 import zipfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 # The addendum names four things the zip must carry: the entry point, a pip
 # freeze under the name requirements.txt, a documented generator, and a failure
@@ -69,6 +72,17 @@ INCLUDE = [
     "results/README.md",
     "results/runtime_protocol.json",
     "requirements_freeze.txt",
+    # Referenced by the shipped readme, so packed with it: a document that points
+    # at a file the archive does not carry is a broken reference for whoever
+    # extracts it, and these are the dependency files and the tools that produced
+    # the numbers the readme quotes.
+    "requirements_dev.txt",
+    "requirements_train.txt",
+    "scripts/build_results_tables.py",
+    "scripts/oracle_probe.py",
+    "scripts/tune_threshold.py",
+    "scripts/setup_python311.sh",
+    "scripts/build_failure_analysis.py",
 ]
 
 # Two of the disqualifying behaviours are checked here rather than asserted.
@@ -110,7 +124,7 @@ _sys.addaudithook(_audit)
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--python311", type=Path, required=True)
+    ap.add_argument("--python311", type=Path, default=REPO / ".venv/bin/python")
     ap.add_argument("--pairs", type=Path, required=True,
                     help="dataset whose first pairs exercise the io contract")
     ap.add_argument("--num", type=int, default=4)
@@ -118,6 +132,43 @@ def main():
     ap.add_argument("--extra", nargs="*", default=[],
                     help="additional files, e.g. the failure analysis pdf")
     args = ap.parse_args()
+
+    # The self test is only evidence if the interpreter running it is the one
+    # the reference machine runs. Trusting the flag let a build report a pass
+    # under an interpreter that could not import the submission at all, so the
+    # version and the third party imports are both confirmed before packing.
+    if not args.python311.exists():
+        raise SystemExit(f"no Python 3.11 interpreter at {args.python311}; "
+                         f"build one with bash scripts/setup_python311.sh")
+    probe = subprocess.run(
+        [str(args.python311), "-c",
+         "import sys, cv2, numpy, scipy, PIL;"
+         "print(sys.version_info[0], sys.version_info[1], cv2.__version__)"],
+        capture_output=True, text=True)
+    if probe.returncode != 0:
+        raise SystemExit(f"{args.python311} cannot import the submission "
+                         f"dependencies:\n{probe.stderr.strip()[-500:]}")
+    major, minor, cv_version = probe.stdout.split()
+    if (int(major), int(minor)) != (3, 11):
+        raise SystemExit(f"{args.python311} is Python {major}.{minor}, "
+                         f"the reference machine is 3.11")
+    print(f"  self test interpreter: Python {major}.{minor}, cv2 {cv_version}")
+
+    # The failure analysis is a build product of docs/phase2_failure_analysis.md
+    # and is not tracked, so it is rebuilt here rather than trusted. It drifted
+    # stale once already, disagreeing with the markdown packed beside it on a
+    # headline number, because nothing regenerated it when the prose changed.
+    try:
+        import build_failure_analysis as _fa
+        pages = _fa.build(REPO / "docs/phase2_failure_analysis.md",
+                          REPO / "submission/failure_analysis.pdf")
+        print(f"  rebuilt the failure analysis from its markdown, {pages} pages")
+    except ImportError:
+        if not (REPO / "submission/failure_analysis.pdf").exists():
+            raise SystemExit("reportlab is needed to build the failure analysis: "
+                             ".venv/bin/python -m pip install reportlab")
+        print("  WARNING: reportlab absent, packing the failure analysis pdf as it "
+              "stands without rebuilding it from the markdown", file=sys.stderr)
 
     missing = [f for f in INCLUDE if not (REPO / f).exists()]
     if missing:
@@ -143,18 +194,17 @@ def main():
     absent = sorted(required - names)
     if absent:
         raise SystemExit(f"zip is missing required deliverables: {absent}")
-    # pdfinfo comes from poppler and is not everywhere, so its absence is
-    # reported rather than treated as a failed build; the page limit is still
-    # checked wherever the tool exists.
-    try:
-        out = subprocess.run(["pdfinfo", str(REPO / "submission/failure_analysis.pdf")],
-                             capture_output=True, text=True, check=True).stdout
-        pages = int(out.split("Pages:")[1].split("\n")[0].strip())
-        if pages > 2:
-            raise SystemExit(f"failure analysis is {pages} pages, the limit is 2")
-        print(f"  deliverables present, failure analysis {pages} pages")
-    except (FileNotFoundError, subprocess.CalledProcessError, IndexError, ValueError):
-        print("  deliverables present, page count unverified (pdfinfo unavailable)")
+    # The page limit is counted from the file itself rather than from poppler's
+    # pdfinfo, which is not installed everywhere. A check that silently skips on
+    # the machine that builds the submission is not a check, and this one used to
+    # skip on exactly that machine.
+    pdf = (REPO / "submission/failure_analysis.pdf").read_bytes()
+    pages = len(re.findall(rb"/Type\s*/Page[^s]", pdf))
+    if not pages:
+        raise SystemExit("could not count pages in the failure analysis")
+    if pages > 2:
+        raise SystemExit(f"failure analysis is {pages} pages, the limit is 2")
+    print(f"  deliverables present, failure analysis {pages} pages")
 
     with tempfile.TemporaryDirectory() as td:
         td = Path(td)
