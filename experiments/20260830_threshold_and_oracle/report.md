@@ -21,10 +21,13 @@ The fitted threshold of 0.48 rejects 36 of 108 pairs, a third of a batch whose
 disclosed composition is 22 percent absent, so the decision was over rejecting
 relative to the one fact the addendum states about the blind set. The sweep's
 plateau runs from 0.30 to 0.60 with its top between 0.40 and 0.45, worth about
-0.4 core points over the fitted value. The operating point ships at 0.45, the
-plateau edge nearest the independently fitted 0.48, because the difference
-between 0.40 and 0.45 is a fraction of one pair and choosing the far edge would
-be fitting the holdout.
+0.4 core points over the fitted value. The operating point ships at 0.45, which
+is neither the plateau maximum nor the value closest to the fit: 0.40 scores
+66.16 against 0.45's 66.05, and 0.475 is nearer the fitted 0.48 but scores
+65.71. It is the compromise, within a tenth of a point of the top while staying
+close to what an independent fit produced. A tenth of a point on a 108 pair
+suite is a fraction of one pair, so taking the argmax would be fitting the
+holdout rather than measuring it.
 
 ## A rule proposed, measured and rejected
 
@@ -46,9 +49,11 @@ recorded here and not shipped.
 `scripts/oracle_probe.py` hands the matcher the true zoom and rotation from the
 generator's own record, which no scored run has, and asks whether the true site
 then wins the correlation. Severity 1: it wins on 88 percent of pairs, and
-where an impostor wins it wins by 0.005, a whisker. Severity 3: 64 percent.
-Severity 4: 34 percent, and the winning impostor leads by a median of 0.054,
-eighteen times the rescue margin.
+where an impostor wins it wins by 0.005, a whisker. Severity 2: 84 percent at a
+lead of 0.036. Severity 3: 64 percent. Severity 4: 34 percent, and the winning
+impostor leads by a median of 0.054, nearly three times the 0.02 margin an
+alternative must beat to overturn the answer. The decline is monotonic across
+the whole ladder, 88, 84, 64, 34, rather than a cliff at one rung.
 
 A perfect pose search would therefore localize about one severity 4 pair in
 three. The shipped pipeline scores on about one in five, so most of the gap to

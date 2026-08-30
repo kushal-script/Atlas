@@ -18,16 +18,31 @@ from drift_sense.presence import (FEATURES, features_from_diag,
 DIAG = {
     "score": 0.71, "peak_prominence": 6.2, "num_candidates_wide": 14,
     "num_candidates": 2, "search_noise_sigma": 5.5, "nominal_score": 0.64,
-    "peak_over_p99": 0.21, "pose_source": "wide",
+    "peak_over_p99": 0.21, "pose_source": "wide_grid",
     "quad_disp": 1.5, "quad_agree": 3,
     "stage2": {"z": 3.1, "margin": 120.0, "mad": 40.0},
 }
 RECORD = {
     "peak": 0.71, "prom": 6.2, "wide": 14, "strict": 2, "noise": 5.5,
-    "nominal": 0.64, "over_p99": 0.21, "pose_source": "wide",
+    "nominal": 0.64, "over_p99": 0.21, "pose_source": "wide_grid",
     "z": 3.1, "margin": 120.0, "mad": 40.0,
     "quad_disp": 1.5, "quad_agree": 3,
 }
+
+
+def test_pose_wide_matches_what_the_localizer_actually_emits():
+    """The fixtures must use the localizer's own string, not a plausible one.
+
+    An earlier revision compared pose_source against "wide" while the localizer
+    emits "wide_grid", so the feature was constant zero; the fixtures used
+    "wide" too, which made this file agree with a bug instead of catching it.
+    """
+    from drift_sense.presence import FEATURES, _assemble
+    i = FEATURES.index("pose_wide")
+    assert _assemble(0.7, 6.2, 14, 2, 5.5, 0.64, 0.21, 1.0, 0.0, 0.0,
+                     "wide_grid")[i] == 1.0
+    assert _assemble(0.7, 6.2, 14, 2, 5.5, 0.64, 0.21, 1.0, 0.0, 0.0,
+                     "nominal")[i] == 0.0
 
 
 def test_diag_and_record_features_agree():

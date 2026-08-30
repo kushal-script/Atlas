@@ -133,6 +133,9 @@ class MatchConfig:
     residual_pad_px: int = 3
     residual_min_candidates: int = 2
     residual_margin: float = 0.035
+    # The floor applied when a robust z is available and carries the decision;
+    # the configured margin above is the bar when there is no usable z.
+    residual_margin_floor: float = 0.02
     residual_z_thresh: float = 5.0
     residual_z_pool_min: int = 9
     residual_median_k: int = 31
@@ -456,6 +459,14 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
     _p99 = float(np.quantile(_rf, 0.99))
     peak_prominence = (score_best - _med) / max(1.4826 * _mad, 1e-6)
     peak_over_p99 = score_best - _p99
+    # Peak to correlation energy, the peak's share of the whole surface's
+    # energy, was added here and measured to contribute exactly nothing: an
+    # ablation over the same records put the cross validated reject F1 at
+    # 0.7040 with it and 0.7040 without. It is redundant against prominence,
+    # which already asks whether the peak is unlike the surface it sits on,
+    # and its class medians barely separate at 27.7 present against 25.2
+    # absent. Recorded here rather than left for someone to re derive
+    # (experiments/20260830_pce_ablation).
 
     tol_wide = min(cfg.stage2_tolerance_cap,
                    max(cfg.peak_tolerance,
@@ -503,8 +514,14 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
             # classical rule still decides, because letting an abstention fall
             # through to the centre tie break discards a sub pixel answer the
             # deviation field had already identified.
+            # Two regimes, two margins, and they are deliberately different.
+            # With a pool large enough for a robust z, the z carries the
+            # decision and the margin is only a floor against a numerically
+            # trivial separation, so it is the looser of the two. With too few
+            # candidates for a z to mean anything, the margin is the whole
+            # decision and has to clear the higher configured bar alone.
             if len(vals) >= cfg.residual_z_pool_min:
-                decisive = z >= cfg.residual_z_thresh and margin >= 0.02
+                decisive = z >= cfg.residual_z_thresh and margin >= cfg.residual_margin_floor
             else:
                 decisive = margin >= cfg.residual_margin
             if cfg.reranker_path:

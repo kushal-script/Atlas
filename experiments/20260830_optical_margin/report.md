@@ -3,12 +3,12 @@
 The bonus pays six points if Set D localization credit clears 0.40 while the
 grayscale sets clear 0.50. The two optical suites this repository had were 36
 and 24 pairs, which is too few to separate a real margin from a lucky draw:
-they returned 0.433 and 0.592, a spread of 0.16 on the same method.
+they returned 0.444 and 0.633, a spread of 0.19 on the same method.
 
 A third suite of 72 pairs was generated under master seed 8101, disjoint from
 5001 and 9501, through a generator mix that draws the bonus set alone rather
 than a tenth of a proportional suite at a time. It returns 0.619, and the three
-pool to 0.563 over 132 pairs.
+pool to 0.574 over 132 pairs, each with committed per pair credit here.
 
 ## The number that is actually scored
 

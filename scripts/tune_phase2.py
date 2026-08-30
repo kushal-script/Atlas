@@ -108,6 +108,7 @@ def main():
                      "s2_used": bool(s2.get("used")),
                      "quad_disp": float(d.get("quad_disp", -1.0)),
                      "quad_agree": int(d.get("quad_agree", -1)),
+                     "pce": float(d.get("peak_pce", 0.0)),
                      "runtime": rt})
         print(f"{r['pair_id']} {r['set']:10s} peak {d['score']:.3f} "
               f"err {err if err is None else round(err, 1)}", flush=True)

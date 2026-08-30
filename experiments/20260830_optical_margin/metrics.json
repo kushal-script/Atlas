@@ -5,22 +5,25 @@
       "name": "data/opt_train",
       "seed": 5001,
       "pairs": 36,
-      "localization_credit": 0.433
+      "localization_credit": 0.444,
+      "per_pair": "per_pair_credit_opt_train.csv"
     },
     {
       "name": "data/opt_hold",
       "seed": 9501,
       "pairs": 24,
-      "localization_credit": 0.592
+      "localization_credit": 0.633,
+      "per_pair": "per_pair_credit_opt_hold.csv"
     },
     {
       "name": "data/opt_large",
       "seed": 8101,
       "pairs": 72,
-      "localization_credit": 0.619
+      "localization_credit": 0.619,
+      "per_pair": "per_pair_credit_opt_large.csv"
     }
   ],
-  "pooled_localization_credit_132_pairs": 0.563,
+  "pooled_localization_credit_132_pairs": 0.5738,
   "scored_through_entry_point": {
     "suite": "data/opt_large",
     "pairs": 72,
@@ -43,5 +46,6 @@
     },
     "caveat": "optimistic: the three suite means spread more than sampling alone explains, and this assumes the organiser's optical analogue resembles this generator's"
   },
-  "serial": "every run one at a time; the wall clock guard makes concurrent evaluation change answers"
+  "serial": "every run one at a time; the wall clock guard makes concurrent evaluation change answers",
+  "note_on_earlier_figures": "An earlier pooling of 0.563 used 0.433 for the 36 pair suite, measured before the template cap, the degenerate lowpass fix and the prescreen polarity fix; remeasured under the shipped build it is 0.444. Every suite now carries committed per pair credit."
 }

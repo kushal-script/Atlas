@@ -1,10 +1,11 @@
 #!/bin/bash
 # Serial on purpose. The localizer's wall clock guard skips optional stages
 # under load, so concurrent runs rank configurations wrongly.
-cd /Users/kushalsathyanarayan/Desktop/semicon_india_hackathon/PS2
+cd "$(git rev-parse --show-toplevel)"
 P=.venv/bin/python
 D=data/p2degraded
-S=/private/tmp/claude-501/-Users-kushalsathyanarayan-Desktop-semicon-india-hackathon-PS2/cf7fa46e-912b-4c4d-8a06-5ae3ccbee8ba/scratchpad
+S="${TMPDIR:-/tmp}/drift_sense_sweep"
+mkdir -p "$S"
 
 until [ -f $D/ground_truth.csv ]; do sleep 20; done
 echo "GEN_READY"

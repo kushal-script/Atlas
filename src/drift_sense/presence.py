@@ -37,7 +37,14 @@ def _assemble(peak, prom, wide, strict, noise, nominal, over_p99,
         float(z) if z is not None else 0.0,
         0.0 if z is not None else 1.0,
         float(np.clip(mom, -20.0, 20.0)),
-        1.0 if pose_source == "wide" else 0.0,
+        # The localizer reports this as "wide_grid" or "nominal". An earlier
+        # revision compared against "wide", which never matches, so the feature
+        # was constant zero through the fit that produced the shipped weights
+        # and carries a weight of exactly zero there: correcting the comparison
+        # changes no shipped decision, and the feature stays inert until a
+        # refit gives it a weight. Both the fit and the inference path build
+        # features through this one function, so they cannot disagree.
+        1.0 if str(pose_source).startswith("wide") else 0.0,
         float(np.clip(quad_disp, 0.0, 17.0)) if quad_disp >= 0 else 0.0,
         float(quad_agree) if quad_agree >= 0 else 0.0,
         1.0 if quad_disp < 0 else 0.0,
@@ -67,6 +74,13 @@ def features_from_record(rec):
 
 
 def presence_probability(model, feats):
+    # A model fitted against a different feature list would silently misalign
+    # every weight with the wrong quantity and still return a plausible looking
+    # probability, so the mismatch is refused rather than tolerated.
+    if len(model["weights"]) != len(feats):
+        raise ValueError(
+            f"presence model has {len(model['weights'])} weights for "
+            f"{len(feats)} features; refit it with scripts/fit_presence.py")
     x = (np.asarray(feats, float) - np.asarray(model["mu"])) / np.asarray(model["sd"])
     m = float(x @ np.asarray(model["weights"]) + model["bias"])
     return 1.0 / (1.0 + np.exp(-m))
