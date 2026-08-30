@@ -21,11 +21,18 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 
+# The addendum names four things the zip must carry: the entry point, a pip
+# freeze under the name requirements.txt, a documented generator, and a failure
+# analysis of at most two pages. All four are listed here rather than left to a
+# command line flag, because a required deliverable that ships only when the
+# packager is invoked with the right argument is a deliverable that will one day
+# not ship; REQUIRED below fails the build loudly instead.
 INCLUDE = [
     "register.py",
     "generate_dataset.py",
     "localize.py",
     "requirements_phase2.txt",
+    "submission/failure_analysis.pdf",
     "models/presence_model.json",
     "models/reranker.npz",
     "src/drift_sense/__init__.py",
@@ -49,8 +56,14 @@ INCLUDE = [
     "README.md",
 ]
 
+# Two of the disqualifying behaviours are checked here rather than asserted.
+# The socket shim turns any network attempt into an exception. The audit hook
+# records every file the run opens, so reading outside the supplied paths is
+# demonstrated absent rather than promised: the interpreter, its standard
+# library and the extracted submission are the only trees a scored run has any
+# business touching, and anything else is reported by path.
 SOCKET_SHIM = '''
-import socket as _socket
+import sys as _sys, os as _os, socket as _socket
 class _NoNetwork(OSError):
     pass
 def _blocked(*a, **k):
@@ -59,6 +72,24 @@ _socket.socket.connect = _blocked
 _socket.socket.connect_ex = _blocked
 _socket.create_connection = _blocked
 _socket.getaddrinfo = _blocked
+
+# The interpreter and its standard library, the operating system's own
+# trees, the extracted submission, the directory holding the supplied csv and
+# its images, and the working directory the csv and predictions live in. A read
+# anywhere else is the disqualifying behaviour this is here to catch.
+_ALLOWED = tuple(_os.path.realpath(p) for p in
+                 (_sys.prefix, _sys.base_prefix, _sys.exec_prefix,
+                  _os.path.dirname(_os.__file__), "/System", "/usr", "/Library",
+                  _os.environ["DS_RUN_DIR"], _os.environ["DS_DATA_DIR"],
+                  _os.environ["DS_IO_DIR"]) if p)
+_seen = set()
+def _audit(event, args):
+    if event == "open" and args and isinstance(args[0], str):
+        p = _os.path.realpath(args[0])
+        if not p.startswith(_ALLOWED) and p not in _seen:
+            _seen.add(p)
+            print("OUTSIDE_SUPPLIED_PATHS " + p, flush=True)
+_sys.addaudithook(_audit)
 '''
 
 
@@ -79,10 +110,30 @@ def main():
 
     with zipfile.ZipFile(args.out, "w", zipfile.ZIP_DEFLATED) as z:
         for f in INCLUDE + list(args.extra):
-            z.write(REPO / f, f)
+            # The failure analysis is named by the addendum, so it lands at the
+            # top of the zip under that name rather than under its repository
+            # directory.
+            z.write(REPO / f, Path(f).name if f.endswith("failure_analysis.pdf") else f)
         z.write(REPO / "requirements_phase2.txt", "requirements.txt")
     print(f"packed {args.out} ({args.out.stat().st_size/1024:.0f} KB, "
           f"{len(INCLUDE) + len(args.extra) + 1} files)")
+
+    # Every deliverable the addendum names by name, checked against the zip that
+    # was actually written rather than against the list that was meant to build
+    # it, and the page limit checked rather than assumed.
+    with zipfile.ZipFile(args.out) as z:
+        names = set(z.namelist())
+    required = {"register.py", "requirements.txt", "generate_dataset.py",
+                "failure_analysis.pdf"}
+    absent = sorted(required - names)
+    if absent:
+        raise SystemExit(f"zip is missing required deliverables: {absent}")
+    pages = int(subprocess.run(["pdfinfo", str(REPO / "submission/failure_analysis.pdf")],
+                               capture_output=True, text=True
+                               ).stdout.split("Pages:")[1].split("\n")[0].strip())
+    if pages > 2:
+        raise SystemExit(f"failure analysis is {pages} pages, the limit is 2")
+    print(f"  deliverables present, failure analysis {pages} pages")
 
     with tempfile.TemporaryDirectory() as td:
         td = Path(td)
@@ -105,6 +156,11 @@ def main():
         import os
         env = dict(os.environ)
         env["PYTHONPATH"] = str(td / "shim")
+        # The two trees a scored run may read: the extracted submission it runs
+        # from, and the directory holding the pairs csv and the images it names.
+        env["DS_RUN_DIR"] = str((td / "run").resolve())
+        env["DS_DATA_DIR"] = str(Path(args.pairs).resolve())
+        env["DS_IO_DIR"] = str(td.resolve())
         res = subprocess.run(
             [str(args.python311), "register.py",
              "--input", str(pairs_csv), "--output", str(td / "pred.csv")],
@@ -114,6 +170,10 @@ def main():
         if res.returncode != 0:
             print(res.stderr[-1500:])
             raise SystemExit("SELF TEST FAILED")
+        stray = sorted({l.split(" ", 1)[1] for l in res.stdout.split("\n")
+                        if l.startswith("OUTSIDE_SUPPLIED_PATHS")})
+        if stray:
+            raise SystemExit("read outside the supplied paths: " + ", ".join(stray[:8]))
         out_rows = list(csv.DictReader(open(td / "pred.csv")))
         assert len(out_rows) == len(sample), "row count mismatch"
         assert list(out_rows[0].keys()) == ["pair_id", "x", "y", "theta",

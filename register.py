@@ -47,6 +47,8 @@ from scipy.ndimage import grey_dilation, grey_erosion
 # grid, so the cheapest form that keeps the gain is the one that ships.
 RESCUE_PEAK_BELOW = 0.62
 RESCUE_MARGIN = 0.02
+# Fraction of the pair's budget past which no further rescue pass is started.
+RESCUE_START_BEFORE = 0.5
 
 # The presence decision. A single peak threshold cannot separate a degraded
 # present pair from a clean absent one, because an impostor reference from the
@@ -116,16 +118,30 @@ def main():
     rows = []
     for pid, ref_path, search_path in _read_pairs(args.input):
         try:
+            t_pair = time.perf_counter()
             ref, ref_rgb = load_gray(ref_path)
             search, search_rgb = load_gray(search_path)
             active_cfg = cfg_optical if (ref_rgb or search_rgb) else cfg
-            x, y, diag, _ = locate(ref, search, active_cfg)
+            x, y, diag, _ = locate(ref, search, active_cfg, t_start=t_pair)
             if (float(diag["score"]) < RESCUE_PEAK_BELOW
                     and int(diag.get("num_candidates_wide", 1)) > 1
                     and not (ref_rgb or search_rgb)):
                 for op in (grey_erosion, grey_dilation):
+                    # A rescue pass the remaining budget cannot cover is not
+                    # started at all. The rescue fires on a weak peak, and a
+                    # weak peak is what a heavily degraded pair produces, so
+                    # without this the passes pile onto exactly the pairs that
+                    # are already closest to the scored timeout.
+                    if time.perf_counter() - t_pair > RESCUE_START_BEFORE * active_cfg.time_budget_s:
+                        break
                     ref_cd = op(ref, size=(3, 3)).astype(ref.dtype)
-                    x2, y2, d2, _ = locate(ref_cd, search, active_cfg)
+                    x2, y2, d2, _ = locate(ref_cd, search, active_cfg, t_start=t_pair)
+                    # Refusing an override from a pass the clock cut short was
+                    # tried here and measured worse, costing the degraded set
+                    # 0.515 against 0.508 while changing the holdout not at
+                    # all: a starved pass searches fewer poses but is often
+                    # right anyway, and declining it keeps a worse answer. The
+                    # diagnostic that guard read is still recorded.
                     if float(d2["score"]) > float(diag["score"]) + RESCUE_MARGIN:
                         x, y, diag = x2, y2, d2
             peak = float(diag["score"])

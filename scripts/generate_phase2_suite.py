@@ -32,19 +32,32 @@ from drift_sense.params import GeneratorConfig
 # The blind composition, as fractions of the whole.
 MIX = (("A_nominal", 0.35), ("B_degraded", 0.35), ("C_absent", 0.20), ("D_optical", 0.10))
 
+# Tuning one set wants statistical power on that set rather than a faithful
+# blind composition, since a proportional suite spends most of its generation
+# on pairs the question does not concern. The severity balanced degraded mix
+# exists for that: it keeps a quarter of the pairs nominal as a regression
+# guard, because a change that lifts the degraded set by breaking the nominal
+# one is a loss on a weighting of 0.45 against 0.55. A suite drawn this way is
+# for screening only and any winner is confirmed on a proportional holdout.
+MIXES = {
+    "blind": MIX,
+    "degraded": (("A_nominal", 0.25), ("B_degraded", 0.75)),
+}
+
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--num", type=int, default=240)
     ap.add_argument("--seed", type=int, required=True)
+    ap.add_argument("--mix", choices=sorted(MIXES), default="blind")
     args = ap.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
 
     rng = np.random.default_rng(args.seed)
     sets = []
-    for name, frac in MIX:
+    for name, frac in MIXES[args.mix]:
         sets += [name] * int(round(args.num * frac))
     sets = sets[:args.num]
     rng.shuffle(sets)

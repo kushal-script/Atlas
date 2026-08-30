@@ -53,6 +53,14 @@ class MatchConfig:
     # prescreen budget with the bank size is the named future experiment.
     psf_sigma_bank_nm: tuple = (2.0, 4.0, 6.5, 9.0, 14.0, 20.0)
     wide_sigma_bank_nm: tuple = (4.0, 9.0, 16.0, 25.0)
+    # Deciding contrast polarity from its own heavier blur bank was tried and
+    # reverted. On the severity balanced screening suite it lifted the nominal
+    # set from 0.701 to 0.800, five pairs flipping outright, which is the
+    # binary signature a polarity call produces; on the held out proportional
+    # suite it cost the nominal set 0.786 against 0.762 and about nine tenths
+    # of a point end to end, and it eroded the optical bonus margin from 0.033
+    # to 0.006. A gain that appears only on the suite a change was developed
+    # against is not a gain (experiments/20260830_bank_factorial).
     # Anti aliasing the template models one particular search pipeline, the one
     # that decimates by area averaging. Measured over four independent
     # generators it cost more on the point sampling ones than it gained on the
@@ -273,9 +281,15 @@ def _residual_score_map(search, tmpl, aligned_positions, cfg):
     return (num / np.sqrt(var * e_rt)).astype(np.float32), med, rt0
 
 
-def locate(ref_img, search_img, cfg=None, return_artifacts=False):
+def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
     cfg = cfg or MatchConfig()
-    t0 = time.perf_counter()
+    # The budget belongs to the pair, not to this call. A caller that matches
+    # the same pair more than once, as the width rescue does, passes the time
+    # it started the pair so every pass draws down one shared allowance;
+    # without it each pass gets a full budget and the pair's real ceiling is
+    # the budget times the number of passes, which is how pairs came to exceed
+    # the scored timeout while every individual call stayed inside it.
+    t0 = time.perf_counter() if t_start is None else t_start
     ref_img, ref_impulse = _despeckle(ref_img, cfg)
     search_img, search_impulse = _despeckle(search_img, cfg)
     ref_img = _tone_normalize(ref_img, cfg)
@@ -352,6 +366,12 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
     wide_key = nominal_key
     used_wide = False
     budget_left = lambda frac: (time.perf_counter() - t0) < cfg.time_budget_s * frac
+    # Whether the budget, rather than the evidence, decided which stages ran.
+    # A caller comparing two passes over the same pair needs this: a pass that
+    # was cut short is not weaker evidence, it is a different measurement, and
+    # letting it outscore a complete pass replaces a good answer with a worse
+    # one purely because the clock ran down.
+    budget_gated = nominal_score < cfg.nominal_accept_score and not budget_left(0.45)
     if nominal_score < cfg.nominal_accept_score and budget_left(0.45):
         poses, grid_tmpls = [], []
         for sig in cfg.wide_sigma_bank_nm:
@@ -413,6 +433,9 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
               "tol_wide": float(tol_wide)}
     x = y = None
     r2 = med = rt0 = None
+    if (cfg.residual_disambiguation and len(wide) >= cfg.residual_min_candidates
+            and not budget_left(0.75)):
+        budget_gated = True
     if (cfg.residual_disambiguation and len(wide) >= cfg.residual_min_candidates
             and budget_left(0.75)):
         ordered = sorted(([int(c[0]), int(c[1])] for c in wide),
@@ -542,6 +565,7 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False):
         "scale": float(scale_best),
         "psf_sigma_nm": float(sigma_best),
         "pose_source": "wide_grid" if used_wide else "nominal",
+        "budget_gated": bool(budget_gated),
         "nominal_score": float(nominal_score),
         "wide_score": float(wide_score),
         "inverted_contrast": bool(inverted),
