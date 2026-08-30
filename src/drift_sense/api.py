@@ -151,31 +151,33 @@ def presence_score(diag):
     return float(np.clip(s, 0.0, 1.0))
 
 
-# Trained presence classifier (Phase 2, Day 5, finalize). Retrained on the
-# 200-pair mixed set WITH the post-T3 per-scale-blur features (the Day-4 weights
-# were fit before that fix and were mismatched), reaching Rejection F1 = 0.9068 at
-# threshold 0.5 (>= 0.90 target). Standardized numpy logistic regression
-# (scripts/retrain_day5.py -> experiments/retrain_day5.json).
+# Trained presence classifier (Phase 2, Day 8). Retrained on the 200-pair mixed
+# set WITH the final config (antialias=True + coarser coarse grid: 11 scales
+# 0.80..1.20 step 0.04, 6 rotations -5..5 step 2.0) using the STABLE recipe
+# (standardized numpy logistic regression, lr=0.01, iters=20000, l2=1e-2). The
+# earlier Day-5 weights (lr=0.1/iters=2000) diverged and gave the bad 0.57
+# regression. Day-8 weights reach Rejection F1 = 0.9124 at threshold 0.5
+# (>= 0.9068 target). See scripts/retrain_stable.py -> retrain_stable.json.
 _PRESENCE_FEATURE_ORDER = ["peak_score", "num_candidates_wide", "uniqueness",
                            "stage2_identifiability", "margin_strength",
                            "peak_contrast", "peak_contrast_ratio", "geo_consistency",
                            "search_noise_sigma", "inverted_contrast"]
 _REJECTION_W = np.array(
-    [5.5700933772079297, 4.4491366054835684, -14.6746916344178349,
-     14.6561404326907940, 0.2794395916054044, 1.1818921270094862,
-     2.2305458107031457, 4.1032088548995791, 0.1387035188038173,
-     2.4199031143607597], dtype=np.float64)
-_REJECTION_BIAS = 7.5413840772153025
+    [0.9018294808349091, 0.2353410818840670, -4.7059504105605479,
+     5.0415294279248268, 0.2143683605802225, -0.0274352630415550,
+     0.4841454810800268, 0.8739286863758515, 0.1109574049588372,
+     0.4685819465354581], dtype=np.float64)
+_REJECTION_BIAS = 1.8420642176875883
 _REJECTION_MU = np.array(
-    [0.713558746576309, 564.88, 0.769336419687758,
-     0.739366923216195, 0.056549851857126, 0.144190268442035,
-     1.316875835587556, 0.393355230205634, 4.20382450224574, 0.165],
+    [0.7271830792725086, 448.795, 0.8000925731236201,
+     0.7639884250485056, 0.0572541218996048, 0.15259693443775177,
+     1.3309687603866787, 0.4026219471549848, 4.20382450224574, 0.145],
     dtype=np.float64)
 _REJECTION_SD = np.array(
-    [0.202671886800339, 1818.546595288966, 0.365402846293989,
-     0.434187737304317, 0.176175408171476, 0.125364935490025,
-     0.397213616548193, 0.241687807479223, 0.542676815293514,
-     0.37118154905935], dtype=np.float64)
+    [0.19934951401826156, 1551.6406981251437, 0.3510787416873347,
+     0.41796586601307933, 0.17707970497370762, 0.1251749566741499,
+     0.3930759750363787, 0.23656875069522823, 0.5426768152935143,
+     0.352101837829166], dtype=np.float64)
 
 
 def presence_probability(diag):

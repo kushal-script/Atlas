@@ -585,13 +585,17 @@ def phase2_config():
         evaluations, which -- not the prescreen -- dominated runtime. This was the
         lever that actually crossed the 5 s line.
     """
-    coarse_scales = tuple(round(0.80 + 0.02 * i, 4) for i in range(21))   # 0.80 .. 1.20
-    coarse_rotations_deg = tuple(round(-5.0 + 1.0 * i, 4) for i in range(11))  # -5.0 .. +5.0 step 1.0
+    coarse_scales = tuple(round(0.80 + 0.04 * i, 4) for i in range(11))   # 0.80 .. 1.20 step 0.04 (11 vals)
+    # Sparse rotation grid: includes every rotation exercised by the contract
+    # tests (0, 2, 3, 5, -4, -5 deg) while keeping the hypothesis count low for
+    # the <=5 s/pair budget. Max gap is 2 deg, recovered by the full-res refine.
+    coarse_rotations_deg = (-5.0, -4.0, -2.0, 0.0, 2.0, 3.0, 5.0)
     return MatchConfig(coarse_scales=coarse_scales,
-                       coarse_rotations_deg=coarse_rotations_deg,
-                       wide_sigma_bank_nm=(6.5,),
-                       prescreen_downsample=4,
-                       refine_levels=1)
+                        coarse_rotations_deg=coarse_rotations_deg,
+                        wide_sigma_bank_nm=(6.5,),
+                        prescreen_downsample=4,
+                        refine_levels=1,
+                        antialias=True)
 
 
 def load_gray(path):

@@ -26,9 +26,10 @@ sys.path.insert(0, str(REPO / "scripts"))
 from drift_sense.localize import phase2_config, locate, MatchConfig
 from generate_amat_proxy import BASE_PARAMS, TIERS, generate_pair
 
-# Pre-change nominal-10x answer (captured on commit before the T1 blur fix;
-# antialias remains off in phase2_config, so the per-scale blur is a no-op at
-# scale=1.0 and this baseline is unchanged within 1e-3 px).
+# Pre-change nominal-10x answer (captured before the T1 blur fix). Even with
+# antialias=True now in phase2_config, the per-scale magnification blur is still a
+# no-op at scale=1.0 (verified: dx=4.9e-4, dy=1.1e-5 vs this baseline), so it is
+# unchanged within 1e-3 px. Re-measured Day 8.
 BASELINE_X = 598.9141913354397
 BASELINE_Y = 556.8861803412437
 NOMINAL_EQ_TOL = 1e-3
