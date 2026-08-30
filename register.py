@@ -221,6 +221,10 @@ def main():
                     # diagnostic that guard read is still recorded.
                     if float(d2["score"]) > float(diag["score"]) + RESCUE_MARGIN:
                         x, y, diag = x2, y2, d2
+                        # Recorded so the rescue's hit rate can be measured
+                        # rather than assumed: it costs a full extra pass and
+                        # should be shown to earn it.
+                        diag["rescue_used"] = 1
             peak = float(diag["score"])
             if model is not None:
                 p_present = presence_probability(model, features_from_diag(diag))

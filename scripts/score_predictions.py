@@ -47,6 +47,7 @@ def main():
     # from it, and the area under the curve rewards ranking while saying
     # nothing about whether the probabilities themselves are honest.
     by_sev = {}
+    pose_by_sev = {}
     raw_scale, raw_rot, raw_err = [], [], []
     for pid, t in truth.items():
         p = preds.get(pid)
@@ -64,6 +65,8 @@ def main():
                 pose_s.append(1.0 if zerr <= 1 else 0.6 if zerr <= 2 else 0.3 if zerr <= 5 else 0.0)
                 pose_r.append(1.0 if rerr <= 0.25 else 0.6 if rerr <= 0.5 else 0.3 if rerr <= 1.0 else 0.0)
                 raw_scale.append(zerr); raw_rot.append(rerr)
+                pose_by_sev.setdefault(f"{t['set']}/sev{t['severity']}", []).append(
+                    (pose_s[-1], pose_r[-1]))
             if p_found and err < 1e8:
                 raw_err.append(err)
             key = f"{t['set']}/sev{t['severity']}"
@@ -81,6 +84,8 @@ def main():
              if int(t["found"]) == 1 and preds.get(pid, {}).get("found") == "0")
     fn = sum(1 for pid, t in truth.items()
              if int(t["found"]) == 0 and preds.get(pid, {}).get("found") == "1")
+    tn = sum(1 for pid, t in truth.items()
+             if int(t["found"]) == 1 and preds.get(pid, {}).get("found") == "1")
     prec = tp / max(tp + fp, 1); rec = tp / max(tp + fn, 1)
     f1 = 2 * prec * rec / max(prec + rec, 1e-9)
 
@@ -125,12 +130,19 @@ def main():
                     "rotation_credit": float(np.mean(pose_r)) if pose_r else 0,
                     "points": pose_pts},
            "rejection": {"f1": f1, "precision": prec, "recall": rec,
-                         "tp": tp, "fp": fp, "fn": fn, "points": 15 * f1},
+                         "tp": tp, "fp": fp, "fn": fn, "tn": tn,
+                         "confusion_note": ("positive class is reject; fp are present pairs "
+                                            "refused, fn are absent pairs accepted"),
+                         "points": 15 * f1},
            "calibration": {"auc": float(auc), "points": 10 * float(auc),
                            "brier": brier, "brier_vs_base_rate": brier_ref,
                            "brier_reliability": rel, "brier_resolution": res},
            "per_severity_credit": {k: {"n": len(v), "credit": float(np.mean(v))}
                                    for k, v in sorted(by_sev.items())},
+           "per_severity_pose": {k: {"n": len(v),
+                                     "scale_credit": float(np.mean([a for a, _ in v])),
+                                     "rotation_credit": float(np.mean([b for _, b in v]))}
+                                 for k, v in sorted(pose_by_sev.items()) if v},
            "error_distribution": {
                "localization_px": _pct(raw_err),
                "scale_error_pct": _pct(raw_scale),

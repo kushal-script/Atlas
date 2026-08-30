@@ -109,6 +109,9 @@ def main():
                      "quad_disp": float(d.get("quad_disp", -1.0)),
                      "quad_agree": int(d.get("quad_agree", -1)),
                      "stab": float(d.get("pose_stability_px", -1.0)),
+                     "resp_entropy": float(d.get("resp_entropy", -1.0)),
+                     "regime": str(d.get("pose_source", "")),
+                     "rescue_used": int(d.get("rescue_used", 0)),
                      "runtime": rt})
         print(f"{r['pair_id']} {r['set']:10s} peak {d['score']:.3f} "
               f"err {err if err is None else round(err, 1)}", flush=True)

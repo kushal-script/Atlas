@@ -473,6 +473,19 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
     _p99 = float(np.quantile(_rf, 0.99))
     peak_prominence = (score_best - _med) / max(1.4826 * _mad, 1e-6)
     peak_over_p99 = score_best - _p99
+    # Response surface entropy. A true match concentrates the response into one
+    # site; a lattice of near equal impostors spreads it. Shannon entropy over
+    # the positive part of the surface, normalised by log of its size so it is
+    # comparable across image sizes: near zero means one dominant site, near
+    # one means a flat and ambiguous surface.
+    _pos = np.clip(_rf, 0.0, None)
+    _tot = float(_pos.sum())
+    if _tot > 1e-12:
+        _pp = _pos / _tot
+        _nz = _pp[_pp > 0]
+        resp_entropy = float(-(_nz * np.log(_nz)).sum() / np.log(_nz.size)) if _nz.size > 1 else 0.0
+    else:
+        resp_entropy = 1.0
     # Peak to correlation energy, the peak's share of the whole surface's
     # energy, was added here and measured to contribute exactly nothing: an
     # ablation over the same records put the cross validated reject F1 at
@@ -646,12 +659,14 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
         "template_px_used": int(t),
         "num_candidates": int(len(strict)),
         "num_candidates_wide": int(len(wide)),
+        "candidate_count_strict": int(len(strict)),
         "candidate_peaks_xy": [[float(c[1] + half), float(c[0] + half)]
                                for _, c in dists[:12]],
         "peak_value": float(resp[py, px]),
         "resp_median": _med,
         "resp_p99": _p99,
         "peak_prominence": float(peak_prominence),
+        "resp_entropy": float(resp_entropy),
         "pose_stability_px": float(pose_stability_px),
         "quad_disp": float(quad_disp),
         "quad_agree": int(quad_agree),
