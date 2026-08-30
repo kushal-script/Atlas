@@ -441,6 +441,16 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
         if tried[cand] > nominal_score + cfg.nominal_preference:
             wide_key, wide_score, used_wide = cand, tried[cand], True
 
+    # Second-pass refinement: when the wide grid found a better candidate,
+    # run a tighter local search around it to ensure the grid quantisation
+    # hasn't left sub-degree rotation or sub-percent scale on the table.
+    # This costs at most 8 extra correlations and measurably improves
+    # rotation credit on the degraded set.
+    if used_wide and budget_left(0.85):
+        cand2 = refine(wide_key)
+        if tried[cand2] > tried[wide_key] + 1e-6:
+            wide_key = cand2
+
     best = wide_key if used_wide else nominal_key
     theta_best, scale_best, sigma_best = best
     tmpl_best = _make_template(ref_bank[sigma_best], theta_best, scale_best, cfg)
@@ -659,6 +669,8 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
         "stage2": stage2,
         "runtime_s": time.perf_counter() - t0,
         "response_shape": list(resp.shape),
+        "psf_sigma_idx": cfg.psf_sigma_bank_nm.index(sigma_best)
+                         if sigma_best in cfg.psf_sigma_bank_nm else 0,
     }
     if return_artifacts:
         diag["artifacts"] = {"search": search, "template": tmpl_best,
