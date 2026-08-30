@@ -14,7 +14,6 @@ produce one row per pair with the exact required columns.
 import argparse
 import csv
 import subprocess
-import sys
 import tempfile
 import zipfile
 from pathlib import Path
@@ -54,6 +53,23 @@ INCLUDE = [
     "scripts/generate_phase2_suite.py",
     "docs/citations.md",
     "README.md",
+    # Everything the shipped README points at. A readme that references a file
+    # the zip does not carry is a broken reference for whoever extracts it,
+    # and these are all small: the whole set roughly doubles a 190 KB archive.
+    "models/reranker.pt",
+    "references/references.bib",
+    "docs/phase2_failure_analysis.md",
+    "docs/failure_analysis.md",
+    "docs/architecture.md",
+    "docs/dataset_format.md",
+    "docs/development_log.md",
+    "notebooks/train_reranker.ipynb",
+    "scripts/train_reranker.py",
+    "scripts/eval_degraded.py",
+    "scripts/score_predictions.py",
+    "results/README.md",
+    "results/runtime_protocol.json",
+    "requirements_freeze.txt",
 ]
 
 # Two of the disqualifying behaviours are checked here rather than asserted.

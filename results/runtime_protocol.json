@@ -1,4 +1,6 @@
 {
+  "phase": 1,
+  "note": "This is the Phase 1 protocol, timing the localizer directly on a Phase 1 dataset. It is not comparable to the Phase 2 figures in the readme, which time the scored entry point over a Phase 2 proportional holdout including the absent pairs; see phase2 below and experiments/20260830_bank_factorial.",
   "protocol": "cool start, discard warmup runs, time N localizations with time.perf_counter around the complete locate call, single process, report median and mean",
   "measured_at": "2026-08-14T13:25:12",
   "dataset": "data/physics40",
@@ -15,5 +17,13 @@
   "python": "3.14.0",
   "numpy": "2.5.1",
   "scipy": "1.18.0",
-  "opencv": "5.0.0"
+  "opencv": "5.0.0",
+  "phase2": {
+    "protocol": "register.py over data/p2holdout, all 108 grayscale pairs including absent, wall clock per pair inside the entry point",
+    "median_s_per_pair": 3.0,
+    "p90_s": 5.7,
+    "max_s": 6.1,
+    "threads_4_median_s_per_pair": 3.04,
+    "note": "capping opencv to the reference machine's four cores moves the median by 0.15 s"
+  }
 }

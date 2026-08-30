@@ -6,7 +6,7 @@ docs/citations.md."""
 import numpy as np
 
 from ..params import (MATERIAL_GATE, MATERIAL_NITRIDE, MATERIAL_SILICON,
-                      MATERIAL_STI, MATERIAL_TUNGSTEN)
+                      MATERIAL_TUNGSTEN)
 from .primitives import corr_noise_1d, paint_dots, paint_hstripe, paint_rect, paint_vstripe
 
 

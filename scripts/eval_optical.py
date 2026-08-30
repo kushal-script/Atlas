@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 import cv2
 import numpy as np
 
-from drift_sense.localize import (MatchConfig, load_colour, load_gray, locate,
+from drift_sense.localize import (load_colour, load_gray, locate,
                                   optical_config)
 
 

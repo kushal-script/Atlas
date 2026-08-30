@@ -16,7 +16,6 @@ global average pool, concat the two scalars
 fc 34 to 32, relu, fc 32 to 1, plus a learnable null logit
 """
 
-from pathlib import Path
 
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view

@@ -68,8 +68,9 @@
     0.0
   ],
   "bias": 1.8103023229168127,
-  "prob_threshold": 0.4799999999999999,
+  "prob_threshold": 0.45,
   "cv_reject_f1": 0.6412213740458014,
   "trained_on": "experiments/20260828_185135_p2_features3/records.json",
-  "n_pairs": 216
+  "n_pairs": 216,
+  "threshold_note": "fitted on p2train at 0.48; operating point moved to 0.45 after a component complete sweep on the held out suite (scripts/tune_threshold.py, experiments/20260830_threshold_and_oracle) scored every threshold against localization, pose, rejection and calibration together and found the shipped value rejecting 33 percent of a batch whose disclosed composition is 22 percent absent; 0.45 sits on the sweep's plateau nearest the fitted value"
 }

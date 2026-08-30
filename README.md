@@ -41,7 +41,7 @@ Three Phase 1 assumptions are removed, and the required output grows from two co
 | `theta` | rotation in degrees, counter clockwise positive, about the match centre |
 | `scale` | recovered down scaling factor, nominally in 8 to 12 |
 | `found` | 1 or 0; when 0 the pose columns carry 0 |
-| `score` | own confidence, any monotonic scale, checked for calibration not compared between teams |
+| `score` | own confidence, any monotonic scale, checked for calibration not compared between teams. Ours is the larger of the presence model's probability and its complement, damped for a found row by how many of the four template quadrants agreed on the site, so it is confidence in **the decision actually made**: a confident rejection ranks as high as a confident detection. It rises and falls with being right rather than with the correlation peak. Range is nominally 0.5 to 1.0 and no fixed range is claimed; see How the score column is computed below |
 
 The reference pattern occupies roughly 100 x 100 pixels inside the search image. The two images are independent physical captures, so their noise is independent and the search image is the noisier of the two.
 
@@ -149,7 +149,7 @@ Three generators are available, sharing no image formation code, so the localize
 | `--generator` | What it produces |
 | --- | --- |
 | `physics` | primary generator, specimen material and height maps imaged twice through a secondary electron model; supports `--modality sem` and `--modality optical` |
-| `spec` | independent reimplementation of the published organiser specification, coarse structure presets, 9 to 1 through 11 to 1 magnification, the full published degradation list |
+| `spec` | independent reimplementation of the published organiser specification, coarse structure presets, 9 to 1 through 11 to 1 magnification, the full published degradation list. This is a Phase 1 generator and keeps the Phase 1 range; Phase 2 suites come from `scripts/generate_phase2_suite.py`, which draws the zoom uniformly over 8 to 12 and the rotation over plus or minus 5 degrees |
 | `amat_proxy` | faithful reproduction of the reference starter pipeline, 10 um fine canvas at 1 nm per pixel decimated by area averaging, four noise tiers and five acquisition variants |
 | `stress` | adversarial generator with painted edges, plain Gaussian noise and area averaged downsampling |
 
@@ -274,11 +274,11 @@ Measured by running `register.py` itself over a 108 pair grayscale holdout suite
 
 | Component | Points | Measured | Detail |
 | --- | --- | --- | --- |
-| Localization | 40 | 28.8 | credit 0.786 nominal, 0.667 degraded |
-| Pose recovery | 20 | 17.3 | scale credit 0.85, rotation credit 0.88 |
-| Rejection | 15 | 9.7 | reject class F1 0.645, precision 0.53, recall 0.83 |
-| Confidence calibration | 10 | 9.1 | AUC 0.905 |
-| Core total | 85 | 64.9 | |
+| Localization | 40 | 29.2 | credit 0.810 nominal, 0.667 degraded |
+| Pose recovery | 20 | 17.7 | scale credit 0.89, rotation credit 0.88 |
+| Rejection | 15 | 9.8 | reject class F1 0.655, precision 0.56, recall 0.79 |
+| Confidence calibration | 10 | 9.3 | AUC 0.925 |
+| Core total | 85 | 66.0 | |
 
 Rotation lands within a quarter degree, the full credit band, on the large majority of held out pairs after a final euclidean alignment polish; the motion model is euclidean rather than affine on purpose, because an affine fit on a periodic lattice slides scale by pitch fractions and measurably degraded the scale estimate.
 
@@ -286,9 +286,9 @@ Rotation lands within a quarter degree, the full credit band, on the large major
 
 The median was never the number that mattered. The wall clock guard was enforced inside the localizer, which starts its own clock, while the entry point calls it up to three times per pair for the width rescue, so the budget bounded each call rather than the pair and the real ceiling was three times the intended one. The two compound: the rescue fires on a weak peak, and a weak peak is what a heavily degraded capture produces, so the mechanism tripled the runtime of exactly the pairs already closest to the timeout. On a severity balanced suite four pairs in two hundred exceeded the twenty second hard timeout, and a pair that overruns scores zero outright. The budget is now one allowance per pair, threaded through every pass, and no rescue pass is started that the remaining allowance cannot cover. The worst case falls from 41.8 s to 6.5 s, the four breaches become none, and charging a timeout scaled for a machine half again as slow changes the credit not at all. The change is accuracy neutral and is made for the tail alone.
 
-The low rejection precision is not the loss it appears to be. Of the present pairs the decision rejects, 93 percent would have mislocalized anyway, with a median would be error of 369 px, so the presence decision is also functioning as self error detection and the localization credit a rejection forfeits is close to nothing. That trade is deliberate: the threshold is chosen on the estimated total score rather than on rejection F1 alone, because a present pair reported absent zeroes its pose columns, and optimizing F1 in isolation traded away a third of the present pairs' localization to win two rejection points.
+The low rejection precision is not the loss it appears to be. Of the present pairs the decision rejects, 93 percent would have mislocalized anyway, with a median would be error of 369 px, so the presence decision is also functioning as self error detection and the localization credit a rejection forfeits is close to nothing. That trade is deliberate, and the operating point is set by a sweep that scores every threshold against localization, pose, rejection and calibration together rather than on F1 alone (`scripts/tune_threshold.py`). The sweep also caught the fitted threshold over rejecting: it refused a third of a batch whose disclosed composition is 22 percent absent, so the operating point ships at 0.45, on the sweep's plateau nearest the fitted value. A batch adaptive alternative, rejecting the lowest 22 percent of each batch by probability, was designed to survive a calibration shift on organiser data, simulated under logistic shifts of the probability distribution, and rejected: the fixed threshold barely degrades under shift because the probabilities are strongly bimodal, and the adaptive rule cost more on unshifted data than it recovered under any shift tried (`experiments/20260830_threshold_and_oracle`).
 
-The optical bonus set is scored separately, since it gates on a localization credit of 0.40 with the grayscale sets at 0.50. Three independently generated RGB brightfield suites under disjoint master seeds return credit 0.433 on 36 pairs, 0.592 on 24 and 0.619 on 72, pooling to 0.563 over 132 pairs, against a weighted grayscale credit of 0.72. The blind bonus set is 20 pairs, and per pair credit there is close to bimodal, 26 zeros and 39 full marks in the 72 pair suite, so the set mean carries real sampling noise: bootstrapping 20 pair draws from that distribution puts the fifth percentile at 0.44 and the probability of missing the gate at about 2 percent. That figure is the optimistic reading, because the three suite means themselves spread more than sampling alone explains, and because it assumes the organiser's optical analogue resembles this generator's. The spread between the two optical suites is the sampling variance of small sets rather than a difference in method, and the lower of the two is the number to plan against.
+The optical bonus set is scored separately, since it gates on a localization credit of 0.40 with the grayscale sets at 0.50. Three independently generated RGB brightfield suites under disjoint master seeds return credit 0.433 on 36 pairs, 0.592 on 24 and 0.619 on 72, pooling to 0.563 over 132 pairs, against a weighted grayscale credit of 0.72. The blind bonus set is 20 pairs, and per pair credit there is close to bimodal, 26 zeros and 39 full marks in the 72 pair suite, so the set mean carries real sampling noise: bootstrapping 20 pair draws from that distribution puts the fifth percentile at 0.44 and the probability of missing the gate at about 2 percent. That figure is the optimistic reading, because the three suite means themselves spread more than sampling alone explains, and because it assumes the organiser's optical analogue resembles this generator's. The spread between the suite means is the sampling variance of small sets rather than a difference in method, and the pooled figure is the number to plan against. The addendum discloses the bonus set as reference present and scores its rejection nowhere, so an RGB pair is always reported found, the disclosed fact used the way the disclosed pose bounds are; before that rule the presence gate rejected 2 of the 72 optical pairs and forfeited 0.011 credit for nothing.
 
 That credit was 0.10 until the fault turned out to be in our own generator and not in the matcher. The optical image formation applied the Abbe diffraction limit literally, as sigma equals 0.21 lambda over NA converted through the pixel pitch, which at a one nanometre pitch is a 126 px blur that erases every feature the reference is supposed to carry. The correct reading is that a brightfield microscope resolving a few hundred nanometres samples a wafer at a pitch matched to that resolution, so the blur is a small number of pixels wide by construction; the model is now stated in resolution relative pixels and scaled by wavelength. Correcting it moved credit from 0.10 to 0.43 in one change. A sweep of four wider blur banks afterwards found none that beat the preset already carried over from Phase 1, and summing the colour planes scored worse at twice the runtime, so both were rejected and recorded rather than shipped.
 
@@ -318,7 +318,7 @@ The Phase 2 submission zip is built and verified by one command, which packs the
 
 The four deliverables the addendum names, the entry point, a pip freeze under the name `requirements.txt`, a documented generator and a failure analysis of at most two pages, are checked against the zip that was actually written rather than the list meant to build it, and the page limit is checked rather than assumed. The run is executed under an audit hook that records every file opened, so reading outside the supplied paths is demonstrated absent rather than promised: the build fails and names any path touched outside the interpreter, the extracted submission and the supplied data directory.
 
-Also included beyond the required list: the complete experiment record under `experiments/`, the results tables under `results/`, the figures behind this page under `docs/images/`, and an automated test suite under `tests/`.
+Also in the repository beyond the required list: the complete experiment record under `experiments/`, the results tables under `results/`, the figures behind this page under `docs/images/`, and an automated test suite under `tests/`. The submission zip carries the scored entry point and its sources, the shipped weights, the documented generator, the two page failure analysis and every document this readme links to; the experiment record, the figures and the test suite stay in the repository, since the zip exists to be run rather than browsed.
 
 ## Walkthrough
 
@@ -457,7 +457,7 @@ Accepting the two confident regimes and re acquiring on the third covers 59 perc
 
 ![Pose robustness](docs/images/pose_robustness.png)
 
-Pass rate holds across magnification 9:1 to 11:1 and rotation of plus or minus 2 degrees, so the result is not tuned to the exact nominal case.
+Pass rate holds across magnification 9:1 to 11:1 and rotation of plus or minus 2 degrees, so the result is not tuned to the exact nominal case. That sweep is the Phase 1 range; the Phase 2 entry point searches the wider disclosed 8:1 to 12:1 and plus or minus 5 degrees, and the held out figures under Phase 2 results above are measured over that full range.
 
 ### Runtime
 

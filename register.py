@@ -72,7 +72,12 @@ def _load_model():
 
 def _read_pairs(path):
     pairs = []
-    with open(path, newline="") as fh:
+    # utf-8-sig, not the platform default: a pairs csv saved from a spreadsheet
+    # carries a byte order mark that stays glued to the first header name, and
+    # since it is not whitespace it survives strip(). The pair_id column then
+    # goes unrecognised and every output row is named row_0000 onward, which
+    # joins to nothing and scores zero on a run that otherwise looks perfect.
+    with open(path, newline="", encoding="utf-8-sig") as fh:
         for i, row in enumerate(csv.DictReader(fh)):
             keys = {k.lower().strip(): k for k in row}
             rk = next((keys[k] for k in ("reference_path", "reference", "ref_path", "ref")
@@ -82,11 +87,19 @@ def _read_pairs(path):
             if not rk or not sk:
                 raise SystemExit("pairs csv needs reference and search path columns")
             pid = row.get(keys.get("pair_id", ""), "") or f"row_{i:04d}"
-            ref, search = Path(row[rk]), Path(row[sk])
-            if not ref.is_absolute():
-                ref = (path.parent / ref).resolve()
-            if not search.is_absolute():
-                search = (path.parent / search).resolve()
+            # One unreadable row must not cost the other hundred and ninety
+            # nine. A row whose paths are missing or malformed still gets a
+            # pair id and a pair of paths that will fail to load, which the
+            # per pair handler turns into a conservative rejection; raising
+            # here instead would abandon the whole run and every row with it.
+            try:
+                ref, search = Path(row[rk] or ""), Path(row[sk] or "")
+                if str(ref) and not ref.is_absolute():
+                    ref = (path.parent / ref).resolve()
+                if str(search) and not search.is_absolute():
+                    search = (path.parent / search).resolve()
+            except (TypeError, ValueError, OSError):
+                ref = search = Path("")
             pairs.append((pid, ref, search))
     return pairs
 
@@ -149,6 +162,16 @@ def main():
                 p_present = presence_probability(model, features_from_diag(diag))
                 found = 1 if p_present >= model["prob_threshold"] else 0
                 score = float(max(p_present, 1.0 - p_present))
+                if ref_rgb or search_rgb:
+                    # The bonus set is disclosed as reference present, and its
+                    # rejection is never scored: the F1 runs over the grayscale
+                    # pairs only, so a rejected optical pair can only forfeit
+                    # bonus credit, never earn anything. The disclosed fact is
+                    # used the way the disclosed pose bounds are, and the score
+                    # becomes the model's probability itself, which is the
+                    # confidence that the forced answer is right.
+                    found = 1
+                    score = float(p_present)
                 if found:
                     # A found row's confidence also reflects whether the four
                     # template quadrants agreed on the site, which tracks

@@ -1,0 +1,47 @@
+{
+  "question": "does the optical bonus set clear its 0.40 gate with margin, on a suite large enough to say so",
+  "suites": [
+    {
+      "name": "data/opt_train",
+      "seed": 5001,
+      "pairs": 36,
+      "localization_credit": 0.433
+    },
+    {
+      "name": "data/opt_hold",
+      "seed": 9501,
+      "pairs": 24,
+      "localization_credit": 0.592
+    },
+    {
+      "name": "data/opt_large",
+      "seed": 8101,
+      "pairs": 72,
+      "localization_credit": 0.619
+    }
+  ],
+  "pooled_localization_credit_132_pairs": 0.563,
+  "scored_through_entry_point": {
+    "suite": "data/opt_large",
+    "pairs": 72,
+    "credit_with_presence_gate": 0.6083,
+    "rejected_as_absent": 2,
+    "note": "eval_optical.py measures localization only; register.py additionally applies the presence gate, which rejects 2 of 72 and costs 0.011 credit. The scored figure is this one, not the localization only 0.619."
+  },
+  "blind_set_risk": {
+    "blind_set_pairs": 20,
+    "per_pair_credit_is_bimodal": {
+      "zero": 26,
+      "partial": 7,
+      "full": 39
+    },
+    "bootstrap_20_pair_draws": {
+      "mean": 0.6194,
+      "p5": 0.44,
+      "p1": 0.38,
+      "probability_below_0.40_gate": 0.0206
+    },
+    "caveat": "optimistic: the three suite means spread more than sampling alone explains, and this assumes the organiser's optical analogue resembles this generator's"
+  },
+  "serial": "every run one at a time; the wall clock guard makes concurrent evaluation change answers"
+}
