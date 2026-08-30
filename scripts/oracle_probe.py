@@ -24,7 +24,8 @@ import cv2
 import numpy as np
 
 from drift_sense.localize import (MatchConfig, _effective_sigma, _lowpass,
-                                  _make_template, _preprocess, load_gray)
+                                  _make_template, _preprocess, load_gray,
+                                  optical_config)
 from drift_sense import backend
 
 
@@ -32,14 +33,16 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dataset", type=Path, required=True)
     ap.add_argument("--severity", default="4")
+    ap.add_argument("--set", dest="setname", default="B_degraded")
+    ap.add_argument("--preset", default="sem", choices=["sem", "optical"])
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--out", type=Path, default=None)
     args = ap.parse_args()
 
-    cfg = MatchConfig()
+    cfg = optical_config() if args.preset == "optical" else MatchConfig()
     rows = [r for r in csv.DictReader(open(args.dataset / "ground_truth.csv"))
-            if r["set"] == "B_degraded" and r["severity"] == args.severity
-            and r["found"] == "1"]
+            if r["set"] == args.setname and r["found"] == "1"
+            and (args.setname != "B_degraded" or r["severity"] == args.severity)]
     if args.limit:
         rows = rows[:args.limit]
 

@@ -21,6 +21,13 @@
       "pairs": 72,
       "localization_credit": 0.619,
       "per_pair": "per_pair_credit_opt_large.csv"
+    },
+    {
+      "name": "data/opt4",
+      "seed": 8201,
+      "pairs": 60,
+      "localization_credit": 0.43,
+      "per_pair": "per_pair_credit_opt4.csv"
     }
   ],
   "pooled_localization_credit_132_pairs": 0.5738,
@@ -39,13 +46,15 @@
       "full": 39
     },
     "bootstrap_20_pair_draws": {
-      "mean": 0.6194,
-      "p5": 0.44,
-      "p1": 0.38,
-      "probability_below_0.40_gate": 0.0206
+      "mean": 0.5292,
+      "p5": 0.35,
+      "p1": 0.28,
+      "probability_below_0.40_gate": 0.1162
     },
-    "caveat": "optimistic: the three suite means spread more than sampling alone explains, and this assumes the organiser's optical analogue resembles this generator's"
+    "caveat": "optimistic: the three suite means spread more than sampling alone explains, and this assumes the organiser's optical analogue resembles this generator's",
+    "note_on_the_earlier_estimate": "An earlier bootstrap over 132 pairs put this near 2 percent. A fourth suite of 60 pairs under seed 8201 returned 0.430, the lowest of the four, which both lowered the pooled mean and widened the between suite spread the first estimate had not sampled. The suite means span 0.430 to 0.633 with a standard deviation of 0.110, and that variation sits on top of the pair level sampling, so the honest figure is the larger one."
   },
   "serial": "every run one at a time; the wall clock guard makes concurrent evaluation change answers",
-  "note_on_earlier_figures": "An earlier pooling of 0.563 used 0.433 for the 36 pair suite, measured before the template cap, the degenerate lowpass fix and the prescreen polarity fix; remeasured under the shipped build it is 0.444. Every suite now carries committed per pair credit."
+  "note_on_earlier_figures": "An earlier pooling of 0.563 used 0.433 for the 36 pair suite, measured before the template cap, the degenerate lowpass fix and the prescreen polarity fix; remeasured under the shipped build it is 0.444. Every suite now carries committed per pair credit.",
+  "pooled_localization_credit_192_pairs": 0.5292
 }

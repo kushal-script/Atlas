@@ -1,0 +1,6 @@
+  0 shipped            psf 2,8      wide 4,9,16,25 credit 0.430  within5px  43%  median  100.44px  3.23s/pair
+  1 wide to 40         psf 2,8      wide 9,16,25,40 credit 0.430  within5px  43%  median   96.28px  3.49s/pair
+  2 wide matched       psf 2,8      wide 16,24,32,40 credit 0.430  within5px  43%  median   96.51px  3.51s/pair
+  3 psf matched        psf 16,24,32 wide 4,9,16,25 credit 0.427  within5px  43%  median  100.89px  4.08s/pair
+  4 both matched       psf 16,24,32 wide 16,24,32,40 credit 0.430  within5px  43%  median   96.40px  3.35s/pair
+  5 both wide span     psf 8,16,24,32,40 wide 12,20,28,36,44 credit 0.423  within5px  43%  median  100.97px  3.88s/pair

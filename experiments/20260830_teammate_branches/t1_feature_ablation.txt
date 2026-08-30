@@ -1,0 +1,14 @@
+  25 features over 216 records, 48 absent
+  25 features, test1 v2 set                    cv REJECT F1 0.7333
+  15 features, shipped v1 set                  cv REJECT F1 0.7258
+  the ten v2 additions contribute +0.0075 cv reject F1
+    v1 + peak_prom_ratio                       cv REJECT F1 0.7227
+    v1 + wide_nom_ratio                        cv REJECT F1 0.7288
+    v1 + residual_concentration                cv REJECT F1 0.7258
+    v1 + spatial_scatter                       cv REJECT F1 0.7258
+    v1 + peak_to_p50_ratio                     cv REJECT F1 0.7227
+    v1 + peak_to_p90_ratio                     cv REJECT F1 0.7227
+    v1 + num_blur_levels                       cv REJECT F1 0.7258
+    v1 + rotation_abs                          cv REJECT F1 0.7258
+    v1 + scale_deviation                       cv REJECT F1 0.7258
+    v1 + residual_margin_raw                   cv REJECT F1 0.7258
