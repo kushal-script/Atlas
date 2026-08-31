@@ -20,6 +20,20 @@ Aliasing preserved at the wide field of view. At 10 nm per pixel, fin and line p
 
 Tone mapping. Operators set brightness and contrast per capture, so each image is percentile normalized with random headroom before 8 bit quantization, which decorrelates the gray scales of the two captures. [1]
 
+## Phase 2 degradation ladder
+
+The addendum names the degraded set's corruption categories, charging, scan distortion, defocus, elevated shot noise and polygon scaling to twenty percent, over four undisclosed severity levels, and every category maps onto a mechanism already in the imaging model rather than onto a new image filter. The ladder scales the search capture only, following the addendum's construction in which the reference is a clean crop and the corruption arrives on the wide image; what a corrupted reference would cost was measured separately and is recorded under `experiments/20260831_degraded_reference`.
+
+Elevated shot noise as dose reduction. Severity multiplies the electron dose down to 15 percent of nominal, which at the search capture's 80 to 300 electrons per pixel leaves 12 to 45 electrons at the hardest rung, and the Poisson statistics of the imaging model then produce the noise rather than additive noise being painted on. Single image SNR estimation work on SEM images grounds both the counting statistics treatment and the signal to noise regimes such doses imply. [5] [28] [1]
+
+Defocus and spot growth. Severity multiplies the beam point spread sigma to three times nominal, the Gaussian probe treatment used in SEM simulation for resolution metrology, since defocus and astigmatism manifest as probe broadening at the specimen plane. [2] [4]
+
+Charging, drift and jitter. Severity multiplies the charging amplitude to four times nominal within the published charging treatment, and pushes the per frame drift and per line jitter that artificial SEM generators include as the standard acquisition distortions. [6] [4] [7] [8]
+
+Polygon scaling as width change at fixed pitch. Severity scales drawn feature widths by up to twenty percent while pitches stay fixed, because critical dimension is the litho and etch controlled quantity that drifts between visits while pitch is set by the patterning periodicity and does not; CD control and roughness specifications in the lithography literature and the IRDS roadmap bound how far such width excursions plausibly run. [16] [17]
+
+The severity parameters themselves are undisclosed by the organisers, so the four rungs are this repository's own reading, spanning from mild to well past where the Phase 1 noise sat; the ladder values are recorded in the generator beside the mechanism each one scales.
+
 ## DRAM structural parameters
 
 Cell geometry. The layout follows the 6F2 buried word line DRAM cell: word line pitch 2F, bit line pitch 3F, with F drawn from 16 to 22 nm to span reported product nodes. Storage node contacts sit between bit lines at half pitch offsets with 4 percent size variation and a small missing contact probability as defects. [9] [10] [11]
@@ -30,7 +44,7 @@ Defect density. Storage node contacts carry 4 percent size variation and a small
 
 ## FinFET structural parameters
 
-Fin and gate grids. Fin pitch is drawn from 26 to 36 nm and contacted gate pitch from 50 to 60 nm, spanning reported 10 nm and 7 nm class technologies; fin width is 30 to 40 percent of pitch and fin height 46 nm within the reported 40 to 55 nm range. [12] [13] [14]
+Fin and gate grids. Fin pitch is drawn from 26 to 36 nm and contacted gate pitch from 50 to 60 nm, spanning reported 10 nm and 7 nm class technologies; fin width is 30 to 40 percent of pitch and fin height 46 nm within the reported 40 to 55 nm range; the ASAP7 predictive kit reports 27 nm fin pitch and 54 nm contacted poly pitch, inside the same ranges. [12] [13] [14] [22]
 
 Standard cell structure. Logic is organised in rows of 6 to 9 fins with cells of 2 to 9 gate pitches, diffusion breaks of 0.8 gate pitch at cell boundaries, trench contacts between gates with 60 percent occupancy and sparse vias, following published standard cell construction for FinFET nodes. One rectangular SRAM block is rendered perfectly regular to provide the highly periodic hard region the test set is stated to contain. [14] [12]
 
@@ -51,6 +65,10 @@ Normalized cross correlation. NCC is the standard robust similarity for template
 Rotation and scale search. The relative pose between captures is handled by a hypothesis grid over rotation and scale with coarse to fine refinement, the discretised counterpart of FFT based rotation and scale registration. [19] [20]
 
 Why not sparse features. Keypoint descriptors such as SIFT are ambiguous on repeating structures because hundreds of near identical keypoints exist per frame, which is the documented failure regime for periodic patterns; dense correlation with a tie break rule is the appropriate tool. [21]
+
+Sub pixel peak localization. The correlation peak is refined by fitting a low order surface to the peak and its neighbours, the standard sub pixel estimator in registration and particle image velocimetry, where fitting the peak neighbourhood is shown to reach well under a tenth of a pixel and to control the pixel locking bias that integer argmax carries. [29] [30]
+
+Presence probability and the score column. The found decision is a logistic model over diagnostics of the correlation surface, which is the sigmoid mapping of classifier evidence to a calibrated posterior introduced as Platt scaling, and the score column reports confidence in the decision actually made on a 0 to 1 scale so that the calibration component can grade whether it rises and falls with correctness; the evaluation of such probabilities is standard in the calibration literature. [31] [32]
 
 Matched formation template. Blurring the reference to the search optics resolution and point sampling it onto the search grid reproduces the degradation chain of the search image, following the matched filter principle that correlation is optimal when the template matches the observed signal formation. [18] [2]
 
@@ -85,3 +103,8 @@ All entries verified against the publisher or an authoritative index.
 25. J. W. Goodman, Introduction to Fourier Optics, 3rd edition, Roberts and Company, 2005.
 26. A. C. Diebold, editor, Handbook of Silicon Semiconductor Metrology, Marcel Dekker, New York, 2001.
 27. B. Zhang, J. Zerubia, J. C. Olivo Marin, Gaussian approximations of fluorescence microscope point spread function models, Applied Optics, vol. 46, no. 10, pp. 1819 to 1829, 2007.
+28. J. T. L. Thong, K. S. Sim, J. C. H. Phang, Single image signal to noise ratio estimation, Scanning, vol. 23, no. 5, pp. 328 to 336, 2001. doi 10.1002/sca.4950230506.
+29. H. Foroosh, J. B. Zerubia, M. Berthod, Extension of phase correlation to subpixel registration, IEEE Transactions on Image Processing, vol. 11, no. 3, pp. 188 to 200, 2002.
+30. H. Nobach, M. Honkanen, Two dimensional Gaussian regression for sub pixel displacement estimation in particle image velocimetry or particle position estimation in particle tracking velocimetry, Experiments in Fluids, vol. 38, no. 4, pp. 511 to 515, 2005. doi 10.1007/s00348-005-0942-3.
+31. J. C. Platt, Probabilistic outputs for support vector machines and comparisons to regularized likelihood methods, in Advances in Large Margin Classifiers, MIT Press, 2000, first circulated 1999.
+32. A. Niculescu Mizil, R. Caruana, Predicting good probabilities with supervised learning, Proceedings of the 22nd International Conference on Machine Learning, pp. 625 to 632, 2005. doi 10.1145/1102351.1102430.
