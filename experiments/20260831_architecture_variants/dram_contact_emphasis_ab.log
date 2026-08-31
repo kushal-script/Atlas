@@ -1,0 +1,8 @@
+  49 present DRAM pairs, contact emphasis A/B, sole occupant
+
+  emphasis OFF  A 0.833  B 0.648  weighted 0.731  of 40 = 29.26   median 3.75s
+  emphasis ON   A 0.850  B 0.560  weighted 0.691  of 40 = 27.62   median 3.79s
+
+  delta weighted -0.0409  =  -1.64 points of 40
+  A_nominal    median error  off     0.17 px   on     0.19 px
+  B_degraded   median error  off     0.51 px   on     0.60 px

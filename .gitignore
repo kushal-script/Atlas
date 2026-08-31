@@ -10,3 +10,7 @@ unpacked/
 local/
 *.pptx
 *.pdf
+
+# Variant scratch data, regenerable from the variant generators
+variants/*/scratch/
+variants/*/data/

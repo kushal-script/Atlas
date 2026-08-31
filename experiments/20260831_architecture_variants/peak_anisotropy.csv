@@ -1,0 +1,7 @@
+pair_id,set,zoom,peak_width_x_px,peak_width_y_px,ratio
+pair_0000,B_degraded,11.29,1,2,2.00
+pair_0001,A_nominal,10.79,1,2,2.00
+pair_0011,A_nominal,11.64,1,1,1.00
+pair_0016,B_degraded,11.04,1,2,2.00
+pair_0018,A_nominal,9.56,1,2,2.00
+pair_0026,A_nominal,10.69,1,2,2.00

@@ -1,0 +1,5 @@
+style,regime,n,true_site_wins_pct,median_impostor_lead
+dram,nominal,24,83,0.0000
+dram,degraded,25,48,0.0104
+finfet,nominal,18,61,0.0046
+finfet,degraded,17,24,0.0328
