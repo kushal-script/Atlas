@@ -1,0 +1,5 @@
+suite,measurement,localization_off,localization_on,delta_of_40,set_a_off,set_a_on,set_b_off,set_b_on
+p2train,localization only present pairs,25.84,26.78,+0.94,0.821,0.821,0.502,0.545
+p2holdout2,localization only present pairs,24.38,24.90,+0.52,0.714,0.714,0.524,0.548
+p2holdout2,end to end scored pipeline,22.49,23.43,+0.94,0.690,0.690,0.457,0.500
+p2train,end to end scored pipeline,24.21,24.68,+0.47,0.810,0.810,0.438,0.460

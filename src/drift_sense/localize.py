@@ -143,6 +143,22 @@ class MatchConfig:
     residual_z_thresh: float = 5.0
     residual_z_pool_min: int = 9
     residual_median_k: int = 31
+    # Absolute residual re rank. NCC divides each window's mismatch by that
+    # window's own contrast, so a high contrast impostor is forgiven exactly
+    # the mismatch that convicts it; the RMS of the residual after a least
+    # squares gain and offset fit forgives nothing. Ranked among the top peaks
+    # it prefers the true site far more often than the correlation does on
+    # degraded pairs, at severity 4 by 50 percent against 8 on the fitting
+    # suite and 43 against 14 held out, and it overrides the classical choice
+    # only when its relative advantage clears a margin fitted off suite.
+    residual_rms_rerank: bool = True
+    # Fitted on p2train alone and fixed before any held out number was read.
+    # The optimum is a plateau from 0.030 to 0.060, all of it worth 26.78 of 40
+    # against 25.84 with the re rank off, so the midpoint ships rather than an
+    # edge of the plateau. On the fitting suite it fires on 16 of 168 pairs,
+    # rescues 4 and damages none, and set A is unchanged to three decimals.
+    residual_rms_margin: float = 0.045
+    residual_rms_top_k: int = 10
     reranker_path: str = ""
     reranker_prob: float = 0.5
     reranker_pool: int = 48
@@ -273,6 +289,45 @@ def _parabolic(v_m, v_0, v_p):
     if abs(denom) < 1e-9:
         return 0.0
     return float(np.clip(0.5 * (v_m - v_p) / denom, -0.5, 0.5))
+
+
+def _residual_rms_at(search, tmpl, py, px):
+    """RMS of the residual after a gain and offset least squares fit."""
+    t = tmpl.shape[0]
+    win = search[py:py + t, px:px + t].astype(np.float64)
+    if win.shape != tmpl.shape:
+        return None
+    tv = tmpl.astype(np.float64)
+    tz = tv - tv.mean()
+    a = float((win * tz).sum() / max((tz * tz).sum(), 1e-9))
+    r = win - a * tv - (win.mean() - a * tv.mean())
+    return float(r.std())
+
+
+def _rms_rerank(search, tmpl, resp, cfg):
+    """Top peaks of the correlation surface ranked by absolute residual.
+
+    Returns (candidates, rms values) with candidates as (py, px) rows, best
+    residual first, or (None, None) when fewer than two peaks are usable."""
+    t = tmpl.shape[0]
+    r = resp.copy()
+    rad = max(t // 3, 8)
+    cands, rmss = [], []
+    for _ in range(int(cfg.residual_rms_top_k)):
+        _, mx, _, loc = cv2.minMaxLoc(r)
+        if mx <= -1:
+            break
+        px, py = int(loc[0]), int(loc[1])
+        r[max(0, py - rad):py + rad + 1, max(0, px - rad):px + rad + 1] = -2
+        v = _residual_rms_at(search, tmpl, py, px)
+        if v is None:
+            continue
+        cands.append((py, px))
+        rmss.append(v)
+    if len(cands) < 2:
+        return None, None
+    order = np.argsort(rmss)
+    return [cands[i] for i in order], [rmss[i] for i in order]
 
 
 def _residual_score_map(search, tmpl, aligned_positions, cfg):
@@ -573,6 +628,40 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
         x = px + dx + half
         y = py + dy + half
 
+    # Absolute residual re rank over the top peaks. Runs after the classical
+    # decision so the deviation field rule keeps deciding when this abstains,
+    # and before the rotation polish and the quadrant check so both follow
+    # whichever site is finally chosen. Both candidate answers and the
+    # relative margin are recorded whether or not the override fires, so the
+    # margin can be swept offline from one harvest.
+    rms_diag = None
+    if cfg.residual_rms_rerank and resp is not None:
+        r_cands, r_vals = _rms_rerank(search, tmpl_best, resp, cfg)
+        if r_cands is not None:
+            cy, cx = int(round(y - half)), int(round(x - half))
+            cur = _residual_rms_at(search, tmpl_best, cy, cx)
+            b_py, b_px = r_cands[0]
+            far = bool(np.hypot(b_py - cy, b_px - cx) > 2.0)
+            rms_diag = {"rel_margin": 0.0, "fired": False,
+                        "classical_xy": [float(x), float(y)], "rms_xy": None}
+            if cur is not None and far:
+                rel = (cur - r_vals[0]) / max(cur, 1e-9)
+                dx2 = dy2 = 0.0
+                if 0 < b_px < resp.shape[1] - 1:
+                    dx2 = _parabolic(resp[b_py, b_px - 1], resp[b_py, b_px],
+                                     resp[b_py, b_px + 1])
+                if 0 < b_py < resp.shape[0] - 1:
+                    dy2 = _parabolic(resp[b_py - 1, b_px], resp[b_py, b_px],
+                                     resp[b_py + 1, b_px])
+                rms_diag.update(rel_margin=float(rel),
+                                rms_xy=[float(b_px + dx2 + half),
+                                        float(b_py + dy2 + half)])
+                if rel >= cfg.residual_rms_margin:
+                    x = b_px + dx2 + half
+                    y = b_py + dy2 + half
+                    py, px = b_py, b_px
+                    rms_diag["fired"] = True
+
     # Final rotation polish. The grid quantizes rotation and the parabolic
     # refinement inherits that lattice; a euclidean ECC alignment between the
     # matched template and the window under it recovers the residual rotation
@@ -642,6 +731,7 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
         "psf_sigma_nm": float(sigma_best),
         "pose_source": "wide_grid" if used_wide else "nominal",
         "budget_gated": bool(budget_gated),
+        "residual_rms": rms_diag,
         "nominal_score": float(nominal_score),
         "wide_score": float(wide_score),
         "inverted_contrast": bool(inverted),
