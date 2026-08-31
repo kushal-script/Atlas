@@ -1,0 +1,7 @@
+configuration,fitted_on,scored_on,localization_of_40,reject_f1,core
+shipped global 0.45,pooled multi suite,p2train,24.21,0.5496,32.45
+best global 0.350,p2train,p2train,24.90,0.5593,33.29
+per architecture d0.310 f0.390,p2train,p2train,24.90,0.5667,33.40
+shipped global 0.45,pooled multi suite,p2holdout2,22.49,0.4918,29.86
+best global 0.350,p2train,p2holdout2,23.43,0.4528,30.22
+per architecture d0.310 f0.390,p2train,p2holdout2,23.01,0.4444,29.68

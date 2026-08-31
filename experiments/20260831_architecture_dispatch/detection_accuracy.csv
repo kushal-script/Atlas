@@ -1,0 +1,4 @@
+suite,n_grayscale_pairs,detection_accuracy_pct
+p2holdout2 references only,108,99.1
+p2train,216,88.0
+p2holdout2 through the pipeline,108,96.3

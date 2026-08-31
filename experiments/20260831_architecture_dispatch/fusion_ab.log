@@ -1,0 +1,4 @@
+FUSION_START
+  all flags off, shipped           A 0.714  B 0.524  weighted 0.610  of 40 = 24.38   median 3.58s
+  arch_fusion on, both channels    A 0.714  B 0.476  weighted 0.583  of 40 = 23.33   median 3.83s
+FUSION_DONE
