@@ -78,11 +78,16 @@ running before the fix is built rather than after.
 
 ## What the variants are worth keeping for
 
-The FinFET builder was transposed to the published specification. The inherited builder
-painted fins horizontally and gates vertically; the specification says dense parallel
-vertical fin lines crossed by horizontal gate bars. For an isotropic matcher the difference
-is invisible, which is why it survived this long, and it would have inverted any
-anisotropic work built on it.
+The FinFET builder was briefly transposed and the transpose has since been reverted, which
+is recorded here because the reasoning that produced it is a trap worth naming. An engineer
+read `geometry/finfet.py`, saw fins painted with `paint_hstripe`, and concluded the rendered
+fins ran horizontally where the specification calls for vertical ones. The capture transposes
+the canvas, so a stripe painted along the canvas u axis arrives as a vertical line in the
+image. Measured on the 2D spectrum of the reference the shipped generator places its dominant
+line family at 90 degrees on five of five pairs, at the fin pitch, and the transposed builder
+placed it at 0 degrees on five of five. The shipped generator was already conformant. A claim
+about orientation has to be settled in the pixels, because the canvas frame and the image
+frame disagree by construction and the code reads convincingly either way.
 
 One discrepancy remains open and is a judgement for the team rather than a defect. The
 specification describes one or two gate bars in the reference; measured by transform on a

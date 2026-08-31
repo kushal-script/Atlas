@@ -52,8 +52,8 @@ class FinfetParams:
     # swapped with the fin axis when the layout was transposed to vertical
     # fins, so the ranges swapped with them and the block keeps the aspect
     # ratio the cell structure inside it wants.
-    sram_width_nm: tuple = (1200.0, 2200.0)
-    sram_height_nm: tuple = (1800.0, 3200.0)
+    sram_width_nm: tuple = (1800.0, 3200.0)
+    sram_height_nm: tuple = (1200.0, 2200.0)
     ler_sigma_nm: tuple = (1.0, 2.2)
     ler_corr_nm: tuple = (15.0, 35.0)
     fin_height_nm: float = 46.0

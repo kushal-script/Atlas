@@ -1,22 +1,8 @@
-"""FinFET style layout: dense parallel vertical fin lines on a fixed fin pitch,
-crossed by horizontal gate bars on a contacted poly pitch, organised into
-standard cell bands with random cell lengths, diffusion breaks, trench contacts
-and vias, plus one perfectly regular SRAM block acting as the highly periodic
-hard region.
-
-The published architecture reference for this variant reads: dense parallel
-vertical fin lines, crossed by one or two horizontal gate bars at the
-intersection region. The builder this file was derived from painted the
-transpose of that, fins horizontal and gates vertical, so the whole arrangement
-is turned a quarter turn here. The topology is unchanged. What moves is the
-axis each family of features lives on: fins run along v and are spaced along u,
-gates run along u and are spaced along v, a standard cell band is a column of
-fins side by side rather than a row of them stacked, and cells are chained down
-the image on the gate pitch rather than across it. Every coordinate, width,
-phase and extent moves with its axis, and the SRAM block moves with them so its
-interior stays coherent with the field around it.
-
-Parameter provenance is documented in docs/citations.md."""
+"""FinFET style layout: horizontal fin grid crossed by vertical gates on a
+fixed contacted poly pitch, organised into standard cell rows with random cell
+widths, diffusion breaks, trench contacts and vias, plus one perfectly regular
+SRAM block acting as the highly periodic hard region. Parameter provenance is
+documented in docs/citations.md."""
 
 import numpy as np
 
@@ -36,29 +22,24 @@ def build_finfet_layout(mat, hgt, pixel_nm, rng, p, target=None, want=None):
     wf = fp * _sample(rng, p.fin_width_frac)
     cpp = _sample(rng, p.gate_pitch_nm)
     wg = cpp * _sample(rng, p.gate_width_frac)
-    fins_per_band = int(rng.integers(p.fins_per_row[0], p.fins_per_row[1] + 1))
+    fins_per_row = int(rng.integers(p.fins_per_row[0], p.fins_per_row[1] + 1))
     ler_sigma = _sample(rng, p.ler_sigma_nm)
     ler_corr = _sample(rng, p.ler_corr_nm)
 
     mat[:] = MATERIAL_STI
     hgt[:] = 0.0
 
-    # A cell band holds its fins side by side along u and is separated from the
-    # next band by a gap of whole fin pitches, so the band pitch is measured
-    # along u now rather than along v.
-    band_pitch = (fins_per_band + p.row_gap_fins) * fp
+    row_pitch = (fins_per_row + p.row_gap_fins) * fp
     phase_fin = rng.uniform(0, fp)
     phase_gate = rng.uniform(0, cpp)
-    phase_band = rng.uniform(0, band_pitch)
+    phase_row = rng.uniform(0, row_pitch)
 
     sram_w = _sample(rng, p.sram_width_nm)
     sram_h = _sample(rng, p.sram_height_nm)
-    # An SRAM macro is a micron scale block. When the canvas is narrower than the
-    # block the honest layout is not a shrunken macro but no macro at all: a field
-    # this small sits inside one region of the die rather than spanning several,
-    # so the block is omitted and the field is uniform logic. Without this the
-    # placement draws from an inverted interval and raises, which is what a field
-    # scale below about 0.4 used to do.
+    # An SRAM macro is a micron scale block, so a canvas narrower than the block
+    # sits inside one region of the die and carries no macro at all. Without this
+    # the placement below draws from an inverted interval and raises, which is
+    # what any field scale under about 0.4 used to do.
     sram_fits = (sram_w < 0.8 * extent) and (sram_h < 0.8 * extent)
     if target is not None and want == "deep":
         # Centre the perfectly regular block on the requested site, so that the
@@ -79,71 +60,62 @@ def build_finfet_layout(mat, hgt, pixel_nm, rng, p, target=None, want=None):
     sram = ((sram_u0, sram_v0, sram_u0 + sram_w, sram_v0 + sram_h)
             if sram_fits else None)
 
-    band_starts = np.arange(phase_band - band_pitch, extent + band_pitch, band_pitch)
-    fin_zone_w = fins_per_band * fp
+    row_starts = np.arange(phase_row - row_pitch, extent + row_pitch, row_pitch)
+    fin_zone_h = fins_per_row * fp
 
-    for u_band in band_starts:
-        for k in range(fins_per_band):
-            uc = u_band + phase_fin + k * fp
-            if uc < -fp or uc > extent + fp:
+    for v_row in row_starts:
+        for k in range(fins_per_row):
+            vc = v_row + phase_fin + k * fp
+            if vc < -fp or vc > extent + fp:
                 continue
-            # Line edge roughness now deviates the left and right flanks of a
-            # vertical fin, indexed down the rows, where before it deviated the
-            # top and bottom flanks of a horizontal one.
-            el = corr_noise_1d(rng, n, ler_sigma, ler_corr, pixel_nm)
-            er = corr_noise_1d(rng, n, ler_sigma, ler_corr, pixel_nm)
-            paint_vstripe(mat, hgt, pixel_nm, uc, wf, 0.0, extent,
-                          MATERIAL_SILICON, p.fin_height_nm, edge_left=el, edge_right=er)
+            et = corr_noise_1d(rng, n, ler_sigma, ler_corr, pixel_nm)
+            eb = corr_noise_1d(rng, n, ler_sigma, ler_corr, pixel_nm)
+            paint_hstripe(mat, hgt, pixel_nm, vc, wf, 0.0, extent,
+                          MATERIAL_SILICON, p.fin_height_nm, edge_top=et, edge_bot=eb)
 
-    # Diffusion breaks cut the fins of one band at cell boundaries. The cells
-    # are chained along v on the gate pitch, so a break is a horizontal band of
-    # shallow trench isolation spanning that cell band's fins in u.
     break_bands = []
-    for u_band in band_starts:
-        u0 = u_band
-        u1 = u_band + fin_zone_w
-        v = phase_gate - cpp * int(np.ceil((phase_gate) / cpp))
+    for v_row in row_starts:
+        v0 = v_row
+        v1 = v_row + fin_zone_h
+        u = phase_gate - cpp * int(np.ceil((phase_gate) / cpp))
         cell_edges = []
-        while v < extent + cpp:
-            length_cells = int(rng.integers(p.cell_width_cpp[0], p.cell_width_cpp[1] + 1))
-            v += length_cells * cpp
-            cell_edges.append(v)
-        for ve in cell_edges:
+        while u < extent + cpp:
+            width_cells = int(rng.integers(p.cell_width_cpp[0], p.cell_width_cpp[1] + 1))
+            u += width_cells * cpp
+            cell_edges.append(u)
+        for ue in cell_edges:
             band_w = 0.8 * cpp
-            paint_rect(mat, hgt, pixel_nm, u0 - 0.5 * fp, ve - band_w / 2,
-                       u1 + 0.5 * fp, ve + band_w / 2, MATERIAL_STI, 0.0)
-            break_bands.append((ve, u0, u1))
+            paint_rect(mat, hgt, pixel_nm, ue - band_w / 2, v0 - 0.5 * fp,
+                       ue + band_w / 2, v1 + 0.5 * fp, MATERIAL_STI, 0.0)
+            break_bands.append((ue, v0, v1))
 
     mat_before = mat.copy()
-    gate_vs = np.arange(phase_gate - cpp, extent + cpp, cpp)
-    for vc in gate_vs:
-        et = corr_noise_1d(rng, n, ler_sigma, ler_corr, pixel_nm)
-        eb = corr_noise_1d(rng, n, ler_sigma, ler_corr, pixel_nm)
-        paint_hstripe(mat, hgt, pixel_nm, vc, wg, 0.0, extent,
-                      MATERIAL_GATE, p.gate_field_height_nm, edge_top=et, edge_bot=eb)
+    gate_us = np.arange(phase_gate - cpp, extent + cpp, cpp)
+    for uc in gate_us:
+        el = corr_noise_1d(rng, n, ler_sigma, ler_corr, pixel_nm)
+        er = corr_noise_1d(rng, n, ler_sigma, ler_corr, pixel_nm)
+        paint_vstripe(mat, hgt, pixel_nm, uc, wg, 0.0, extent,
+                      MATERIAL_GATE, p.gate_field_height_nm, edge_left=el, edge_right=er)
     over_fin = (mat == MATERIAL_GATE) & (mat_before == MATERIAL_SILICON)
     hgt[over_fin] = p.gate_fin_height_nm
 
-    # A trench contact lands between two gates and runs across the fins of its
-    # cell band, so it is a short horizontal bar at the midpoint of a gate
-    # interval, spanning that band's fins in u.
     contact_w = 0.40 * cpp
-    for u_band in band_starts:
-        u0 = u_band + 0.2 * fp
-        u1 = u_band + fin_zone_w - 0.2 * fp
-        if u1 < 0 or u0 > extent:
+    for v_row in row_starts:
+        v0 = v_row + 0.2 * fp
+        v1 = v_row + fin_zone_h - 0.2 * fp
+        if v1 < 0 or v0 > extent:
             continue
-        for vc in gate_vs[:-1]:
-            vm = vc + cpp / 2.0
-            in_break = any(abs(vm - ve) < 1.2 * cpp and u_band == bu0
-                           for (ve, bu0, _) in break_bands)
+        for uc in gate_us[:-1]:
+            um = uc + cpp / 2.0
+            in_break = any(abs(um - ue) < 1.2 * cpp and v_row == bv0
+                           for (ue, bv0, _) in break_bands)
             if in_break or rng.random() >= p.contact_prob:
                 continue
-            paint_hstripe(mat, hgt, pixel_nm, vm, contact_w, u0, u1,
+            paint_vstripe(mat, hgt, pixel_nm, um, contact_w, v0, v1,
                           MATERIAL_TUNGSTEN, p.contact_height_nm)
             if rng.random() < p.via_prob:
-                cu = rng.uniform(u0 + 0.2 * (u1 - u0), u1 - 0.2 * (u1 - u0))
-                paint_dots(mat, hgt, pixel_nm, np.array([cu]), np.array([vm]),
+                cv = rng.uniform(v0 + 0.2 * (v1 - v0), v1 - 0.2 * (v1 - v0))
+                paint_dots(mat, hgt, pixel_nm, np.array([um]), np.array([cv]),
                            np.array([0.35 * contact_w + 4.0]), MATERIAL_TUNGSTEN,
                            p.via_height_nm)
 
@@ -151,22 +123,19 @@ def build_finfet_layout(mat, hgt, pixel_nm, rng, p, target=None, want=None):
         su0, sv0, su1, sv1 = sram
         paint_rect(mat, hgt, pixel_nm, su0, sv0, su1, sv1, MATERIAL_STI, 0.0)
         sram_fp = fp
-        for uc in np.arange(su0 + sram_fp, su1, sram_fp):
-            paint_vstripe(mat, hgt, pixel_nm, uc, wf, sv0, sv1,
+        for vc in np.arange(sv0 + sram_fp, sv1, sram_fp):
+            paint_hstripe(mat, hgt, pixel_nm, vc, wf, su0, su1,
                           MATERIAL_SILICON, p.fin_height_nm)
         before_sram = mat.copy()
-        for vc in np.arange(sv0 + cpp / 2, sv1, cpp):
-            paint_hstripe(mat, hgt, pixel_nm, vc, wg, su0, su1,
+        for uc in np.arange(su0 + cpp / 2, su1, cpp):
+            paint_vstripe(mat, hgt, pixel_nm, uc, wg, sv0, sv1,
                           MATERIAL_GATE, p.gate_field_height_nm)
         sram_over_fin = (mat == MATERIAL_GATE) & (before_sram == MATERIAL_SILICON)
         hgt[sram_over_fin] = p.gate_fin_height_nm
-        # The SRAM contact grid indexes gates down the block and fin pairs across
-        # it, the transpose of the field arrangement, so its checkerboard of vias
-        # keeps the same alternation.
-        for i, vc in enumerate(np.arange(sv0 + cpp, sv1 - cpp / 2, cpp)):
-            for j, uc in enumerate(np.arange(su0 + 2 * sram_fp, su1 - sram_fp, 2 * sram_fp)):
-                paint_hstripe(mat, hgt, pixel_nm, vc, contact_w,
-                              uc - 0.8 * sram_fp, uc + 0.8 * sram_fp,
+        for i, uc in enumerate(np.arange(su0 + cpp, su1 - cpp / 2, cpp)):
+            for j, vc in enumerate(np.arange(sv0 + 2 * sram_fp, sv1 - sram_fp, 2 * sram_fp)):
+                paint_vstripe(mat, hgt, pixel_nm, uc, contact_w,
+                              vc - 0.8 * sram_fp, vc + 0.8 * sram_fp,
                               MATERIAL_TUNGSTEN, p.contact_height_nm)
                 if (i + j) % 2 == 0:
                     paint_dots(mat, hgt, pixel_nm, np.array([uc]), np.array([vc]),
@@ -174,16 +143,12 @@ def build_finfet_layout(mat, hgt, pixel_nm, rng, p, target=None, want=None):
                                p.via_height_nm)
     layout_info = {
         "style": "finfet",
-        # Recorded per pair so the orientation is auditable from any meta.json
-        # rather than inferred from the pixels.
-        "fin_axis": "vertical",
-        "gate_axis": "horizontal",
         "fin_pitch_nm": fp,
         "fin_width_nm": wf,
         "gate_pitch_nm": cpp,
         "gate_width_nm": wg,
-        "fins_per_band": fins_per_band,
-        "band_pitch_nm": band_pitch,
+        "fins_per_row": fins_per_row,
+        "row_pitch_nm": row_pitch,
         "ler_sigma_nm": ler_sigma,
         "ler_corr_nm": ler_corr,
         "sram_rect_nm": list(sram) if sram is not None else None,

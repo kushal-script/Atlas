@@ -71,7 +71,8 @@ def _scale_widths(style_params, factor):
     return replace(style_params, **fields)
 
 
-def generate_pair(seed, style, cfg=None, modality="sem", absent=False, degrade=0):
+def generate_pair(seed, style, cfg=None, modality="sem", absent=False, degrade=0,
+                  degrade_reference=0.0):
     cfg = cfg or GeneratorConfig()
     seq = np.random.SeedSequence(seed)
     children = seq.spawn(8)
@@ -163,6 +164,41 @@ def generate_pair(seed, style, cfg=None, modality="sem", absent=False, degrade=0
                         "dose_factor": lad["dose"], "psf_factor": lad["psf"],
                         "charge_factor": lad["charge"], "drift_px": lad["drift_px"]}
 
+    # The addendum describes the reference as a clean crop and puts the noise on
+    # the wide image, which is why every factor above scales the search capture
+    # alone. That is a premise about the organiser's pipeline rather than a fact
+    # we can check, so this knob exists to measure what a corrupted reference
+    # would cost: at 0.0 the reference capture is exactly cfg.reference and the
+    # code path, the parameters and the random stream are untouched, so default
+    # generation is byte identical; at 1.0 the reference carries the same ladder
+    # factors the search does, applied to its own dose and spot ranges; between
+    # them each factor is interpolated toward no degradation. Layout scaling is
+    # deliberately not applied, because polygon scaling is process drift between
+    # two visits rather than a property of one capture.
+    reference_capture_params = cfg.reference
+    reference_degrade_info = None
+    if degrade and degrade_reference > 0.0:
+        from dataclasses import replace as _rep2
+        lad = DEGRADE_LADDER[int(degrade)]
+        f = float(min(max(degrade_reference, 0.0), 1.0))
+        def _lerp(factor):
+            return 1.0 + (factor - 1.0) * f
+        rcap = cfg.reference
+        reference_capture_params = _rep2(
+            rcap,
+            dose_e=(rcap.dose_e[0] * _lerp(lad["dose"]),
+                    rcap.dose_e[1] * _lerp(lad["dose"])),
+            psf_sigma_nm=(rcap.psf_sigma_nm[0] * _lerp(lad["psf"]),
+                          rcap.psf_sigma_nm[1] * _lerp(lad["psf"])),
+            charging_amp=(min(rcap.charging_amp[0] * _lerp(lad["charge"]), 0.35),
+                          min(rcap.charging_amp[1] * _lerp(lad["charge"]), 0.35)),
+            jitter_sigma_px=(rcap.jitter_sigma_px[0] * _lerp(lad["jitter"]),
+                             rcap.jitter_sigma_px[1] * _lerp(lad["jitter"])),
+        )
+        reference_degrade_info = {"fraction": f, "severity": int(degrade),
+                                  "dose_factor": _lerp(lad["dose"]),
+                                  "psf_factor": _lerp(lad["psf"])}
+
     # An absent pair takes its reference from a second, independently drawn
     # specimen of the same architecture. The layout statistics and the imaging
     # are identical, so the reference is plausible and periodically similar to
@@ -198,7 +234,8 @@ def generate_pair(seed, style, cfg=None, modality="sem", absent=False, degrade=0
         dx_r = dy_r = dx_s = dy_s = zero
     else:
         ref_img, dx_r, dy_r, ref_meta = render_capture(
-            ref_se, ref_mat, cfg.canvas.pixel_nm, ref_pose, cfg.reference, rng_ref)
+            ref_se, ref_mat, cfg.canvas.pixel_nm, ref_pose,
+            reference_capture_params, rng_ref)
         search_img, dx_s, dy_s, search_meta = render_capture(
             search_src_se if search_src_se is not None else se,
             search_src_mat, cfg.canvas.pixel_nm, search_pose,
@@ -225,6 +262,7 @@ def generate_pair(seed, style, cfg=None, modality="sem", absent=False, degrade=0
         "placement": strategy,
         "found": 0 if absent else 1,
         "degrade": degrade_info,
+        "degrade_reference": reference_degrade_info,
         "ground_truth": {"x": float(gt_c), "y": float(gt_r)},
         "zoom": float(zoom),
         "gt_corners_xy": corners,

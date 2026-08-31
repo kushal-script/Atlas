@@ -28,12 +28,21 @@ cd variants/dram
 deleted rather than merely unselected, so the variant cannot silently fall back to it, and
 `--style` is gone from the command line.
 
-**FinFET.** The layout builder was transposed to the published specification: fins are now
-painted on the vertical axis and gate bars on the horizontal, where the inherited builder
-had them the other way around. Every coordinate, width, phase and extent moved with the
-axis, the standard cell rows became cell bands running along the new fin direction, and the
-SRAM block transposed with the field. `layout_info` records `fin_axis` and `gate_axis` in
-every `meta.json` so the orientation is auditable without opening the pixels.
+**FinFET, and a correction.** This variant briefly carried a transposed layout
+builder, on the reading that painting fins with `paint_hstripe` meant the rendered fins
+ran horizontally while the specification calls for vertical ones. That reading was wrong
+and the transpose has been reverted. The capture transposes the canvas, so a stripe
+painted along the canvas u axis renders as a vertical line in the image: measured on the
+2D spectrum of the reference, the shipped generator puts its dominant line family at 90
+degrees on five of five pairs at the fin pitch, which is the vertical fin array the
+specification describes, and the transposed builder put it at 0 degrees on five of five.
+The shipped generator was already conformant and the transpose moved away from the
+specification rather than toward it.
+
+The lesson is worth more than the fix. The canvas convention and the image convention are
+opposites here, so `geometry/finfet.py` and its docstring describe a horizontal fin grid
+while the images contain a vertical one, and both statements are true of their own frame.
+Anything that reasons about orientation must be settled in the pixels.
 
 **Matcher specialisations, both disabled.** `MatchConfig.contact_emphasis` on the DRAM
 variant and `MatchConfig.gate_emphasis` on the FinFET variant are present, documented and

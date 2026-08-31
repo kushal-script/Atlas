@@ -55,6 +55,12 @@ def main():
     ap.add_argument("--num", type=int, default=240)
     ap.add_argument("--seed", type=int, required=True)
     ap.add_argument("--mix", choices=sorted(MIXES), default="blind")
+    ap.add_argument("--degrade_reference", type=float, default=0.0,
+                    help="fraction of the severity ladder also applied to the "
+                         "reference capture; 0.0 is the addendum's clean crop and "
+                         "the default, 1.0 corrupts the reference as hard as the "
+                         "search. For measuring what a blind set that degrades "
+                         "both captures would cost, not for generating training data")
     args = ap.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
@@ -83,7 +89,8 @@ def main():
         t = time.time()
         result = generate_pair(seed=args.seed * 1_000_003 + i, style=style,
                                cfg=cfg, modality=modality,
-                               absent=absent, degrade=severity)
+                               absent=absent, degrade=severity,
+                               degrade_reference=args.degrade_reference)
         pair_dir = save_pair(out, i, result)
         meta = result["meta"]
         gt = meta["ground_truth"]
@@ -113,6 +120,7 @@ def main():
     from collections import Counter
     comp = dict(Counter(r["set"] for r in rows))
     json.dump({"generator_version": __version__, "phase": 2, "seed": args.seed,
+               "degrade_reference": args.degrade_reference,
                "num_pairs": len(rows), "composition": comp,
                "note": "organiser sample pairs are not used here in any way"},
               open(out / "dataset_meta.json", "w"), indent=2)
