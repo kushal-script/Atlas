@@ -53,6 +53,13 @@ def build_finfet_layout(mat, hgt, pixel_nm, rng, p, target=None, want=None):
 
     sram_w = _sample(rng, p.sram_width_nm)
     sram_h = _sample(rng, p.sram_height_nm)
+    # An SRAM macro is a micron scale block. When the canvas is narrower than the
+    # block the honest layout is not a shrunken macro but no macro at all: a field
+    # this small sits inside one region of the die rather than spanning several,
+    # so the block is omitted and the field is uniform logic. Without this the
+    # placement draws from an inverted interval and raises, which is what a field
+    # scale below about 0.4 used to do.
+    sram_fits = (sram_w < 0.8 * extent) and (sram_h < 0.8 * extent)
     if target is not None and want == "deep":
         # Centre the perfectly regular block on the requested site, so that the
         # hard case is created by structure rather than by searching the canvas
@@ -67,9 +74,10 @@ def build_finfet_layout(mat, hgt, pixel_nm, rng, p, target=None, want=None):
                                              else -2.0 * sram_h),
                                 0.0, extent - sram_h))
     else:
-        sram_u0 = rng.uniform(0.1 * extent, 0.9 * extent - sram_w)
-        sram_v0 = rng.uniform(0.1 * extent, 0.9 * extent - sram_h)
-    sram = (sram_u0, sram_v0, sram_u0 + sram_w, sram_v0 + sram_h)
+        sram_u0 = rng.uniform(0.1 * extent, max(0.1 * extent, 0.9 * extent - sram_w))
+        sram_v0 = rng.uniform(0.1 * extent, max(0.1 * extent, 0.9 * extent - sram_h))
+    sram = ((sram_u0, sram_v0, sram_u0 + sram_w, sram_v0 + sram_h)
+            if sram_fits else None)
 
     band_starts = np.arange(phase_band - band_pitch, extent + band_pitch, band_pitch)
     fin_zone_w = fins_per_band * fp
@@ -139,31 +147,31 @@ def build_finfet_layout(mat, hgt, pixel_nm, rng, p, target=None, want=None):
                            np.array([0.35 * contact_w + 4.0]), MATERIAL_TUNGSTEN,
                            p.via_height_nm)
 
-    su0, sv0, su1, sv1 = sram
-    paint_rect(mat, hgt, pixel_nm, su0, sv0, su1, sv1, MATERIAL_STI, 0.0)
-    sram_fp = fp
-    for uc in np.arange(su0 + sram_fp, su1, sram_fp):
-        paint_vstripe(mat, hgt, pixel_nm, uc, wf, sv0, sv1,
-                      MATERIAL_SILICON, p.fin_height_nm)
-    before_sram = mat.copy()
-    for vc in np.arange(sv0 + cpp / 2, sv1, cpp):
-        paint_hstripe(mat, hgt, pixel_nm, vc, wg, su0, su1,
-                      MATERIAL_GATE, p.gate_field_height_nm)
-    sram_over_fin = (mat == MATERIAL_GATE) & (before_sram == MATERIAL_SILICON)
-    hgt[sram_over_fin] = p.gate_fin_height_nm
-    # The SRAM contact grid indexes gates down the block and fin pairs across
-    # it, the transpose of the field arrangement, so its checkerboard of vias
-    # keeps the same alternation.
-    for i, vc in enumerate(np.arange(sv0 + cpp, sv1 - cpp / 2, cpp)):
-        for j, uc in enumerate(np.arange(su0 + 2 * sram_fp, su1 - sram_fp, 2 * sram_fp)):
-            paint_hstripe(mat, hgt, pixel_nm, vc, contact_w,
-                          uc - 0.8 * sram_fp, uc + 0.8 * sram_fp,
-                          MATERIAL_TUNGSTEN, p.contact_height_nm)
-            if (i + j) % 2 == 0:
-                paint_dots(mat, hgt, pixel_nm, np.array([uc]), np.array([vc]),
-                           np.array([0.35 * contact_w + 4.0]), MATERIAL_TUNGSTEN,
-                           p.via_height_nm)
-
+    if sram is not None:
+        su0, sv0, su1, sv1 = sram
+        paint_rect(mat, hgt, pixel_nm, su0, sv0, su1, sv1, MATERIAL_STI, 0.0)
+        sram_fp = fp
+        for uc in np.arange(su0 + sram_fp, su1, sram_fp):
+            paint_vstripe(mat, hgt, pixel_nm, uc, wf, sv0, sv1,
+                          MATERIAL_SILICON, p.fin_height_nm)
+        before_sram = mat.copy()
+        for vc in np.arange(sv0 + cpp / 2, sv1, cpp):
+            paint_hstripe(mat, hgt, pixel_nm, vc, wg, su0, su1,
+                          MATERIAL_GATE, p.gate_field_height_nm)
+        sram_over_fin = (mat == MATERIAL_GATE) & (before_sram == MATERIAL_SILICON)
+        hgt[sram_over_fin] = p.gate_fin_height_nm
+        # The SRAM contact grid indexes gates down the block and fin pairs across
+        # it, the transpose of the field arrangement, so its checkerboard of vias
+        # keeps the same alternation.
+        for i, vc in enumerate(np.arange(sv0 + cpp, sv1 - cpp / 2, cpp)):
+            for j, uc in enumerate(np.arange(su0 + 2 * sram_fp, su1 - sram_fp, 2 * sram_fp)):
+                paint_hstripe(mat, hgt, pixel_nm, vc, contact_w,
+                              uc - 0.8 * sram_fp, uc + 0.8 * sram_fp,
+                              MATERIAL_TUNGSTEN, p.contact_height_nm)
+                if (i + j) % 2 == 0:
+                    paint_dots(mat, hgt, pixel_nm, np.array([uc]), np.array([vc]),
+                               np.array([0.35 * contact_w + 4.0]), MATERIAL_TUNGSTEN,
+                               p.via_height_nm)
     layout_info = {
         "style": "finfet",
         # Recorded per pair so the orientation is auditable from any meta.json
@@ -178,6 +186,7 @@ def build_finfet_layout(mat, hgt, pixel_nm, rng, p, target=None, want=None):
         "band_pitch_nm": band_pitch,
         "ler_sigma_nm": ler_sigma,
         "ler_corr_nm": ler_corr,
-        "sram_rect_nm": list(sram),
+        "sram_rect_nm": list(sram) if sram is not None else None,
     }
-    return {"periodic_zones": [sram], "anchor_zones": [], "info": layout_info}
+    return {"periodic_zones": [z for z in (sram,) if z is not None],
+            "anchor_zones": [], "info": layout_info}

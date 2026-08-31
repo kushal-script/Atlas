@@ -88,9 +88,14 @@ One discrepancy remains open and is a judgement for the team rather than a defec
 specification describes one or two gate bars in the reference; measured by transform on a
 generated reference, ours carries roughly eighteen to twenty across the 1000 nm field,
 because the contacted poly pitch of 50 to 60 nm is physically correct for FinFET and the
-specification's picture is about ten times coarser. If the organisers generate to their own
-description, their FinFET references carry strong aperiodic landmarks that ours do not, and
-the 16.47 measured here is pessimistic rather than predictive.
+specification's picture is about ten times coarser. The consequence was measured rather
+than left as reasoning, and it runs opposite to the guess recorded here first. Rendered at
+the field the specification describes, with one and a half gate bars in the reference, this
+pipeline scores 0.071 against the 0.667 it scores at the shipped field, because a narrow
+reference is a generic tile of a periodic array while a wide one carries enough structure to
+rule impostors out. Our field is the most favourable of four measured, so 16.47 is optimistic
+for a specification faithful blind set rather than pessimistic; see
+`experiments/20260831_finfet_field_scale`.
 
 With both flags off each variant reproduces the shipped entry point byte for byte on a six
 pair mix spanning nominal, degraded and absent, so the specialisation is the only

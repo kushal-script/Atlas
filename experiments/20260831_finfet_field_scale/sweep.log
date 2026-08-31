@@ -1,0 +1,11 @@
+MEASURE_START  sole occupant
+  FinFET field scale sweep. Same device, same optics, smaller imaged area.
+
+        k  ref field   bars   candidates  oracle wins   credit  median err    n
+    1.000      1000n   18.2       58,651          54%    0.667        0.20   48
+    0.500       500n    9.1       14,663          62%    0.625        0.24   48
+    0.250       250n    4.5        3,666          52%    0.500       35.68   48
+    0.082        82n    1.5          394          17%    0.071      476.08   48
+
+  oracle wins = true zoom and rotation supplied, true site still wins the correlation
+MEASURE_DONE

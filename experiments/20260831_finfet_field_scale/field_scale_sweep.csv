@@ -1,0 +1,5 @@
+field_scale,ref_field_nm,gate_bars_in_reference,search_field_um,candidate_cells,sram_macro,oracle_true_site_wins_pct,localization_credit,median_err_px,n_present
+1.000,1000,18.2,10.00,58651,present,54,0.667,0.20,48
+0.500,500,9.1,5.00,14663,present,62,0.625,0.24,48
+0.250,250,4.5,2.50,3666,omitted,52,0.500,35.68,48
+0.082,82,1.5,0.82,394,omitted,17,0.071,476.08,48

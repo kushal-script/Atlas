@@ -4,7 +4,7 @@ Every numeric range here is grounded in public literature, see docs/citations.md
 for the reference list keyed by parameter group.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 
 MATERIAL_STI = 0
@@ -135,3 +135,33 @@ class GeneratorConfig:
     # Phase 2: draw the pose from the disclosed ranges instead of jittering
     # around a fixed ten to one.
     phase2: bool = False
+
+def scaled_config(field_scale: float, base: "GeneratorConfig" = None) -> "GeneratorConfig":
+    """Image the same device over a smaller area, at a field scale of k.
+
+    The published reference picture shows dense fins crossed by one or two gate
+    bars. At the shipped field of 1000 nm a 50 to 60 nm contacted poly pitch puts
+    eighteen bars in the reference, so the shipped generator renders a field about
+    twelve times wider than the specification describes, and a search image with
+    a hundred and forty seven times as many candidate cells for an impostor to
+    win from. This function narrows the field without touching the device.
+
+    Only the sampling geometry scales: the canvas extent and pixel, and the pixel
+    of each capture. Every physical quantity stays in nanometres and is therefore
+    unchanged, the pitches, the beam spot, the sidewall roughness and the charging
+    length, so the layout and the optics are the same and only the imaged area is
+    smaller. The zoom ratio between the two captures is preserved, so the Phase 2
+    range of 8 to 12 still applies. Degradations expressed in pixels are left in
+    pixels so severity stays comparable across scales.
+    """
+    import copy
+    cfg = copy.deepcopy(base) if base is not None else GeneratorConfig()
+    k = float(field_scale)
+    if k <= 0:
+        raise ValueError("field_scale must be positive")
+    cfg.canvas.extent_nm *= k
+    cfg.canvas.pixel_nm *= k
+    cfg.reference = replace(cfg.reference, pixel_nm=cfg.reference.pixel_nm * k)
+    cfg.search = replace(cfg.search, pixel_nm=cfg.search.pixel_nm * k)
+    cfg.field_scale = k
+    return cfg

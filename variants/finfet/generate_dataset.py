@@ -43,13 +43,14 @@ sys.path.insert(0, str(REPO / "src"))
 
 from drift_sense_finfet import __version__
 from drift_sense_finfet.generator import generate_pair, save_pair
-from drift_sense_finfet.params import GeneratorConfig
+from drift_sense_finfet.params import GeneratorConfig, scaled_config
 
 
 def _physics(args):
     rows = []
     t0 = time.time()
-    cfg = GeneratorConfig()
+    cfg = (GeneratorConfig() if args.field_scale == 1.0
+           else scaled_config(args.field_scale))
     cfg.phase2 = bool(args.phase2)
     # Which pairs carry no true instance is decided up front from the master
     # seed, so the absent set is reproducible and evenly spread rather than
@@ -125,6 +126,11 @@ def main():
     ap.add_argument("--num", type=int, default=30)
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--field_scale", type=float, default=1.0,
+                    help="image the same device over a field this many times "
+                         "wide; 1.0 is the shipped 1000 nm reference with about "
+                         "eighteen gate bars, 0.082 gives the one or two the "
+                         "published specification describes")
     ap.add_argument("--phase2", action="store_true",
                     help="draw the zoom ratio and rotation from the disclosed "
                          "Phase 2 ranges instead of jittering around ten to one")
