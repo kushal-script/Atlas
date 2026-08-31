@@ -62,6 +62,8 @@ measured it is the most favourable, so the 16.47 of 40 that FinFET scores throug
 point is not an artefact of a field chosen too wide, and there is nothing to recover by
 narrowing it.
 
+WITHDRAWN, see `experiments/20260901_organiser_convention`. The organisers have since released the generator prompt, which pins the reference at 1000 by 1000 pixels at one nanometre per pixel and the search at 1000 by 1000 at z nanometres per pixel. That is this repository's own geometry, so the scored set uses the field we generate and the narrow field measured below describes no blind set that will exist. The sweep's measurement stands and its mechanism stands; the extrapolation in this section does not, and the paragraph that follows is kept only so the retraction has its subject.
+
 The risk runs the other way from the direction previously recorded. The earlier note in
 `experiments/20260831_architecture_variants` reasoned that a specification faithful FinFET
 would carry aperiodic landmarks ours lacks and that our figure was therefore pessimistic.
