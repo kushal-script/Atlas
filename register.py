@@ -54,7 +54,19 @@ from scipy.ndimage import grey_dilation, grey_erosion
 # already writes a conservative row, and leaves the remaining pairs to run. On
 # a platform without SIGALRM the alarm is simply absent and the internal budget
 # is all there is, which is the behaviour this file had before.
+# Ours, not the organisers'. The addendum forfeits a pair that runs past twenty
+# seconds, so this alarm is deliberately set inside that at eighteen: it fires
+# first, writes a conservative rejection for the pair and lets the run continue,
+# where their limit would take the pair to zero with no row at all. An audit read
+# the readme's references to the twenty second limit as describing this constant;
+# they describe the scoring rule this constant is chosen to stay under.
 PAIR_HARD_TIMEOUT_S = 18.0
+# Unix only. A thread based timer is not a substitute and is deliberately not
+# used: the work this guards is inside numpy and OpenCV C calls that a Python
+# timer thread cannot interrupt, so a fallback would report a timeout while the
+# call kept running. On a platform without setitimer the per pair budget still
+# gates every optional stage, and the reference machine is Python 3.11 on x86
+# where the alarm is present.
 _HAS_ALARM = hasattr(signal, "SIGALRM") and hasattr(signal, "setitimer")
 
 
