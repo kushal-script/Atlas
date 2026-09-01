@@ -95,3 +95,14 @@ the measurement rather than outside it. The identical geometry decoy remains
 the recorded residual weakness: if the blind set leans heavily on that class,
 rejection recall on it is near 0.39 at this operating point, the cost of not
 sacrificing found class F1 and localization everywhere else.
+
+## Postscript: the surprise seed
+
+After every decision of the campaign was frozen and committed, one further 40
+pair hardened recipe suite was generated from seed 909090, chosen at that
+moment, so nothing in the pipeline could have seen it even indirectly. It
+scored an estimated 81.68 of 85 against the battery's 81.54 on the same
+recipe: localization 39.74 of 40 with every severity 3 and 4 pair at full
+credit, pose 19.38, no false rejects, decision AUC 0.971, and two grabbed
+decoys in the pattern the located weakness predicts. The headline number
+reproduces on data that postdates every choice it could flatter.
