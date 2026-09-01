@@ -72,8 +72,12 @@ def test_symlinked_images_resolve(tmp_path):
     cv2.imwrite(str(real / "search.png"), search)
     link = tmp_path / "link"
     link.mkdir()
-    (link / "ref.png").symlink_to(real / "ref.png")
-    (link / "search.png").symlink_to(real / "search.png")
+    try:
+        (link / "ref.png").symlink_to(real / "ref.png")
+        (link / "search.png").symlink_to(real / "search.png")
+    except OSError:
+        import pytest
+        pytest.skip("symlink creation not permitted on this platform")
     manifest = tmp_path / "pairs.csv"
     manifest.write_text("pair_id,reference_path,search_path\n"
                         f"p0,{link / 'ref.png'},{link / 'search.png'}\n")
