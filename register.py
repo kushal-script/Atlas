@@ -217,9 +217,27 @@ def main():
     cfg_optical = optical_config()
     model = _load_model()
     rows = []
+    # The output is written incrementally, one flushed row per pair, so a
+    # process killed mid run, an out of memory abort, or a platform without
+    # SIGALRM where a runaway pair cannot be interrupted, loses at most the
+    # pair in flight rather than the whole batch. The contract prices a
+    # missing row at a certain zero; a partial file keeps every finished
+    # pair's score where a single write at the end kept none of them.
+    pairs = list(_read_pairs(args.input))
+    out_fh = open(args.output, "w", newline="")
+    writer = csv.DictWriter(out_fh, fieldnames=["pair_id", "x", "y", "theta",
+                                                "scale", "found", "score"])
+    writer.writeheader()
+    out_fh.flush()
+
+    def emit(row):
+        rows.append(row)
+        writer.writerow(row)
+        out_fh.flush()
+
     if _HAS_ALARM:
         signal.signal(signal.SIGALRM, _on_alarm)
-    for pid, ref_path, search_path in _read_pairs(args.input):
+    for pid, ref_path, search_path in pairs:
         try:
             t_pair = time.perf_counter()
             if _HAS_ALARM:
@@ -232,7 +250,7 @@ def main():
             # nan the degenerate statistics used to produce made the same
             # decision by accident; this makes it a decision.
             if float(np.std(ref)) < 1.0 or float(np.std(search)) < 1.0:
-                rows.append({"pair_id": pid, "x": 0, "y": 0, "theta": 0,
+                emit({"pair_id": pid, "x": 0, "y": 0, "theta": 0,
                              "scale": 0, "found": 0, "score": "0.50000"})
                 continue
             active_cfg = cfg_optical if (ref_rgb or search_rgb) else cfg
@@ -275,11 +293,14 @@ def main():
                     # confidence that the forced answer is right.
                     found = 1
                     score = float(p_present)
-                if found:
+                if found and not (ref_rgb or search_rgb):
                     # A found row's confidence also reflects whether the four
                     # template quadrants agreed on the site, which tracks
                     # localization correctness; measured on the training suite
-                    # this damping lifts the calibration auc.
+                    # this damping lifts the calibration auc. Optical rows are
+                    # exempt so their score is the model probability itself,
+                    # exactly as the readme documents; an audit caught the
+                    # damping reaching them through this branch's old order.
                     agree = max(int(diag.get("quad_agree", -1)), 0)
                     score *= 0.5 + 0.5 * min(agree / 4.0, 1.0)
             else:
@@ -292,11 +313,11 @@ def main():
             theta, scale = _finite(theta), _finite(scale, active_cfg.zoom)
             score = _finite(score)
             if found:
-                rows.append({"pair_id": pid, "x": f"{x:.3f}", "y": f"{y:.3f}",
+                emit({"pair_id": pid, "x": f"{x:.3f}", "y": f"{y:.3f}",
                              "theta": f"{theta:.3f}", "scale": f"{scale:.4f}",
                              "found": 1, "score": f"{score:.5f}"})
             else:
-                rows.append({"pair_id": pid, "x": 0, "y": 0, "theta": 0,
+                emit({"pair_id": pid, "x": 0, "y": 0, "theta": 0,
                              "scale": 0, "found": 0, "score": f"{score:.5f}"})
         except _PairTimeout:
             # The pair reached the wall clock limit. Its row is written and the
@@ -304,24 +325,30 @@ def main():
             # pair that would have followed it.
             print(f"WARNING: {pid} exceeded {PAIR_HARD_TIMEOUT_S:.0f}s and was "
                   f"reported absent", file=sys.stderr, flush=True)
-            rows.append({"pair_id": pid, "x": 0, "y": 0, "theta": 0,
+            emit({"pair_id": pid, "x": 0, "y": 0, "theta": 0,
                          "scale": 0, "found": 0, "score": "0.00000"})
         except Exception:
             # A pair that fails still gets its row: a missing row scores zero
             # for certain, a conservative rejection at least scores the pairs
             # where rejection was the right call.
-            rows.append({"pair_id": pid, "x": 0, "y": 0, "theta": 0,
+            emit({"pair_id": pid, "x": 0, "y": 0, "theta": 0,
                          "scale": 0, "found": 0, "score": "0.00000"})
         finally:
             if _HAS_ALARM:
                 signal.setitimer(signal.ITIMER_REAL, 0.0)
         print(f"{pid} found={rows[-1]['found']} score={rows[-1]['score']}", flush=True)
 
-    with open(args.output, "w", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=["pair_id", "x", "y", "theta",
-                                           "scale", "found", "score"])
-        w.writeheader()
-        w.writerows(rows)
+    # One row per input pair is the contract's hardest invariant, so it is
+    # repaired rather than merely asserted: any pair id that somehow reached
+    # this point without a row gets a conservative rejection before the file
+    # closes.
+    written = {r["pair_id"] for r in rows}
+    for pid, _, _ in pairs:
+        if pid not in written:
+            emit({"pair_id": pid, "x": 0, "y": 0, "theta": 0,
+                  "scale": 0, "found": 0, "score": "0.00000"})
+            written.add(pid)
+    out_fh.close()
     print(f"wrote {args.output} with {len(rows)} rows")
 
 

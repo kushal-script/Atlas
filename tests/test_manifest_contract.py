@@ -107,3 +107,67 @@ def test_degenerate_blank_pair_is_deliberately_rejected(tmp_path):
     assert len(rows) == 1
     assert rows[0]["found"] == "0"
     assert rows[0]["x"] == "0" and rows[0]["y"] == "0"
+
+
+def test_sixteen_bit_images_are_coerced_and_processed(tmp_path):
+    """A 16 bit export must produce the same row as its 8 bit original.
+
+    The coercion shifts sixteen bit values down eight bits, the exact inverse
+    of how such an export is made, so a real pair re encoded at 16 bits must
+    localize identically, not merely produce a row."""
+    import numpy as np
+    import cv2
+    src = REPO / "data" / "p2smoke" / "pair_0000"
+    if not src.exists():
+        import pytest
+        pytest.skip("smoke suite not present")
+    outs = {}
+    for depth in ("8", "16"):
+        d = tmp_path / depth
+        d.mkdir()
+        for name in ("reference.png", "search.png"):
+            img = cv2.imread(str(src / name), cv2.IMREAD_UNCHANGED)
+            if depth == "16":
+                img = (img.astype(np.uint16) << 8)
+            cv2.imwrite(str(d / name), img)
+        manifest = d / "pairs.csv"
+        manifest.write_text("pair_id,reference_path,search_path\n"
+                            f"p0,{d / 'reference.png'},{d / 'search.png'}\n")
+        out = d / "pred.csv"
+        proc = subprocess.run(
+            [sys.executable, str(REPO / "register.py"),
+             "--input", str(manifest), "--output", str(out)],
+            capture_output=True, text=True, timeout=300)
+        assert proc.returncode == 0, proc.stderr
+        outs[depth] = list(csv.DictReader(open(out)))[0]
+    assert outs["8"] == outs["16"]
+
+
+def test_output_file_is_written_incrementally(tmp_path):
+    """Rows must reach disk as pairs finish, so a kill loses one pair, not all."""
+    import numpy as np
+    import cv2
+    rng = np.random.default_rng(12)
+    search = (rng.random((300, 300)) * 200 + 20).astype(np.uint8)
+    ref = search[60:160, 70:170].copy()
+    cv2.imwrite(str(tmp_path / "ref.png"), ref)
+    cv2.imwrite(str(tmp_path / "search.png"), search)
+    manifest = tmp_path / "pairs.csv"
+    manifest.write_text("pair_id,reference_path,search_path\n"
+                        + "".join(f"p{i},{tmp_path / 'ref.png'},{tmp_path / 'search.png'}\n"
+                                  for i in range(3)))
+    out = tmp_path / "pred.csv"
+    proc = subprocess.Popen(
+        [sys.executable, str(REPO / "register.py"),
+         "--input", str(manifest), "--output", str(out)],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    # wait for the first pair's stdout line, then kill mid batch
+    first = proc.stdout.readline()
+    import time as _t
+    deadline = _t.time() + 120
+    while "found=" not in first and _t.time() < deadline:
+        first = proc.stdout.readline()
+    proc.kill()
+    proc.wait(timeout=30)
+    rows = list(csv.DictReader(open(out)))
+    assert len(rows) >= 1, "at least the finished pair must already be on disk"

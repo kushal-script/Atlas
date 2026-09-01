@@ -416,7 +416,8 @@ def _load_combiner():
     path = Path(__file__).resolve().parent.parent.parent / "models" / "rerank_combiner.json"
     if _COMBINER["path"] != str(path):
         try:
-            _COMBINER["model"] = json.load(open(path))
+            with open(path) as fh:
+                _COMBINER["model"] = json.load(fh)
         except (OSError, ValueError):
             _COMBINER["model"] = None
         _COMBINER["path"] = str(path)
@@ -1211,6 +1212,18 @@ def load_gray(path):
     img = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
     if img is None:
         raise FileNotFoundError(path)
+    # The contract supplies 8 bit captures, but IMREAD_UNCHANGED faithfully
+    # returns whatever the file holds, and a 16 bit or float export from some
+    # other tool would otherwise flow into stages whose thresholds and
+    # arithmetic assume the 0 to 255 range. Coercing here keeps every
+    # downstream assumption true instead of quietly false.
+    if img.dtype == np.uint16:
+        img = (img >> 8).astype(np.uint8)
+    elif img.dtype != np.uint8:
+        x = img.astype(np.float32)
+        lo, hi = float(x.min()), float(x.max())
+        img = (np.zeros(x.shape, np.uint8) if hi <= lo else
+               np.clip((x - lo) / (hi - lo) * 255.0, 0, 255).astype(np.uint8))
     if img.ndim == 3:
         planes = img[:, :, :3].astype(np.int16)
         spread = max(int(np.abs(planes[:, :, 0] - planes[:, :, 1]).max()),
