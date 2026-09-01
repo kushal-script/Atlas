@@ -131,20 +131,61 @@ def features_from_record_v3(rec):
     return features_from_record_v2(rec) + _extended_block(rec)
 
 
-def features_for_model(model, diag):
-    """The feature vector the given model was fitted on.
+RAW_CONFIRM_FEATURES = RERANK_FEATURES + ("raw_peak", "raw_margin", "raw_agree")
 
-    The shipped model carries fifteen weights; a refit that uses the re ranker
-    block carries eighteen, and one that adds the ambiguity block twenty one,
-    each naming its features. Selecting by the model's own feature list means
-    an old model keeps working beside a new one, and the length guard below
-    still refuses any construction that drifts from any of them."""
-    n = len(model["features"]) if "features" in model else len(model["weights"])
-    if n == len(EXTENDED_FEATURES):
-        return features_from_diag_v3(diag)
-    if n == len(RERANK_FEATURES):
-        return features_from_diag_v2(diag)
-    return features_from_diag(diag)
+
+def _raw_block(d):
+    """The full reference confirmation's three contributions.
+
+    raw_peak is the correlation of the organisers' own template formation at
+    the estimated pose against the unprocessed search image, the statistic
+    their generator guarantees solvable on present pairs and the one their
+    absent separability calibration reads. raw_margin is that peak over the
+    best peak outside the site. raw_agree asks whether the raw statistic's
+    global argmax landed on our answer within the 3 px their gate uses.
+    Neutral defaults carry no signal when the confirmation did not run."""
+    rc = d.get("raw_confirm") or {}
+    return [
+        float(rc.get("peak", 0.0)),
+        float(rc.get("margin", 0.0)),
+        1.0 if rc.get("agree", True) else 0.0,
+    ]
+
+
+ALL_FEATURE_NAMES = tuple(list(FEATURES)
+                          + ["rr_score", "rr_margin", "rr_agree",
+                             "lattice_balance", "period_ratio", "peak_curv",
+                             "raw_peak", "raw_margin", "raw_agree"])
+
+
+def _all_named(diag_or_rec, base):
+    vals = (base + _rerank_block(diag_or_rec.get("rerank"))
+            + _extended_block(diag_or_rec) + _raw_block(diag_or_rec))
+    return dict(zip(ALL_FEATURE_NAMES, vals))
+
+
+def features_all_from_diag(diag):
+    return [_all_named(diag, features_from_diag(diag))[n] for n in ALL_FEATURE_NAMES]
+
+
+def features_for_model(model, diag):
+    """The feature vector the given model was fitted on, selected by name.
+
+    Every fitted model names its features; the vector is assembled from the
+    named quantities so tiers of equal length cannot be confused, and a name
+    this construction does not know is refused rather than guessed at. A
+    model file without a feature list is the original fifteen feature one."""
+    if "features" not in model:
+        return features_from_diag(diag)
+    table = _all_named(diag, features_from_diag(diag))
+    return [table[n] for n in model["features"]]
+
+
+def features_for_model_record(model, rec):
+    if "features" not in model:
+        return features_from_record(rec)
+    table = _all_named(rec, features_from_record(rec))
+    return [table[n] for n in model["features"]]
 
 
 def presence_probability(model, feats):

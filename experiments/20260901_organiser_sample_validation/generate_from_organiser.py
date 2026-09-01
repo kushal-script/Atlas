@@ -1,13 +1,18 @@
-"""Generate fresh validation suites from the organisers' own generator.
+"""Generate fresh suites from the organisers' own generator under new seeds.
 
 The shared bundle carries the full Phase 2 generation pipeline and a
-deterministic driver. This wrapper reuses that pipeline under new seeds to
-produce suites this repository has never seen, in two recipes: one faithful to
-the shared 20 pair sample, and one matching the jury recommendation recorded
-in the bundle's readme for the real set, Set A raised to severity 1 and Set B
-shifted toward severities 3 and 4. Everything produced here is validation
-only: no model, threshold or parameter of the submission is fitted on it, the
-same standing this repository gives the organiser sample itself.
+deterministic driver. This wrapper reuses that pipeline under new seeds in
+two recipes: one faithful to the shared 20 pair sample, and one matching the
+jury recommendation recorded in the bundle's readme for the real set, Set A
+raised to severity 1 and Set B shifted toward severities 3 and 4.
+
+Standing of the data this produces: it is this team's own generated data,
+which the addendum explicitly allows for augmentation, retraining and
+threshold tuning, and the addendum's own FAQ says regenerating a dataset is
+needed to tune the found threshold. The line that must never be crossed is
+different and stands: the organisers' SHARED pairs themselves are never
+fitted on, only validated against. Suites produced here for fitting always
+use seeds disjoint from suites used for judging.
 
 Runs only when the shared bundle is present beside the repository; nothing
 from the bundle is copied into the repository.
@@ -96,11 +101,10 @@ def main():
     args = ap.parse_args()
     import cv2
 
-    (args.out / "search").mkdir(parents=True, exist_ok=True)
-    (args.out / "reference").mkdir(parents=True, exist_ok=True)
+    args.out.mkdir(parents=True, exist_ok=True)
     master = np.random.default_rng(args.seed)
     plan = build_plan(args.recipe, args.num, master)
-    gt_rows = []
+    gt_rows, our_rows = [], []
     for idx, (pid, subset, arch, zoom, theta, present, sev) in enumerate(plan):
         t0 = time.time()
         rng = np.random.default_rng(args.seed + idx * 7919)
@@ -111,18 +115,35 @@ def main():
         if subset == "D":
             ref = to_optical_rgb(ref, rng)
             srch = to_optical_rgb(srch, rng)
-        cv2.imwrite(str(args.out / "reference" / f"{pid}.png"), ref)
-        cv2.imwrite(str(args.out / "search" / f"{pid}.png"), srch)
+        (args.out / pid).mkdir(exist_ok=True)
+        cv2.imwrite(str(args.out / pid / "reference.png"), ref)
+        cv2.imwrite(str(args.out / pid / "search.png"), srch)
         gt_rows.append({"pair_id": pid, "set": subset, "severity": sev,
                         "architecture": arch, "present": int(gt["present"]),
                         "x": gt["x"], "y": gt["y"], "theta": gt["theta"],
                         "scale": gt["scale"]})
+        our_rows.append({"pair_id": pid,
+                         "set": {"A": "A_nominal", "B": "B_degraded",
+                                 "C": "C_absent", "D": "D_optical"}[subset],
+                         "severity": sev,
+                         "reference_path": f"{pid}/reference.png",
+                         "search_path": f"{pid}/search.png",
+                         "style": "dram" if arch.startswith("dram") else "finfet",
+                         "modality": "optical" if subset == "D" else "sem",
+                         "found": int(gt["present"]),
+                         "gt_x": gt["x"], "gt_y": gt["y"],
+                         "gt_zoom": zoom, "gt_rotation_deg": theta,
+                         "seed": args.seed + idx * 7919})
         print(f"{pid} {subset} sev{sev} {arch:14s} z {zoom:5.2f} th {theta:+5.2f} "
               f"{time.time() - t0:5.1f}s", flush=True)
-    with open(args.out / "ground_truth.csv", "w", newline="") as fh:
+    with open(args.out / "ground_truth_org.csv", "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=list(gt_rows[0].keys()))
         w.writeheader()
         w.writerows(gt_rows)
+    with open(args.out / "ground_truth.csv", "w", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=list(our_rows[0].keys()))
+        w.writeheader()
+        w.writerows(our_rows)
     print("wrote", args.out)
 
 

@@ -1,0 +1,30 @@
+presence_model.json: plateau 0.050 to 0.250 midpoint 0.150
+  pooled at 0.150: found graded 69.69  reject graded 63.74  loc 28.43  F1found 0.897  F1rej 0.500  auc 0.944  (fn 15 fp 59)
+    thr24_b180   found  68.81  reject  62.95  F1f 0.900 F1r 0.509
+    thr24_h2     found  65.57  reject  55.52  F1f 0.846 F1r 0.176
+    thr24_h1     found  70.90  reject  67.42  F1f 0.932 F1r 0.700
+    thr24_amat   found  78.15  reject  73.80  F1f 0.921 F1r 0.632
+pool_v2.json: plateau 0.050 to 0.150 midpoint 0.100
+  pooled at 0.100: found graded 69.37  reject graded 61.69  loc 28.32  F1found 0.885  F1rej 0.373  auc 0.937  (fn 13 fp 71)
+    thr24_b180   found  68.16  reject  61.11  F1f 0.886 F1r 0.415
+    thr24_h2     found  65.89  reject  54.97  F1f 0.866 F1r 0.138
+    thr24_h1     found  70.28  reject  62.46  F1f 0.885 F1r 0.364
+    thr24_amat   found  78.09  reject  73.74  F1f 0.921 F1r 0.632
+pool_v4.json: plateau 0.050 to 0.125 midpoint 0.100
+  pooled at 0.100: found graded 69.56  reject graded 62.24  loc 28.43  F1found 0.890  F1rej 0.403  auc 0.940  (fn 11 fp 69)
+    thr24_b180   found  68.71  reject  62.25  F1f 0.901 F1r 0.471
+    thr24_h2     found  65.64  reject  54.73  F1f 0.860 F1r 0.133
+    thr24_h1     found  70.47  reject  63.30  F1f 0.890 F1r 0.412
+    thr24_amat   found  78.17  reject  73.83  F1f 0.921 F1r 0.632
+amat_v2.json: plateau 0.050 to 0.050 midpoint 0.050
+  pooled at 0.050: found graded 67.01  reject graded 61.46  loc 27.95  F1found 0.842  F1rej 0.472  auc 0.792  (fn 56 fp 49)
+    thr24_b180   found  65.52  reject  59.25  F1f 0.829 F1r 0.411
+    thr24_h2     found  63.37  reject  58.49  F1f 0.825 F1r 0.500
+    thr24_h1     found  67.34  reject  61.05  F1f 0.819 F1r 0.400
+    thr24_amat   found  79.00  reject  76.68  F1f 0.955 F1r 0.800
+amat_v4.json: plateau 0.050 to 0.050 midpoint 0.050
+  pooled at 0.050: found graded 66.30  reject graded 60.89  loc 27.95  F1found 0.834  F1rej 0.473  auc 0.733  (fn 62 fp 47)
+    thr24_b180   found  64.61  reject  58.82  F1f 0.816 F1r 0.430
+    thr24_h2     found  62.66  reject  58.38  F1f 0.828 F1r 0.542
+    thr24_h1     found  66.68  reject  60.38  F1f 0.812 F1r 0.392
+    thr24_amat   found  78.57  reject  74.57  F1f 0.933 F1r 0.667

@@ -25,9 +25,9 @@ import numpy as np
 from scipy.optimize import minimize
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-from drift_sense.presence import (EXTENDED_FEATURES, FEATURES, RERANK_FEATURES,
-                                  features_from_record, features_from_record_v2,
-                                  features_from_record_v3)
+from drift_sense.presence import (ALL_FEATURE_NAMES, EXTENDED_FEATURES, FEATURES,
+                                  RAW_CONFIRM_FEATURES, RERANK_FEATURES,
+                                  features_for_model_record, features_from_record)
 
 def rej_f1(y, pred_found):
     tp = int(np.sum((y == 0) & (pred_found == 0)))
@@ -53,15 +53,16 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--records", type=Path, required=True)
     ap.add_argument("--out", type=Path, default=Path("models/presence_model.json"))
-    ap.add_argument("--features", choices=("v1", "v2", "v3"), default="v1",
+    ap.add_argument("--features", choices=("v1", "v2", "v3", "v4", "all"), default="v1",
                     help="v1 the fifteen diagnostics, v2 adds the rerank combiner block, "
-                         "v3 adds the ambiguity block on top")
+                         "v3 the ambiguity block on v2, v4 the raw confirmation block "
+                         "on v2, all every named feature")
     args = ap.parse_args()
     recs = json.load(open(args.records))
-    feats, build = {"v1": (FEATURES, features_from_record),
-                    "v2": (RERANK_FEATURES, features_from_record_v2),
-                    "v3": (EXTENDED_FEATURES, features_from_record_v3)}[args.features]
-    X = np.array([build(r) for r in recs], float)
+    feats = {"v1": FEATURES, "v2": RERANK_FEATURES, "v3": EXTENDED_FEATURES,
+             "v4": RAW_CONFIRM_FEATURES, "all": ALL_FEATURE_NAMES}[args.features]
+    pseudo = {"features": list(feats)}
+    X = np.array([features_for_model_record(pseudo, r) for r in recs], float)
     y = np.array([1 if r["truth_found"] else 0 for r in recs])
     mu, sd = X.mean(0), X.std(0) + 1e-9
     Xs = (X - mu) / sd

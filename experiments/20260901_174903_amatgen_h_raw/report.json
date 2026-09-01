@@ -1,0 +1,28 @@
+{
+  "dataset": "data/amatgen_train_h",
+  "pairs_gray": 54,
+  "found_threshold": 0.647,
+  "rejection": {
+    "f1": 0.888888888888889,
+    "precision": 0.8,
+    "recall": 1.0,
+    "tp": 12,
+    "fp": 3,
+    "fn": 0
+  },
+  "localization": {
+    "credit_A": 0.8476190476190476,
+    "credit_B": 0.819047619047619,
+    "points_of_40": 33.27619047619048
+  },
+  "pose": {
+    "scale_credit": 0.938888888888889,
+    "rotation_credit": 0.9027777777777778,
+    "points_of_20": 18.416666666666668
+  },
+  "calibration_auc": 0.8358662613981763,
+  "calibration_points_of_10": 8.358662613981764,
+  "runtime_median_s": 5.022985499992501,
+  "runtime_max_s": 6.572439417010173,
+  "estimated_core_score": 73.38485309017224
+}

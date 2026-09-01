@@ -29,8 +29,8 @@ import numpy as np
 from scipy.ndimage import grey_dilation, grey_erosion
 
 from drift_sense.localize import MatchConfig, load_gray, locate, optical_config
-from drift_sense.presence import (EXTENDED_FEATURES, features_for_model,
-                                  features_from_diag_v3, presence_probability)
+from drift_sense.presence import (ALL_FEATURE_NAMES, features_all_from_diag,
+                                  features_for_model, presence_probability)
 
 RESCUE_PEAK_BELOW = 0.62
 RESCUE_MARGIN = 0.02
@@ -79,13 +79,13 @@ def harvest(dataset, model):
         # the full feature vector rides along so any candidate model can be
         # swept over this harvest without running the localizer again; the
         # fifteen feature model reads the prefix
-        fv = features_from_diag_v3(diag)
+        fv = features_all_from_diag(diag)
         row = {"pair_id": r["pair_id"], "set": r["set"], "truth_found": int(r["found"]),
                "p_present": f"{p:.6f}", "err_px": f"{err:.3f}",
                "scale_rel": f"{s_rel:.5f}", "rot_abs_deg": f"{r_abs:.4f}",
                "quad_agree": int(max(diag.get("quad_agree", 0), 0)),
                "seconds": f"{time.perf_counter() - t0:.2f}"}
-        row.update({f"feat_{n}": f"{v:.6f}" for n, v in zip(EXTENDED_FEATURES, fv)})
+        row.update({f"feat_{n}": f"{v:.6f}" for n, v in zip(ALL_FEATURE_NAMES, fv)})
         rows.append(row)
         print(f"{r['pair_id']} p={p:.3f} err={err:.2f}", flush=True)
     return rows

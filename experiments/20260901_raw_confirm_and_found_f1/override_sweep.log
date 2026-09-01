@@ -1,0 +1,7 @@
+fitting pool 252 present pairs, override off: 29.68 of 40
+optimum 30.49 on margins 0.02 to 0.02; midpoint 0.02 (fired 11, rescued 7, damaged 2) chosen BEFORE any held out number
+fitting pool 252 present pairs, override off: 29.68 of 40
+optimum 30.49 on margins 0.02 to 0.02; midpoint 0.02 (fired 11, rescued 7, damaged 2) chosen BEFORE any held out number
+HELD OUT 20260901_183704_h1_raw: off 30.19 -> at 0.02 30.19 delta +0.00 of 40 (fired 0, rescued 0, damaged 0)
+HELD OUT 20260901_184557_h2_raw: off 24.90 -> at 0.02 26.19 delta +1.29 of 40 (fired 6, rescued 3, damaged 0)
+HELD OUT 20260901_185447_amath_raw: off 35.83 -> at 0.02 36.69 delta +0.86 of 40 (fired 1, rescued 1, damaged 0)

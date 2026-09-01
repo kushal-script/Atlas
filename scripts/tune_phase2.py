@@ -111,6 +111,9 @@ def main():
                      "stab": float(d.get("pose_stability_px", -1.0)),
                      "rerank": {k: (d.get("rerank") or {}).get(k)
                                 for k in ("score", "margin", "agree")},
+                     "raw_confirm": {k: (d.get("raw_confirm") or {}).get(k)
+                                     for k in ("peak", "margin", "agree",
+                                               "dist", "x", "y")},
                      "lattice_balance": float(d.get("lattice_balance", 0.0)),
                      "period_ratio": float(d.get("period_ratio", 1.0)),
                      "peak_curv": float(d.get("peak_curv", 0.0)),
