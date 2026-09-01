@@ -84,5 +84,5 @@
   "cv_reject_f1": 0.7307692307692307,
   "trained_on": "experiments/20260901_120110_p2_features_rerank/records.json",
   "n_pairs": 216,
-  "threshold_note": "0.35 chosen on the four suite pooled sweep under the found class F1 the addendum's own false positive and false negative definitions and the organisers' reference scorer both grade: the found graded plateau midpoint is 0.15, but 0.35 keeps three quarters of that reading's gain, is positive on all four suites under it, and costs 0.16 pooled under the reject class reading, inside run noise; experiments/20260901_raw_confirm_and_found_f1"
+  "threshold_note": "0.35 revalidated on a five suite pooled sweep of 492 pairs spanning both generators, easy and identical geometry decoys: within 0.42 of the found graded optimum and 0.13 of the reject graded one, effectively the best worst case under the grading class ambiguity; experiments/20260901_stress_and_decoys/threshold_selection.log"
 }

@@ -263,5 +263,73 @@ class _TorchCorrelator:
         return self._scores(stack)[0].cpu().numpy()
 
 
+class _FftCpuCorrelator:
+    """The OpenCV correlation with the search side work computed once.
+
+    cv2.matchTemplate recomputes the search image's transform and window sum
+    tables on every call, and the pose grid calls it tens of times against one
+    fixed search image, so those are cached here: the search spectrum for the
+    numerator and the integral images for the per window mean and variance,
+    the fast normalized cross correlation factorisation. Each call then costs
+    one template transform, one spectrum product and one inverse transform.
+    The zero mean template makes the window mean term of the numerator vanish,
+    so the surface equals TM_CCOEFF_NORMED up to float rounding; prediction
+    identity against the direct path is verified before this ships."""
+
+    def __init__(self, search):
+        s = np.asarray(search, dtype=np.float32)
+        self.search = s
+        self.h, self.w = s.shape
+        self.fs = cv2.dft(s, flags=cv2.DFT_COMPLEX_OUTPUT)
+        self.ii, self.ii2 = cv2.integral2(s)
+        self._wsums = {}
+
+    def _window_var(self, th, tw):
+        key = (th, tw)
+        if key not in self._wsums:
+            H, W = self.h - th + 1, self.w - tw + 1
+            ii, ii2 = self.ii, self.ii2
+            s1 = (ii[th:th + H, tw:tw + W] - ii[:H, tw:tw + W]
+                  - ii[th:th + H, :W] + ii[:H, :W])
+            s2 = (ii2[th:th + H, tw:tw + W] - ii2[:H, tw:tw + W]
+                  - ii2[th:th + H, :W] + ii2[:H, :W])
+            n = float(th * tw)
+            var = np.maximum(s2 - s1 * s1 / n, 0.0)
+            self._wsums[key] = var.astype(np.float64)
+        return self._wsums[key]
+
+    def _surface(self, tmpl):
+        t = np.asarray(tmpl, dtype=np.float32)
+        th, tw = t.shape
+        if th > self.h or tw > self.w:
+            raise ValueError("template larger than search")
+        t0 = t - float(t.mean())
+        norm = float((t0 * t0).sum())
+        pad = np.zeros((self.h, self.w), np.float32)
+        pad[:th, :tw] = t0
+        ft = cv2.dft(pad, flags=cv2.DFT_COMPLEX_OUTPUT)
+        prod = cv2.mulSpectrums(self.fs, ft, 0, conjB=True)
+        cross = cv2.dft(prod, flags=cv2.DFT_INVERSE | cv2.DFT_SCALE | cv2.DFT_REAL_OUTPUT)
+        H, W = self.h - th + 1, self.w - tw + 1
+        num = cross[:H, :W].astype(np.float64)
+        den = np.sqrt(self._window_var(th, tw) * norm)
+        out = np.where(den > 1e-9, num / np.maximum(den, 1e-12), 0.0)
+        return out.astype(np.float32)
+
+    def peaks(self, tmpls, want_min=False):
+        out = []
+        for t in tmpls:
+            r = self._surface(t)
+            out.append((float(r.min()), float(r.max())) if want_min else float(r.max()))
+        return out
+
+    def full(self, tmpl):
+        return self._surface(tmpl)
+
+
 def make_correlator(search, device="cpu"):
-    return _CpuCorrelator(search) if device == "cpu" else _TorchCorrelator(search, device)
+    if device == "cpu":
+        return _FftCpuCorrelator(search)
+    if device == "cpu_direct":
+        return _CpuCorrelator(search)
+    return _TorchCorrelator(search, device)

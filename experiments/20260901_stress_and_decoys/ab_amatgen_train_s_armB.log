@@ -1,0 +1,12 @@
+
+  armB_noarbiter
+  set / severity       n   credit   median err  rejected  median s   max s
+  A_nominal / 0       21    1.000         0.21         0      3.53    3.94
+  B_degraded / 1       4    0.950         0.40         0      3.50    3.72
+  B_degraded / 2       7    0.829         0.42         1      3.36    3.59
+  B_degraded / 3       7    0.971         0.40         0      3.68    4.02
+  B_degraded / 4       3    0.800         1.38         0      3.56    3.56
+  SET A credit              1.000
+  SET B credit              0.895
+  weighted                  0.942   localization 37.70 / 40
+  runtime  median 3.53s   p90 3.79s   max 4.02s   over 5s 0%

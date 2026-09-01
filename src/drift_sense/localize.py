@@ -180,6 +180,30 @@ class MatchConfig:
     # experiments/20260901_raw_confirm_and_found_f1.
     raw_override: bool = True
     raw_override_margin: float = 0.02
+    # Pose arbitration by the same raw statistic. When the wide grid ran, the
+    # top distinct pose candidates are each scored by the raw full reference
+    # correlation, and the pose switches when another candidate's raw peak
+    # beats the chosen one's by the margin. The failure this addresses is
+    # scale aliasing at the range corners: at z twelve the true template is
+    # smallest while a wrong scale lattice lock can win the bandpassed
+    # correlation, and on the diagnosed pair the raw statistic separated the
+    # true pose from the impostor at 0.837 against 0.695 with the true argmax
+    # 0.3 px from truth.
+    pose_arbiter: bool = True
+    pose_arbiter_top_k: int = 4
+    pose_arbiter_margin: float = 0.05
+    # Additive full width charging streak rows, the organisers' charging
+    # mechanism, corrected per row on the search capture before matching. A
+    # row is corrected only when its median exceeds a running median baseline
+    # by both a robust threshold and an absolute floor, and nothing happens
+    # when more than a quarter of rows flag, which is structure rather than
+    # streaks. Measured at plus 2.09 localization of 40 on the hardened
+    # organiser recipe fitting suite and exactly zero with no false trigger
+    # on the sample recipe or on 216 pairs of this repository's own
+    # generator; experiments/20260901_stress_and_decoys.
+    streak_suppress: bool = True
+    streak_k_mad: float = 5.0
+    streak_min_gray: float = 10.0
     residual_rms_top_k: int = 10
     reranker_path: str = ""
     reranker_prob: float = 0.5
@@ -228,6 +252,48 @@ def _noise_sigma(img):
     """Immerkaer style noise estimate, median based so edges do not inflate it."""
     lap = cv2.filter2D(img.astype(np.float32), -1, _NOISE_KERNEL)
     return float(np.sqrt(np.pi / 2.0) * np.median(np.abs(lap)) / 6.0)
+
+
+def _suppress_streak_rows(img, cfg):
+    """Correct additive full width bright streak rows on the search capture.
+
+    The organisers' charging model adds full width horizontal bands one to
+    five rows tall and up to about seventy gray. The hazard is a horizontal
+    lattice whose own bright rows a naive running median baseline would eat,
+    so the baseline is phase aware: the row profile is detrended, its
+    dominant vertical period measured, and each row compared against the
+    median of the rows sharing its phase. A lattice row reconciles with its
+    cohort and reads zero; a sporadic streak stands against thirty odd
+    cohort members and cannot hide. Without a strong period the running
+    median stands in, and if more than thirty percent of rows flag the frame
+    is structure rather than streaks and nothing is done."""
+    from scipy.ndimage import median_filter
+    x = img.astype(np.float32)
+    row_med = np.median(x, axis=1)
+    smooth = median_filter(row_med, size=61, mode="nearest")
+    detr = row_med - smooth
+    f = np.abs(np.fft.rfft(detr * np.hanning(len(detr))))
+    f[:2] = 0
+    kbin = int(np.argmax(f))
+    period = int(round(len(detr) / kbin)) if kbin else 0
+    if kbin and f[kbin] > 4 * np.median(f) and 2 <= period <= 64:
+        base = np.empty_like(detr)
+        for ph in range(period):
+            base[ph::period] = np.median(detr[ph::period])
+    else:
+        base = median_filter(detr, size=31, mode="nearest")
+    resid = detr - base
+    mad = np.median(np.abs(resid - np.median(resid))) + 1e-6
+    hot = resid > max(cfg.streak_min_gray, cfg.streak_k_mad * 1.4826 * mad)
+    # the running median's boundary windows are asymmetric and flag edge rows
+    # of any structured frame, so the outer band is never corrected
+    hot[:32] = False
+    hot[-32:] = False
+    n = int(hot.sum())
+    if n == 0 or n > int(x.shape[0] * 0.30):
+        return img, 0
+    x[hot] -= resid[hot, None]
+    return np.clip(x, 0, 255).astype(img.dtype), n
 
 
 def _preprocess(img, cfg, denoise):
@@ -597,6 +663,9 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
     search_img, search_impulse = _despeckle(search_img, cfg)
     ref_img = _tone_normalize(ref_img, cfg)
     search_img = _tone_normalize(search_img, cfg)
+    streak_rows = 0
+    if cfg.streak_suppress:
+        search_img, streak_rows = _suppress_streak_rows(search_img, cfg)
     ref = ref_img.astype(np.float32)
     ref_low = _lowpass(ref, cfg.bandpass_sigma_px * cfg.zoom, cfg)
     all_sigmas = sorted(set(cfg.psf_sigma_bank_nm) | set(cfg.wide_sigma_bank_nm))
@@ -679,6 +748,7 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
     wide_score = nominal_score
     wide_key = nominal_key
     used_wide = False
+    pose_arbiter_diag = None
     budget_left = lambda frac: (time.perf_counter() - t0) < cfg.time_budget_s * frac
     # Whether the budget, rather than the evidence, decided which stages ran.
     # A caller comparing two passes over the same pair needs this: a pass that
@@ -710,6 +780,53 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
         cand = refine(cand)
         if tried[cand] > nominal_score + cfg.nominal_preference:
             wide_key, wide_score, used_wide = cand, tried[cand], True
+
+        if cfg.pose_arbiter and budget_left(0.75):
+            best_key = wide_key if used_wide else nominal_key
+            best_th, best_sc, best_sig = best_key
+            # Candidate poses from three sources, deduplicated: the evaluated
+            # poses, the half resolution prescreen's own ranking (the true
+            # pose can lose the prescreen entirely, which is the failure this
+            # exists to catch), and a scale ladder at the chosen rotation,
+            # because the diagnosed failure mode is a wrong scale lattice
+            # lock. The raw statistic is cheap enough to score them all; only
+            # a decisive winner is ever evaluated at full resolution.
+            seen, cands = set(), []
+
+            def _add(th_k, sc_k, sig_k):
+                nm = (round(float(th_k), 2), round(float(sc_k), 3))
+                if nm not in seen:
+                    seen.add(nm)
+                    cands.append((float(th_k), float(sc_k), sig_k))
+
+            _add(*best_key)
+            for k in sorted(tried, key=tried.get, reverse=True)[:cfg.pose_arbiter_top_k]:
+                _add(*k)
+            for _, sig_p, th_p, sc_p in prescreen[:6]:
+                _add(th_p, sc_p, sig_p)
+            for sc_l in (0.8, 0.9, 1.1, 1.2):
+                _add(best_th, sc_l, best_sig)
+            scored = []
+            for th_k, sc_k, sig_k in cands:
+                rc = _raw_confirm(ref_raw, search_raw, sc_k * cfg.zoom,
+                                  cfg.theta_report_sign * th_k, 0.0, 0.0)
+                scored.append(((th_k, sc_k, sig_k),
+                               rc["peak"] if rc else -1.0,
+                               rc["margin"] if rc else 0.0))
+            cur = scored[0]
+            top = max(scored, key=lambda s: s[1])
+            pose_arbiter_diag = {
+                "cands": [[k[0], k[1], float(pk), float(mg)]
+                          for k, pk, mg in scored],
+                "cur_raw": float(cur[1]), "top_raw": float(top[1]),
+                "fired": False}
+            if (top[0][:2] != (best_th, best_sc)
+                    and top[1] >= cur[1] + cfg.pose_arbiter_margin):
+                th_w, sc_w, sig_w = top[0]
+                evaluate(sig_w, th_w, sc_w)
+                switched = refine((round(th_w, 4), round(sc_w, 5), sig_w))
+                wide_key, wide_score, used_wide = switched, tried[switched], True
+                pose_arbiter_diag["fired"] = True
 
     best = wide_key if used_wide else nominal_key
     theta_best, scale_best, sigma_best = best
@@ -1007,6 +1124,8 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
     diag = {
         "score": score_best,
         "raw_confirm": raw_confirm,
+        "pose_arbiter": pose_arbiter_diag,
+        "streak_rows": int(streak_rows),
         "lattice_balance": lattice_balance,
         "period_ratio": period_ratio,
         "peak_curv": peak_curv,

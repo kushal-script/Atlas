@@ -56,6 +56,14 @@ def build_config(args):
         cfg.prescreen_top_k = args.top_k
     if args.no_combiner:
         cfg.rerank_combiner = False
+    if args.no_pose_arbiter:
+        cfg.pose_arbiter = False
+    if args.no_raw_override:
+        cfg.raw_override = False
+    if args.streaks:
+        cfg.streak_suppress = True
+    if args.impulse_frac is not None:
+        cfg.impulse_detect_frac = args.impulse_frac
     if args.tone_norm:
         cfg.tone_norm = args.tone_norm
     if args.bandpass is not None:
@@ -106,6 +114,11 @@ def main():
     ap.add_argument("--rescue_below", type=float, default=RESCUE_PEAK_BELOW)
     ap.add_argument("--no_combiner", action="store_true",
                     help="disable the rerank battery, for pricing its runtime")
+    ap.add_argument("--no_pose_arbiter", action="store_true")
+    ap.add_argument("--no_raw_override", action="store_true")
+    ap.add_argument("--streaks", action="store_true",
+                    help="enable charging streak row suppression")
+    ap.add_argument("--impulse_frac", type=float, default=None)
     ap.add_argument("--sets", default="A_nominal,B_degraded")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--dump", type=Path, default=None)
