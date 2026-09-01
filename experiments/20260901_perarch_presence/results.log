@@ -1,0 +1,10 @@
+arm 1: one shared eighteen feature model
+  threshold 0.28  holdout total  34.31  loc 21.63  F1 0.293  auc 0.829
+arm 2: shared model, per architecture thresholds
+  dram: threshold 0.24 on 127 pairs
+  finfet: threshold 0.52 on 89 pairs
+  holdout total  37.16  loc 22.06  F1 0.511  auc 0.745   delta vs shared +2.85
+arm 3: fully separate models per detected architecture
+  dram: 127 train pairs (98 present), threshold 0.13, routes 60 holdout pairs
+  finfet: 89 train pairs (70 present), threshold 0.54, routes 48 holdout pairs
+  holdout total  35.19  loc 21.63  F1 0.409  auc 0.743   delta vs shared +0.88

@@ -160,6 +160,16 @@ class MatchConfig:
     # edge of the plateau. On the fitting suite it fires on 16 of 168 pairs,
     # rescues 4 and damages none, and set A is unchanged to three decimals.
     residual_rms_margin: float = 0.045
+    # Learned combiner over seven statistics of the raw pixels at each top
+    # peak. As a localization override it was fitted on p2train and measured
+    # a held out delta of exactly zero (experiments/20260901_rerank_combiner),
+    # so the margin ships inert and the absolute residual override below stays
+    # the shipped one; the diagnostics still run because the presence model
+    # reads the combiner's score, margin and agreement as ambiguity evidence.
+    # The model file names its own features so a stale file is refused rather
+    # than misread.
+    rerank_combiner: bool = True
+    rerank_combiner_margin: float = 9.0
     residual_rms_top_k: int = 10
     reranker_path: str = ""
     reranker_prob: float = 0.5
@@ -306,6 +316,140 @@ def _residual_rms_at(search, tmpl, py, px):
     return float(r.std())
 
 
+_COMBINER = {"model": None, "path": None}
+
+
+def _load_combiner():
+    """The re rank model, loaded once per process from beside the package."""
+    import json
+    from pathlib import Path
+    path = Path(__file__).resolve().parent.parent.parent / "models" / "rerank_combiner.json"
+    if _COMBINER["path"] != str(path):
+        try:
+            _COMBINER["model"] = json.load(open(path))
+        except (OSError, ValueError):
+            _COMBINER["model"] = None
+        _COMBINER["path"] = str(path)
+    return _COMBINER["model"]
+
+
+def _lattice_lag_of(tmpl):
+    prof = tmpl.mean(axis=0) - tmpl.mean()
+    f = np.abs(np.fft.rfft(prof * np.hanning(len(prof))))
+    f[:3] = 0
+    return max(int(round(len(prof) / max(int(np.argmax(f)), 1))), 2)
+
+
+def _lattice_lags_of(tmpl):
+    """Dominant period of each axis of the template, in pixels."""
+    lags = []
+    for prof in (tmpl.mean(axis=0), tmpl.mean(axis=1)):
+        p = prof - prof.mean()
+        f = np.abs(np.fft.rfft(p * np.hanning(len(p))))
+        f[:3] = 0
+        lags.append(max(int(round(len(p) / max(int(np.argmax(f)), 1))), 2))
+    return lags
+
+
+def _lattice_balance_of(img):
+    """Spectral balance between the two principal axes of the reference.
+
+    A DRAM array is a two dimensional lattice and carries comparable energy on
+    both axes; a FinFET field concentrates its energy on one. Reimplements the
+    measurement recorded in experiments/20260831_architecture_dispatch, whose
+    per pair values this reproduces to machine precision; DRAM sits near 0.55
+    and FinFET near 0.24 with the genuine overlap between 0.17 and 0.38."""
+    a = img.astype(np.float64)
+    a = a - a.mean()
+    a *= np.hanning(a.shape[0])[:, None]
+    a *= np.hanning(a.shape[1])[None, :]
+    F = np.abs(np.fft.fftshift(np.fft.fft2(a)))
+    cy, cx = F.shape[0] // 2, F.shape[1] // 2
+    F[cy - 1:cy + 2, cx - 1:cx + 2] = 0
+    h, v = F[cy, :].max(), F[:, cx].max()
+    return float(min(h, v) / max(max(h, v), 1e-9))
+
+
+def _candidate_stats(search, tmpl, edge_n, lag, py, px, ncc):
+    """Seven statistics of the raw pixels at one candidate site.
+
+    The correlation score is one of them; the other six each read evidence the
+    correlation discards, and the fitted combination beats any one of them at
+    ranking the true site among the peaks. Order must match the model file."""
+    t = tmpl.shape[0]
+    win = search[py:py + t, px:px + t].astype(np.float64)
+    if win.shape != tmpl.shape:
+        return None
+    tv = tmpl.astype(np.float64)
+    tz = tv - tv.mean()
+    a = float((win * tz).sum() / max((tz * tz).sum(), 1e-9))
+    r = win - a * tv - (win.mean() - a * tv.mean())
+    rz = r - r.mean()
+    rs = rz.std() + 1e-9
+    gw = np.hypot(*np.gradient(cv2.GaussianBlur(win.astype(np.float32), (0, 0), 1.0)))
+    gt = np.hypot(*np.gradient(cv2.GaussianBlur(tmpl, (0, 0), 1.0)))
+    bw = cv2.GaussianBlur(win.astype(np.float32), (0, 0), 8.0)
+    bt = cv2.GaussianBlur(tmpl, (0, 0), 8.0)
+    return [
+        float(ncc),
+        -float(np.mean(np.abs(rz / rs) * edge_n)),
+        -float(abs(np.mean(rz[:, :-lag] * rz[:, lag:])) / rs ** 2),
+        -float(abs(np.mean(rz[:, :-2] * rz[:, 2:])) / rs ** 2),
+        float(((gw - gw.mean()) * (gt - gt.mean())).mean() / (gw.std() * gt.std() + 1e-9)),
+        float(((bw - bw.mean()) * (bt - bt.mean())).mean() / (bw.std() * bt.std() + 1e-9)),
+        -float(rs),
+    ]
+
+
+def _combiner_rerank(search, tmpl, resp, cfg, extra_site=None):
+    """Top peaks ranked by the fitted combination of the seven statistics.
+
+    Returns (candidates, probabilities) sorted best first, or (None, None)
+    when the model is absent or fewer than two peaks are usable. extra_site,
+    when given, is appended so the classical choice is always scored even if
+    the peak suppression removed it."""
+    model = _load_combiner()
+    if model is None:
+        return None, None, None
+    t = tmpl.shape[0]
+    r = resp.copy()
+    rad = max(t // 3, 8)
+    sites = []
+    for _ in range(int(cfg.residual_rms_top_k)):
+        _, mx, _, loc = cv2.minMaxLoc(r)
+        if mx <= -1:
+            break
+        px, py = int(loc[0]), int(loc[1])
+        r[max(0, py - rad):py + rad + 1, max(0, px - rad):px + rad + 1] = -2
+        sites.append((py, px, float(mx)))
+    if extra_site is not None and all(
+            np.hypot(extra_site[0] - py, extra_site[1] - px) > 2 for py, px, _ in sites):
+        ey, ex = extra_site
+        if 0 <= ey < resp.shape[0] and 0 <= ex < resp.shape[1]:
+            sites.append((ey, ex, float(resp[ey, ex])))
+    lag = _lattice_lag_of(tmpl)
+    edge = np.hypot(*np.gradient(tmpl))
+    edge_n = edge / (edge.std() + 1e-9)
+    mu = np.asarray(model["mu"], float)
+    sd = np.asarray(model["sd"], float)
+    wv = np.asarray(model["weights"], float)
+    cands, probs, stats = [], [], []
+    for py, px, ncc in sites:
+        f = _candidate_stats(search, tmpl, edge_n, lag, py, px, ncc)
+        if f is None:
+            continue
+        z = (np.asarray(f) - mu) / sd
+        m = float(z @ wv + model["bias"])
+        cands.append((py, px))
+        probs.append(1.0 / (1.0 + np.exp(-m)))
+        stats.append([float(v) for v in f])
+    if len(cands) < 2:
+        return None, None, None
+    order = np.argsort(probs)[::-1]
+    return ([cands[i] for i in order], [probs[i] for i in order],
+            [stats[i] for i in order])
+
+
 def _rms_rerank(search, tmpl, resp, cfg):
     """Top peaks of the correlation surface ranked by absolute residual.
 
@@ -384,6 +528,7 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
     # the budget times the number of passes, which is how pairs came to exceed
     # the scored timeout while every individual call stayed inside it.
     t0 = time.perf_counter() if t_start is None else t_start
+    lattice_balance = _lattice_balance_of(ref_img)
     ref_img, ref_impulse = _despeckle(ref_img, cfg)
     search_img, search_impulse = _despeckle(search_img, cfg)
     ref_img = _tone_normalize(ref_img, cfg)
@@ -637,7 +782,46 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
     # relative margin are recorded whether or not the override fires, so the
     # margin can be swept offline from one harvest.
     rms_diag = None
-    if cfg.residual_rms_rerank and resp is not None:
+    rr_diag = None
+    if cfg.rerank_combiner and resp is not None:
+        cy, cx = int(round(y - half)), int(round(x - half))
+        r_cands, r_probs, r_stats = _combiner_rerank(search, tmpl_best, resp, cfg,
+                                                      extra_site=(cy, cx))
+        if r_cands is not None:
+            # the classical choice's own probability, for the margin and for
+            # the presence model's disagreement feature
+            p_cls = 0.0
+            for (py2, px2), pr in zip(r_cands, r_probs):
+                if np.hypot(py2 - cy, px2 - cx) <= 2.0:
+                    p_cls = pr
+                    break
+            b_py, b_px = r_cands[0]
+            agree = bool(np.hypot(b_py - cy, b_px - cx) <= 2.0)
+            margin2 = float(r_probs[0] - (r_probs[1] if len(r_probs) > 1 else 0.0))
+            rr_diag = {"score": float(r_probs[0]), "margin": margin2,
+                       "agree": agree, "fired": False,
+                       "classical_score": float(p_cls),
+                       "top_rc": [int(b_py), int(b_px)],
+                       "classical_rc": [int(cy), int(cx)]}
+            if getattr(cfg, "rerank_record_stats", False):
+                rr_diag["candidates"] = [
+                    {"rc": [int(a), int(b)], "prob": float(pr), "stats": st}
+                    for (a, b), pr, st in zip(r_cands, r_probs, r_stats)]
+            if (not agree
+                    and float(r_probs[0]) - p_cls >= cfg.rerank_combiner_margin):
+                dx2 = dy2 = 0.0
+                if 0 < b_px < resp.shape[1] - 1:
+                    dx2 = _parabolic(resp[b_py, b_px - 1], resp[b_py, b_px],
+                                     resp[b_py, b_px + 1])
+                if 0 < b_py < resp.shape[0] - 1:
+                    dy2 = _parabolic(resp[b_py - 1, b_px], resp[b_py, b_px],
+                                     resp[b_py + 1, b_px])
+                x = b_px + dx2 + half
+                y = b_py + dy2 + half
+                py, px = b_py, b_px
+                rr_diag["fired"] = True
+    if (cfg.residual_rms_rerank and resp is not None
+            and not (rr_diag and rr_diag["fired"])):
         r_cands, r_vals = _rms_rerank(search, tmpl_best, resp, cfg)
         if r_cands is not None:
             cy, cx = int(round(y - half)), int(round(x - half))
@@ -725,8 +909,31 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
             quad_disp = float(np.median(d))
             quad_agree = int(sum(1 for v in d if v <= 2.0))
 
+    # Three ambiguity diagnostics for the presence model. The second peak is
+    # searched outside one full lattice period in each axis because inside it
+    # the runner up is the same site, and at the naive radius the runner up of
+    # a periodic layout is a lattice replica of the true site whether or not
+    # the site is right, which is exactly the case the ratio test was not
+    # built for. Near one the surface is comb only; the lower the ratio the
+    # more the chosen site carries that the rest of the lattice does not.
+    lag_h, lag_v = _lattice_lags_of(tmpl_best)
+    _rad = max(lag_h, lag_v, 8)
+    _r1 = float(resp[py, px])
+    _masked = resp.copy()
+    _masked[max(0, py - _rad):py + _rad + 1, max(0, px - _rad):px + _rad + 1] = -2.0
+    _r2 = float(_masked.max())
+    period_ratio = float(max(_r2, 0.0) / _r1) if _r1 > 1e-6 else 1.0
+    peak_curv = 0.0
+    if 0 < py < resp.shape[0] - 1 and 0 < px < resp.shape[1] - 1:
+        peak_curv = float(((2 * resp[py, px] - resp[py, px - 1] - resp[py, px + 1])
+                           + (2 * resp[py, px] - resp[py - 1, px] - resp[py + 1, px]))
+                          / max(abs(_r1), 1e-6))
+
     diag = {
         "score": score_best,
+        "lattice_balance": lattice_balance,
+        "period_ratio": period_ratio,
+        "peak_curv": peak_curv,
         "theta_deg": float(theta_polished),
         "theta_grid_deg": float(theta_best),
         "scale": float(scale_best),
@@ -734,6 +941,7 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
         "pose_source": "wide_grid" if used_wide else "nominal",
         "budget_gated": bool(budget_gated),
         "residual_rms": rms_diag,
+        "rerank": rr_diag,
         "nominal_score": float(nominal_score),
         "wide_score": float(wide_score),
         "inverted_contrast": bool(inverted),

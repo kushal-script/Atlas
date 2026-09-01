@@ -47,7 +47,11 @@ def build_config(args):
     if args.psf_bank:
         cfg.psf_sigma_bank_nm = tuple(float(v) for v in args.psf_bank.split(","))
     if args.wide_bank:
-        cfg.wide_sigma_bank_nm = tuple(float(v) for v in args.wide_bank.split(","))
+        # "none" empties the bank; an empty string means not provided, and the
+        # difference matters because a flag that silently does nothing turns an
+        # A/B into the same arm twice.
+        cfg.wide_sigma_bank_nm = (() if args.wide_bank == "none" else
+                                  tuple(float(v) for v in args.wide_bank.split(",")))
     if args.top_k:
         cfg.prescreen_top_k = args.top_k
     if args.tone_norm:

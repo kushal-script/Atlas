@@ -37,7 +37,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 import numpy as np
 
 from drift_sense.localize import MatchConfig, load_gray, locate, optical_config
-from drift_sense.presence import features_from_diag, presence_probability
+from drift_sense.presence import features_for_model, presence_probability
 from scipy.ndimage import grey_dilation, grey_erosion
 
 # Width rescue. Polygon scaling changes feature widths between the two
@@ -251,7 +251,9 @@ def main():
                         x, y, diag = x2, y2, d2
             peak = float(diag["score"])
             if model is not None:
-                p_present = presence_probability(model, features_from_diag(diag))
+                # the model names its own features, so the fifteen, eighteen and
+                # twenty one feature files all work and none can be misread
+                p_present = presence_probability(model, features_for_model(model, diag))
                 found = 1 if p_present >= model["prob_threshold"] else 0
                 score = float(max(p_present, 1.0 - p_present))
                 if ref_rgb or search_rgb:

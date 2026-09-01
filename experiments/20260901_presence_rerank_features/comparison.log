@@ -1,0 +1,10 @@
+v1 fifteen features: threshold 0.21
+  train   total  44.19  loc 25.63  F1 0.706  auc 0.798
+  holdout total  33.58  loc 22.48  F1 0.263  auc 0.716
+v2 plus rerank block: threshold 0.28
+  train   total  45.54  loc 25.37  F1 0.776  auc 0.854
+  holdout total  34.31  loc 21.63  F1 0.293  auc 0.829
+held out delta v2 minus v1: +0.73 proxy points (F1 +0.030, auc +0.114)
+  weight rr_score: +0.675
+  weight rr_margin: +1.409
+  weight rr_agree: +0.603

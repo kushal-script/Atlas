@@ -29,7 +29,8 @@ import numpy as np
 from scipy.ndimage import grey_dilation, grey_erosion
 
 from drift_sense.localize import MatchConfig, load_gray, locate, optical_config
-from drift_sense.presence import features_from_diag, presence_probability
+from drift_sense.presence import (EXTENDED_FEATURES, features_for_model,
+                                  features_from_diag_v3, presence_probability)
 
 RESCUE_PEAK_BELOW = 0.62
 RESCUE_MARGIN = 0.02
@@ -70,16 +71,22 @@ def harvest(dataset, model):
                                        active, t_start=t0)
                 if float(d2["score"]) > float(diag["score"]) + RESCUE_MARGIN:
                     x, y, diag = x2, y2, d2
-        p = presence_probability(model, features_from_diag(diag))
+        p = presence_probability(model, features_for_model(model, diag))
         err = float(np.hypot(x - float(r["gt_x"]), y - float(r["gt_y"])))
         s_rel = abs(float(diag["scale"]) * active.zoom - float(r["gt_zoom"])) / float(r["gt_zoom"])
         r_abs = abs(active.theta_report_sign * float(diag["theta_deg"])
                     - float(r["gt_rotation_deg"]))
-        rows.append({"pair_id": r["pair_id"], "set": r["set"], "truth_found": int(r["found"]),
-                     "p_present": f"{p:.6f}", "err_px": f"{err:.3f}",
-                     "scale_rel": f"{s_rel:.5f}", "rot_abs_deg": f"{r_abs:.4f}",
-                     "quad_agree": int(max(diag.get("quad_agree", 0), 0)),
-                     "seconds": f"{time.perf_counter() - t0:.2f}"})
+        # the full feature vector rides along so any candidate model can be
+        # swept over this harvest without running the localizer again; the
+        # fifteen feature model reads the prefix
+        fv = features_from_diag_v3(diag)
+        row = {"pair_id": r["pair_id"], "set": r["set"], "truth_found": int(r["found"]),
+               "p_present": f"{p:.6f}", "err_px": f"{err:.3f}",
+               "scale_rel": f"{s_rel:.5f}", "rot_abs_deg": f"{r_abs:.4f}",
+               "quad_agree": int(max(diag.get("quad_agree", 0), 0)),
+               "seconds": f"{time.perf_counter() - t0:.2f}"}
+        row.update({f"feat_{n}": f"{v:.6f}" for n, v in zip(EXTENDED_FEATURES, fv)})
+        rows.append(row)
         print(f"{r['pair_id']} p={p:.3f} err={err:.2f}", flush=True)
     return rows
 
@@ -138,8 +145,11 @@ def main():
                          "degraded pairs carries enough spread that a threshold chosen on it "
                          "is chosen partly on its draw; pooling several disjoint seeds picks "
                          "an operating point that does not depend on which one was measured")
+    ap.add_argument("--model", type=Path, default=MODEL,
+                    help="presence model to sweep; a harvest carrying feature columns is "
+                         "rescored under this model, so one harvest serves every candidate")
     args = ap.parse_args()
-    model = json.loads(MODEL.read_text())
+    model = json.loads(args.model.read_text())
 
     if args.harvest and args.harvest.exists():
         rows = list(csv.DictReader(open(args.harvest)))
@@ -160,6 +170,13 @@ def main():
     if args.pool:
         n_abs = sum(1 for r in rows if r["truth_found"] == 0)
         print(f"  sweeping over {len(rows)} pairs, {n_abs} of them absent")
+
+    names = model.get("features", [])
+    if names and rows and all(f"feat_{n}" in rows[0] for n in names):
+        for r in rows:
+            r["p_present"] = presence_probability(
+                model, [float(r[f"feat_{n}"]) for n in names])
+        print(f"  rescored {len(rows)} rows under {args.model.name}")
 
     shipped = float(model["prob_threshold"])
     grid = sorted(set(list(np.round(np.arange(0.05, 0.96, 0.025), 4)) + [shipped]))

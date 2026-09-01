@@ -1,0 +1,40 @@
+{
+  "features": [
+    "ncc",
+    "edge_locked",
+    "lattice_res",
+    "whiteness",
+    "grad_ncc",
+    "matscale_ncc",
+    "res_rms"
+  ],
+  "weights": [
+    0.254947,
+    0.02481,
+    0.091455,
+    0.398272,
+    0.517216,
+    0.416737,
+    0.635705
+  ],
+  "bias": -3.723555,
+  "mu": [
+    0.500741,
+    -1.357484,
+    -0.176333,
+    -0.516581,
+    0.245825,
+    0.504115,
+    -20.422089
+  ],
+  "sd": [
+    0.210647,
+    0.370411,
+    0.168154,
+    0.202395,
+    0.211029,
+    0.281291,
+    7.18407
+  ],
+  "note": "Refit at the estimated pose from /tmp/rr_train.json over 216 pairs and 2163 candidates; margin fitted separately by --report."
+}

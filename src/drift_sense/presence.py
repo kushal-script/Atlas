@@ -73,6 +73,80 @@ def features_from_record(rec):
                      rec.get("quad_disp", -1.0), rec.get("quad_agree", -1))
 
 
+RERANK_FEATURES = FEATURES + ("rr_score", "rr_margin", "rr_agree")
+
+
+def _rerank_block(rr):
+    """The re ranker's three contributions to the presence decision.
+
+    rr_score is the combiner's probability that its chosen site is the true
+    one. rr_margin is that probability minus the runner up's, the re ranker's
+    own decisiveness. rr_agree asks whether two independent evidence functions,
+    the correlation and the combiner, chose the same site; disagreement between
+    them is close to a direct measurement of ambiguity, which is what a
+    rejection is. All three are zero when the re ranker did not run, and
+    rr_agree defaults to agreement so the absent case carries no signal."""
+    rr = rr or {}
+    return [
+        float(rr.get("score", 0.0)),
+        float(rr.get("margin", 0.0)),
+        1.0 if rr.get("agree", True) else 0.0,
+    ]
+
+
+def features_from_diag_v2(diag):
+    return features_from_diag(diag) + _rerank_block(diag.get("rerank"))
+
+
+def features_from_record_v2(rec):
+    return features_from_record(rec) + _rerank_block(rec.get("rerank"))
+
+
+EXTENDED_FEATURES = RERANK_FEATURES + ("lattice_balance", "period_ratio", "peak_curv")
+
+
+def _extended_block(d):
+    """Three ambiguity statistics recorded by the localizer.
+
+    lattice_balance is the spectral balance of the reference, a continuous
+    architecture covariate fed to one pooled model rather than a hard router,
+    since every hard specialisation measured on this repository lost held out
+    credit. period_ratio compares the best peak against the best outside one
+    full lattice period, the ratio test rebuilt for layouts whose naive runner
+    up is a lattice replica of the chosen site. peak_curv is the curvature of
+    the correlation surface at the peak, without which a ratio computed on a
+    broad peak reads as decisive when nothing was decided."""
+    return [
+        float(d.get("lattice_balance", 0.0)),
+        float(d.get("period_ratio", 1.0)),
+        float(d.get("peak_curv", 0.0)),
+    ]
+
+
+def features_from_diag_v3(diag):
+    return features_from_diag_v2(diag) + _extended_block(diag)
+
+
+def features_from_record_v3(rec):
+    return features_from_record_v2(rec) + _extended_block(rec)
+
+
+def features_for_model(model, diag):
+    """The feature vector the given model was fitted on.
+
+    The shipped model carries fifteen weights; a refit that uses the re ranker
+    block carries eighteen, and one that adds the ambiguity block twenty one,
+    each naming its features. Selecting by the model's own feature list means
+    an old model keeps working beside a new one, and the length guard below
+    still refuses any construction that drifts from any of them."""
+    n = len(model["features"]) if "features" in model else len(model["weights"])
+    if n == len(EXTENDED_FEATURES):
+        return features_from_diag_v3(diag)
+    if n == len(RERANK_FEATURES):
+        return features_from_diag_v2(diag)
+    return features_from_diag(diag)
+
+
 def presence_probability(model, feats):
     # A model fitted against a different feature list would silently misalign
     # every weight with the wrong quantity and still return a plausible looking

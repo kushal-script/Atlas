@@ -25,7 +25,9 @@ import numpy as np
 from scipy.optimize import minimize
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-from drift_sense.presence import FEATURES, features_from_record
+from drift_sense.presence import (EXTENDED_FEATURES, FEATURES, RERANK_FEATURES,
+                                  features_from_record, features_from_record_v2,
+                                  features_from_record_v3)
 
 def rej_f1(y, pred_found):
     tp = int(np.sum((y == 0) & (pred_found == 0)))
@@ -51,9 +53,15 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--records", type=Path, required=True)
     ap.add_argument("--out", type=Path, default=Path("models/presence_model.json"))
+    ap.add_argument("--features", choices=("v1", "v2", "v3"), default="v1",
+                    help="v1 the fifteen diagnostics, v2 adds the rerank combiner block, "
+                         "v3 adds the ambiguity block on top")
     args = ap.parse_args()
     recs = json.load(open(args.records))
-    X = np.array([features_from_record(r) for r in recs], float)
+    feats, build = {"v1": (FEATURES, features_from_record),
+                    "v2": (RERANK_FEATURES, features_from_record_v2),
+                    "v3": (EXTENDED_FEATURES, features_from_record_v3)}[args.features]
+    X = np.array([build(r) for r in recs], float)
     y = np.array([1 if r["truth_found"] else 0 for r in recs])
     mu, sd = X.mean(0), X.std(0) + 1e-9
     Xs = (X - mu) / sd
@@ -116,7 +124,7 @@ def main():
     print(f"  peak only baseline: reject F1 {f1b:.3f}  precision {pb:.2f} recall {rb:.2f} at peak>={b[1]:.3f}")
 
     w = fit_logistic(Xs, y)
-    model = {"features": list(FEATURES), "mu": mu.tolist(), "sd": sd.tolist(),
+    model = {"features": list(feats), "mu": mu.tolist(), "sd": sd.tolist(),
              "weights": w[:-1].tolist(), "bias": float(w[-1]),
              "prob_threshold": float(best[1]),
              "cv_reject_f1": float(f1),
@@ -128,7 +136,7 @@ def main():
     print(f"  full fit train reject F1 {f1f:.3f} (precision {pfc:.2f} recall {rfc:.2f})")
     print(f"  wrote {args.out}")
     print("  weights by feature:")
-    for name, wi in zip(FEATURES, w[:-1]):
+    for name, wi in zip(feats, w[:-1]):
         print(f"    {name:10s} {wi:+.3f}")
 
 

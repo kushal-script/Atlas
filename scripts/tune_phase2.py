@@ -109,6 +109,11 @@ def main():
                      "quad_disp": float(d.get("quad_disp", -1.0)),
                      "quad_agree": int(d.get("quad_agree", -1)),
                      "stab": float(d.get("pose_stability_px", -1.0)),
+                     "rerank": {k: (d.get("rerank") or {}).get(k)
+                                for k in ("score", "margin", "agree")},
+                     "lattice_balance": float(d.get("lattice_balance", 0.0)),
+                     "period_ratio": float(d.get("period_ratio", 1.0)),
+                     "peak_curv": float(d.get("peak_curv", 0.0)),
                      "runtime": rt})
         print(f"{r['pair_id']} {r['set']:10s} peak {d['score']:.3f} "
               f"err {err if err is None else round(err, 1)}", flush=True)

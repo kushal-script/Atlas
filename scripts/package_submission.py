@@ -36,6 +36,8 @@ INCLUDE = [
     "requirements_phase2.txt",
     "submission/failure_analysis.pdf",
     "models/presence_model.json",
+    "models/rerank_combiner.json",
+    "scripts/fit_rerank.py",
     "models/reranker.npz",
     "src/drift_sense/__init__.py",
     "src/drift_sense/params.py",
