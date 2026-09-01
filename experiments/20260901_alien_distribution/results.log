@@ -1,0 +1,8 @@
+mutation            credit   n falseRej wrongGrab  absGrab scoreWrong scoreRight
+dark_streaks         1.000   6        0         0      1/2        nan      0.976
+gamma_down           1.000   7        0         0      0/1        nan      0.997
+heavy_speckle        1.000   6        0         0      2/2        nan      1.000
+invert               0.714   7        0         2      1/1      0.952      1.000
+tone_crush           1.000   6        0         0      1/2        nan      1.000
+vertical_streaks     1.000   6        0         0      1/2        nan      0.937
+overall present credit 0.947 over 38

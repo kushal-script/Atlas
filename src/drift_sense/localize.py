@@ -180,6 +180,13 @@ class MatchConfig:
     # experiments/20260901_raw_confirm_and_found_f1.
     raw_override: bool = True
     raw_override_margin: float = 0.02
+    # Neither the override nor the pose arbiter acts unless the raw peak
+    # itself is meaningful. The released gate floors present pair raw peaks
+    # near 0.34, so 0.25 never gates an on recipe fire, while a raw statistic
+    # computed under a broken appearance convention peaks near noise and must
+    # not move anything; the alien suite's inverted pairs measured that
+    # misfire before this floor existed.
+    raw_override_min_peak: float = 0.25
     # Pose arbitration by the same raw statistic. When the wide grid ran, the
     # top distinct pose candidates are each scored by the raw full reference
     # correlation, and the pose switches when another candidate's raw peak
@@ -555,7 +562,9 @@ def _combiner_rerank(search, tmpl, resp, cfg, extra_site=None):
         ey, ex = extra_site
         if 0 <= ey < resp.shape[0] and 0 <= ex < resp.shape[1]:
             sites.append((ey, ex, float(resp[ey, ex])))
-    lag = _lattice_lag_of(tmpl)
+    # a degenerate template yields a meaningless huge lag whose shifted slices
+    # are empty, the mean of which is nan; clamping keeps every slice populated
+    lag = min(_lattice_lag_of(tmpl), max(tmpl.shape[1] // 2, 2))
     edge = np.hypot(*np.gradient(tmpl))
     edge_n = edge / (edge.std() + 1e-9)
     ctx = _template_context(tmpl)
@@ -565,7 +574,7 @@ def _combiner_rerank(search, tmpl, resp, cfg, extra_site=None):
     cands, probs, stats = [], [], []
     for py, px, ncc in sites:
         f = _candidate_stats(search, tmpl, ctx, edge_n, lag, py, px, ncc)
-        if f is None:
+        if f is None or not np.all(np.isfinite(f)):
             continue
         z = (np.asarray(f) - mu) / sd
         m = float(z @ wv + model["bias"])
@@ -716,6 +725,12 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
     inverted = -pol_mn > pol_mx
     if inverted:
         search = -search
+        # the raw statistic correlates the unprocessed captures, so the
+        # polarity decision has to reach it too; without this the raw peak on
+        # an inverted search is meaningless noise, and an override firing on
+        # meaningless evidence moved correct answers on the alien suite's
+        # inverted pairs, the exact misfire that suite was built to catch
+        search_raw = (255 - search_raw).astype(search_raw.dtype)
         corr = backend.make_correlator(search, cfg.device)
         # The prescreen correlator has to be negated with the full resolution
         # one. Rebuilding only the latter left the wide pose grid screened
@@ -821,6 +836,7 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
                 "cur_raw": float(cur[1]), "top_raw": float(top[1]),
                 "fired": False}
             if (top[0][:2] != (best_th, best_sc)
+                    and top[1] >= cfg.raw_override_min_peak
                     and top[1] >= cur[1] + cfg.pose_arbiter_margin):
                 th_w, sc_w, sig_w = top[0]
                 evaluate(sig_w, th_w, sc_w)
@@ -1117,6 +1133,7 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
     if raw_confirm is not None:
         raw_confirm["fired"] = bool(cfg.raw_override
                                     and not raw_confirm["agree"]
+                                    and raw_confirm["peak"] >= cfg.raw_override_min_peak
                                     and raw_confirm["margin"] >= cfg.raw_override_margin)
         if raw_confirm["fired"]:
             x, y = raw_confirm["x"], raw_confirm["y"]

@@ -57,3 +57,53 @@ def test_malformed_manifest_still_writes_one_row_per_pair(tmp_path, name, body, 
         if row["found"] == "0":
             assert row["x"] == "0" and row["y"] == "0"
             assert row["theta"] == "0" and row["scale"] == "0"
+
+
+def test_symlinked_images_resolve(tmp_path):
+    """A pair whose paths are symlinks must localize like the originals."""
+    import numpy as np
+    import cv2
+    rng = np.random.default_rng(5)
+    search = (rng.random((300, 300)) * 200 + 20).astype(np.uint8)
+    ref = search[80:180, 90:190].copy()
+    real = tmp_path / "real"
+    real.mkdir()
+    cv2.imwrite(str(real / "ref.png"), ref)
+    cv2.imwrite(str(real / "search.png"), search)
+    link = tmp_path / "link"
+    link.mkdir()
+    (link / "ref.png").symlink_to(real / "ref.png")
+    (link / "search.png").symlink_to(real / "search.png")
+    manifest = tmp_path / "pairs.csv"
+    manifest.write_text("pair_id,reference_path,search_path\n"
+                        f"p0,{link / 'ref.png'},{link / 'search.png'}\n")
+    out = tmp_path / "pred.csv"
+    proc = subprocess.run(
+        [sys.executable, str(REPO / "register.py"),
+         "--input", str(manifest), "--output", str(out)],
+        capture_output=True, text=True, timeout=180)
+    assert proc.returncode == 0, proc.stderr
+    rows = list(csv.DictReader(open(out)))
+    assert len(rows) == 1
+
+
+def test_degenerate_blank_pair_is_deliberately_rejected(tmp_path):
+    """A near constant capture is rejected by decision, not by accident."""
+    import numpy as np
+    import cv2
+    blank = np.full((300, 300), 128, np.uint8)
+    cv2.imwrite(str(tmp_path / "ref.png"), blank)
+    cv2.imwrite(str(tmp_path / "search.png"), blank)
+    manifest = tmp_path / "pairs.csv"
+    manifest.write_text("pair_id,reference_path,search_path\n"
+                        f"p0,{tmp_path / 'ref.png'},{tmp_path / 'search.png'}\n")
+    out = tmp_path / "pred.csv"
+    proc = subprocess.run(
+        [sys.executable, str(REPO / "register.py"),
+         "--input", str(manifest), "--output", str(out)],
+        capture_output=True, text=True, timeout=180)
+    assert proc.returncode == 0, proc.stderr
+    rows = list(csv.DictReader(open(out)))
+    assert len(rows) == 1
+    assert rows[0]["found"] == "0"
+    assert rows[0]["x"] == "0" and rows[0]["y"] == "0"

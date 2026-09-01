@@ -76,6 +76,20 @@ def features_from_record(rec):
 RERANK_FEATURES = FEATURES + ("rr_score", "rr_margin", "rr_agree")
 
 
+def _fin(v, default):
+    """A recorded value, or the block's neutral default when it is not finite.
+
+    A degenerate image can push nan through a diagnostic, and nan times any
+    weight is nan, which turns the whole probability into an accident of how
+    comparisons treat it. The neutral default makes the conservative outcome
+    deliberate instead."""
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return default
+    return v if np.isfinite(v) else default
+
+
 def _rerank_block(rr):
     """The re ranker's three contributions to the presence decision.
 
@@ -88,8 +102,8 @@ def _rerank_block(rr):
     rr_agree defaults to agreement so the absent case carries no signal."""
     rr = rr or {}
     return [
-        float(rr.get("score", 0.0)),
-        float(rr.get("margin", 0.0)),
+        _fin(rr.get("score", 0.0), 0.0),
+        _fin(rr.get("margin", 0.0), 0.0),
         1.0 if rr.get("agree", True) else 0.0,
     ]
 
@@ -117,9 +131,9 @@ def _extended_block(d):
     the correlation surface at the peak, without which a ratio computed on a
     broad peak reads as decisive when nothing was decided."""
     return [
-        float(d.get("lattice_balance", 0.0)),
-        float(d.get("period_ratio", 1.0)),
-        float(d.get("peak_curv", 0.0)),
+        _fin(d.get("lattice_balance", 0.0), 0.0),
+        _fin(d.get("period_ratio", 1.0), 1.0),
+        _fin(d.get("peak_curv", 0.0), 0.0),
     ]
 
 
@@ -146,8 +160,8 @@ def _raw_block(d):
     Neutral defaults carry no signal when the confirmation did not run."""
     rc = d.get("raw_confirm") or {}
     return [
-        float(rc.get("peak", 0.0)),
-        float(rc.get("margin", 0.0)),
+        _fin(rc.get("peak", 0.0), 0.0),
+        _fin(rc.get("margin", 0.0), 0.0),
         1.0 if rc.get("agree", True) else 0.0,
     ]
 

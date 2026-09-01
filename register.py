@@ -226,6 +226,15 @@ def main():
                 signal.setitimer(signal.ITIMER_REAL, PAIR_HARD_TIMEOUT_S)
             ref, ref_rgb = load_gray(ref_path)
             search, search_rgb = load_gray(search_path)
+            # A near constant capture carries no structure to match and in a
+            # lab means the sensor failed, so it is rejected deliberately
+            # rather than left to a model that never saw such an input. The
+            # nan the degenerate statistics used to produce made the same
+            # decision by accident; this makes it a decision.
+            if float(np.std(ref)) < 1.0 or float(np.std(search)) < 1.0:
+                rows.append({"pair_id": pid, "x": 0, "y": 0, "theta": 0,
+                             "scale": 0, "found": 0, "score": "0.50000"})
+                continue
             active_cfg = cfg_optical if (ref_rgb or search_rgb) else cfg
             x, y, diag, _ = locate(ref, search, active_cfg, t_start=t_pair)
             if (float(diag["score"]) < RESCUE_PEAK_BELOW
