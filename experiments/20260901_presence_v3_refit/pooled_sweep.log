@@ -1,0 +1,5 @@
+pooled 378 pairs over 3 harvests
+presence_model.json  top  62.52  plateau 0.300 to 0.525  midpoint 0.425  core there  62.40  (loc 26.26 pose 18.45 F1 0.579 auc 0.900)
+presence_v1.json     top  62.59  plateau 0.375 to 0.475  midpoint 0.425  core there  62.39  (loc 26.46 pose 18.41 F1 0.590 auc 0.867)
+presence_v2.json     top  63.92  plateau 0.425 to 0.675  midpoint 0.550  core there  63.78  (loc 26.85 pose 18.39 F1 0.646 auc 0.885)
+presence_v3.json     top  63.66  plateau 0.600 to 0.675  midpoint 0.650  core there  63.66  (loc 26.73 pose 18.42 F1 0.657 auc 0.866)

@@ -370,7 +370,22 @@ def _lattice_balance_of(img):
     return float(min(h, v) / max(max(h, v), 1e-9))
 
 
-def _candidate_stats(search, tmpl, edge_n, lag, py, px, ncc):
+def _template_context(tmpl):
+    """Everything in the statistic battery that depends on the template alone.
+
+    Computed once per surface rather than once per candidate, which halves the
+    blur work of the battery; every value is identical to what the per
+    candidate computation produced, only hoisted."""
+    tv = tmpl.astype(np.float64)
+    tz = tv - tv.mean()
+    gt = np.hypot(*np.gradient(cv2.GaussianBlur(tmpl, (0, 0), 1.0)))
+    bt = cv2.GaussianBlur(tmpl, (0, 0), 8.0)
+    return {"tv": tv, "tz": tz, "tzz": max((tz * tz).sum(), 1e-9),
+            "tmean": tv.mean(), "gt": gt, "gtz": gt - gt.mean(), "gts": gt.std(),
+            "bt": bt, "btz": bt - bt.mean(), "bts": bt.std()}
+
+
+def _candidate_stats(search, tmpl, ctx, edge_n, lag, py, px, ncc):
     """Seven statistics of the raw pixels at one candidate site.
 
     The correlation score is one of them; the other six each read evidence the
@@ -380,23 +395,20 @@ def _candidate_stats(search, tmpl, edge_n, lag, py, px, ncc):
     win = search[py:py + t, px:px + t].astype(np.float64)
     if win.shape != tmpl.shape:
         return None
-    tv = tmpl.astype(np.float64)
-    tz = tv - tv.mean()
-    a = float((win * tz).sum() / max((tz * tz).sum(), 1e-9))
-    r = win - a * tv - (win.mean() - a * tv.mean())
+    a = float((win * ctx["tz"]).sum() / ctx["tzz"])
+    r = win - a * ctx["tv"] - (win.mean() - a * ctx["tmean"])
     rz = r - r.mean()
     rs = rz.std() + 1e-9
-    gw = np.hypot(*np.gradient(cv2.GaussianBlur(win.astype(np.float32), (0, 0), 1.0)))
-    gt = np.hypot(*np.gradient(cv2.GaussianBlur(tmpl, (0, 0), 1.0)))
-    bw = cv2.GaussianBlur(win.astype(np.float32), (0, 0), 8.0)
-    bt = cv2.GaussianBlur(tmpl, (0, 0), 8.0)
+    wf = win.astype(np.float32)
+    gw = np.hypot(*np.gradient(cv2.GaussianBlur(wf, (0, 0), 1.0)))
+    bw = cv2.GaussianBlur(wf, (0, 0), 8.0)
     return [
         float(ncc),
         -float(np.mean(np.abs(rz / rs) * edge_n)),
         -float(abs(np.mean(rz[:, :-lag] * rz[:, lag:])) / rs ** 2),
         -float(abs(np.mean(rz[:, :-2] * rz[:, 2:])) / rs ** 2),
-        float(((gw - gw.mean()) * (gt - gt.mean())).mean() / (gw.std() * gt.std() + 1e-9)),
-        float(((bw - bw.mean()) * (bt - bt.mean())).mean() / (bw.std() * bt.std() + 1e-9)),
+        float(((gw - gw.mean()) * ctx["gtz"]).mean() / (gw.std() * ctx["gts"] + 1e-9)),
+        float(((bw - bw.mean()) * ctx["btz"]).mean() / (bw.std() * ctx["bts"] + 1e-9)),
         -float(rs),
     ]
 
@@ -430,12 +442,13 @@ def _combiner_rerank(search, tmpl, resp, cfg, extra_site=None):
     lag = _lattice_lag_of(tmpl)
     edge = np.hypot(*np.gradient(tmpl))
     edge_n = edge / (edge.std() + 1e-9)
+    ctx = _template_context(tmpl)
     mu = np.asarray(model["mu"], float)
     sd = np.asarray(model["sd"], float)
     wv = np.asarray(model["weights"], float)
     cands, probs, stats = [], [], []
     for py, px, ncc in sites:
-        f = _candidate_stats(search, tmpl, edge_n, lag, py, px, ncc)
+        f = _candidate_stats(search, tmpl, ctx, edge_n, lag, py, px, ncc)
         if f is None:
             continue
         z = (np.asarray(f) - mu) / sd

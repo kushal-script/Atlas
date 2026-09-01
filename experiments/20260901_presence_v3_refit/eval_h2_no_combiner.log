@@ -1,0 +1,8 @@
+flag added
+  B_degraded / 4      14    0.143       225.79         2      5.51    5.80
+  SET A credit              0.357
+  SET B credit              0.381
+  weighted                  0.370   localization 14.81 / 40
+  runtime  median 3.46s   p90 5.54s   max 5.95s   over 5s 24%
+
+[exited with code 0]

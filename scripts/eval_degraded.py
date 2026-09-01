@@ -30,7 +30,7 @@ import numpy as np
 from scipy.ndimage import grey_dilation, grey_erosion
 
 from drift_sense.localize import MatchConfig, load_gray, locate
-from drift_sense.presence import features_from_diag, presence_probability
+from drift_sense.presence import features_for_model, presence_probability
 
 RESCUE_PEAK_BELOW = 0.62
 RESCUE_MARGIN = 0.02
@@ -54,6 +54,8 @@ def build_config(args):
                                   tuple(float(v) for v in args.wide_bank.split(",")))
     if args.top_k:
         cfg.prescreen_top_k = args.top_k
+    if args.no_combiner:
+        cfg.rerank_combiner = False
     if args.tone_norm:
         cfg.tone_norm = args.tone_norm
     if args.bandpass is not None:
@@ -82,7 +84,7 @@ def run_pair(ref_path, search_path, cfg, model, rescue_below):
             if float(d2["score"]) > float(diag["score"]) + RESCUE_MARGIN:
                 x, y, diag = x2, y2, d2
     if model is not None:
-        p = presence_probability(model, features_from_diag(diag))
+        p = presence_probability(model, features_for_model(model, diag))
         found = 1 if p >= model["prob_threshold"] else 0
     else:
         found = 1
@@ -102,6 +104,8 @@ def main():
     ap.add_argument("--prescreen_downsample", type=int, default=0)
     ap.add_argument("--budget", type=float, default=None)
     ap.add_argument("--rescue_below", type=float, default=RESCUE_PEAK_BELOW)
+    ap.add_argument("--no_combiner", action="store_true",
+                    help="disable the rerank battery, for pricing its runtime")
     ap.add_argument("--sets", default="A_nominal,B_degraded")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--dump", type=Path, default=None)

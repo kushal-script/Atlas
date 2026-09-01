@@ -1,0 +1,14 @@
+
+  v2_posthoist
+  set / severity       n   credit   median err  rejected  median s   max s
+  A_nominal / 0       42    0.810         0.20         4      4.36    6.54
+  B_degraded / 1      12    0.833         0.23         1      4.18    6.18
+  B_degraded / 2       8    0.750         0.27         2      4.55    6.07
+  B_degraded / 3      13    0.815         0.69         0      4.46    6.97
+  B_degraded / 4       9    0.156       429.15         2      5.65    6.43
+  SET A credit              0.810
+  SET B credit              0.667
+  weighted                  0.731   localization 29.24 / 40
+  runtime  median 4.38s   p90 6.07s   max 6.97s   over 5s 20%
+
+[exited with code 0]
