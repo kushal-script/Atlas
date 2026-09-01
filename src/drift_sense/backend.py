@@ -327,9 +327,45 @@ class _FftCpuCorrelator:
         return self._surface(tmpl)
 
 
+_CPU_CHOICE = {"cls": None}
+
+
+def _pick_cpu_correlator(search):
+    """The faster of the two CPU correlators, decided once per process.
+
+    On this project's development machine the cached transform correlator is
+    twice as fast per call; an external audit measured it 1.3 to 3.2 times
+    SLOWER on a Windows x86 box, where OpenCV's matchTemplate enjoys IPP
+    acceleration the plain dft path does not. The scoring platform is x86 and
+    unknown in detail, so the choice is measured on the machine that is
+    actually running, one warm timed call of each path against the first
+    search image, about a fifth of a second amortised over every pair of the
+    run. The two paths agree to float rounding and were verified prediction
+    identical over full suites, so the choice affects speed alone."""
+    if _CPU_CHOICE["cls"] is None:
+        import time as _time
+        s = np.asarray(search, dtype=np.float32)
+        if min(s.shape[:2]) < 256:
+            return _CpuCorrelator
+        t = np.ascontiguousarray(s[: s.shape[0] // 8, : s.shape[1] // 8])
+        best = {}
+        fft = _FftCpuCorrelator(s)
+        for name, call in (("direct", lambda: cv2.matchTemplate(
+                s, t, cv2.TM_CCOEFF_NORMED)), ("fft", lambda: fft.full(t))):
+            call()
+            t0 = _time.perf_counter()
+            call()
+            best[name] = _time.perf_counter() - t0
+        _CPU_CHOICE["cls"] = (_CpuCorrelator if best["direct"] <= best["fft"]
+                              else _FftCpuCorrelator)
+    return _CPU_CHOICE["cls"]
+
+
 def make_correlator(search, device="cpu"):
     if device == "cpu":
-        return _FftCpuCorrelator(search)
+        return _pick_cpu_correlator(search)(search)
     if device == "cpu_direct":
         return _CpuCorrelator(search)
+    if device == "cpu_fft":
+        return _FftCpuCorrelator(search)
     return _TorchCorrelator(search, device)

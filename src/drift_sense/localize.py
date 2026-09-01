@@ -118,7 +118,14 @@ class MatchConfig:
     # pair that overruns scores nothing at all, so the optional stages are
     # skipped once the budget is nearly spent rather than risking the whole
     # pair. Degrading to the answer already in hand always beats returning none.
-    time_budget_s: float = 9.0
+    # Fifteen rather than nine: on this machine run solo the guard never fires
+    # and nine against fifteen was measured to change no answer and no credit,
+    # while an external audit on a machine two to three times slower saw the
+    # nine second guard consume the blur bank before the wide grid ran at the
+    # extreme poses the blind set deliberately includes. Fifteen leaves those
+    # machines room to finish the search and still sits inside the eighteen
+    # second alarm and the twenty second forfeit.
+    time_budget_s: float = 15.0
     # Sign of the reported rotation. The pose grid angle is the rotation applied
     # to the reference to bring it onto the search image; the reported theta is
     # asked for as the rotation of the reference pattern as it appears in the

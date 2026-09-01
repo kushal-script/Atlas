@@ -130,3 +130,22 @@ The honest reading of the blind set follows: the localization and pose
 claims carry seed level error bars of about a point, and the rejection score
 on any single 40 pair draw carries error bars of two to three, which is the
 sampling reality of a forty absent pair blind set as much as of these suites.
+
+## Postscript three: the correlator choice is now measured, not assumed
+
+An external re audit on a Windows x86 machine measured the cached transform
+correlator 1.3 to 3.2 times SLOWER than cv2.matchTemplate there, the inverse
+of this machine's factor two gain, credibly because matchTemplate enjoys IPP
+acceleration on x86 that the plain dft path does not, and the reference
+machine is x86. The CPU correlator is therefore chosen by a one time timed
+calibration of both paths against the first search image, about a fifth of a
+second per process amortised over every pair, with either path still
+selectable explicitly; the two agree to float rounding and were verified
+prediction identical over full suites, so the calibration affects speed
+alone. The same audit found the nine second internal budget consuming the
+blur bank before the wide grid ran at extreme poses on that slower machine,
+so the budget rises to fifteen, inside the eighteen second alarm and twenty
+second forfeit: on this machine 57 tests pass, the smoke suite is byte
+identical, and the hardened forty changed exactly one row, an absent decoy
+grabbed either way whose unscored coordinates moved when a previously gated
+stage got room to run, every scored quantity identical at 81.54.
