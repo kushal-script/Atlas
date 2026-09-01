@@ -106,3 +106,27 @@ recipe: localization 39.74 of 40 with every severity 3 and 4 pair at full
 credit, pose 19.38, no false rejects, decision AUC 0.971, and two grabbed
 decoys in the pattern the located weakness predicts. The headline number
 reproduces on data that postdates every choice it could flatter.
+
+## Postscript two: five post freeze seeds, not one
+
+One surprise seed is a sanity check; five make a distribution. Four further
+40 pair suites were generated after the postscript above, seeds 111213 and
+141516 on the hardened recipe and 171819 and 202122 on the sample recipe,
+all chosen after every decision was frozen:
+
+    seed 909090 hardened   81.68
+    seed 141516 hardened   79.20
+    seed 171819 sample     79.61
+    seed 202122 sample     76.82
+    seed 111213 hardened   76.59
+
+Mean 78.78 of 85 over 200 post freeze pairs, spread 76.59 to 81.68. The
+battery estimates sit inside the band. The decomposition matters more than
+the mean: localization is tight across every seed, 36.2 to 39.7 of 40, and
+pose tighter still, 19.0 to 19.6 of 20, while nearly all the spread comes
+from the rejection block, F1 0.615 to 0.875, because each suite carries only
+eight absent pairs and one flipped decoy moves the F1 by roughly a tenth.
+The honest reading of the blind set follows: the localization and pose
+claims carry seed level error bars of about a point, and the rejection score
+on any single 40 pair draw carries error bars of two to three, which is the
+sampling reality of a forty absent pair blind set as much as of these suites.
