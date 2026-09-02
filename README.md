@@ -159,7 +159,7 @@ Two further dependency files exist for optional work: `requirements_dev.txt` add
 .venv/bin/python -m pytest tests/ -q
 ```
 
-The 68 tests assert the coordinate convention, sub pixel accuracy on constructively unique pairs, generator reproducibility, independent capture noise, every manifest and layout form an evaluator might supply including 16 bit containers holding 8, 12 or 16 bit data, symlinks and blank frames, streak correction that never touches lattice structure, the raw confirmation's present against absent separation and its override floor, incremental output survival of a mid batch kill, agreement of the fitting and inference feature constructions, and the entry point end to end as a subprocess over freshly generated present, absent and RGB optical pairs, asserting the found decisions, the pose accuracy and the zeroed rejection row on the actual CSV it writes.
+The 69 tests assert the coordinate convention, sub pixel accuracy on constructively unique pairs, generator reproducibility, independent capture noise, every manifest and layout form an evaluator might supply including 16 bit containers holding 8, 12 or 16 bit data, symlinks and blank frames, streak correction that never touches lattice structure, the raw confirmation's present against absent separation and its override floor, incremental output survival of a mid batch kill, agreement of the fitting and inference feature constructions, and the entry point end to end as a subprocess over freshly generated present, absent and RGB optical pairs, asserting the found decisions, the pose accuracy and the zeroed rejection row on the actual CSV it writes.
 
 ## Generate a dataset
 
