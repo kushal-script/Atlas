@@ -22,7 +22,7 @@ Submission packed, self tested with sockets blocked, and frozen at the numbers b
 | Median runtime per pair | 2.85 to 4.5 s vs the 5 s requirement | `p2_runtime` figure below |
 | Six unseen appearance families, localization | 1.000 on all six after one measured fix | `experiments/20260901_alien_distribution` |
 | Severity five, past the disclosed ladder | 0.68 credit, zero false rejects | `experiments/20260901_stress_and_decoys` |
-| External audit rounds, verified finding by finding | 5, every new signal closed by a measured change | commit history |
+| External audit rounds, verified finding by finding | 7, every new signal closed by a measured change or refuted with recorded evidence | commit history |
 | Recorded residual weakness | identical geometry decoys grabbed 6 in 10, priced; its discriminating signal measured at d' 1.68 and five deployments declined for damaging other suites | `experiments/20260902_presence_dev_refit` |
 
 ![Core score by suite](docs/images/p2_core_by_suite.png)
