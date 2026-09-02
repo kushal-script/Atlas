@@ -47,9 +47,6 @@ def build_config(args):
     if args.psf_bank:
         cfg.psf_sigma_bank_nm = tuple(float(v) for v in args.psf_bank.split(","))
     if args.wide_bank:
-        # "none" empties the bank; an empty string means not provided, and the
-        # difference matters because a flag that silently does nothing turns an
-        # A/B into the same arm twice.
         cfg.wide_sigma_bank_nm = (() if args.wide_bank == "none" else
                                   tuple(float(v) for v in args.wide_bank.split(",")))
     if args.top_k:
@@ -122,13 +119,7 @@ def main():
     ap.add_argument("--sets", default="A_nominal,B_degraded")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--dump", type=Path, default=None)
-    # The scored machine has four cores; a development machine with more of
-    # them reports a runtime the scored run will not reproduce, and the
-    # efficiency component is ranked on median wall clock. Capping the thread
-    # count is the closest approximation available here.
     ap.add_argument("--threads", type=int, default=0)
-    # The scored hard timeout. Lower it to model a slower reference machine:
-    # 13.3 stands for one half again as slow as this one.
     ap.add_argument("--timeout", type=float, default=20.0)
     args = ap.parse_args()
 
@@ -144,13 +135,6 @@ def main():
     cfg = build_config(args)
     model = json.loads(MODEL_PATH.read_text()) if MODEL_PATH.exists() else None
 
-    # A pair that overruns the scored timeout is worth nothing at all, so a
-    # harness that does not charge for it will prefer a configuration that
-    # buys accuracy with time it does not have. Measured on this machine the
-    # difference is not academic: the per call budget scored 0.521 on the
-    # degraded set ignoring the clock, 0.515 charging the twenty second limit,
-    # and 0.501 charging a limit scaled for a reference machine half again as
-    # slow, all from the same run.
     def scored(err, found, seconds):
         if seconds > args.timeout or not found:
             return 0.0
@@ -169,9 +153,6 @@ def main():
             err, found, diag = float("inf"), 0, {}
         dt = time.perf_counter() - t0
         times.append(dt)
-        # An absent pair carries no localization credit, so it is measured for
-        # runtime only; it is also the slowest case, because a weak peak is
-        # exactly what triggers the width rescue's extra passes.
         key = (r["set"], r["severity"])
         if r["found"] == "1":
             per[key].append((err, found, dt))

@@ -127,12 +127,8 @@ def match_ccoeff_normed(search, tmpl, device="cpu"):
 def match_ccoeff_normed_batch(search, tmpls, device="cpu", want_min=False):
     """Correlate many templates against one search image, returning extrema.
 
-    The pose prescreen evaluates on the order of two hundred hypotheses and
-    keeps only the peak of each, so correlating them one at a time on an
-    accelerator spends nearly all its time moving a fresh copy of the search
-    image across the bus. Templates are therefore grouped by shape and each
-    group is issued as a single batched correlation, with the reduction done
-    on the device so only the scalars come back.
+    Templates are grouped by shape and batched so the search image crosses
+    the bus once per group rather than once per template.
     """
     if device == "cpu":
         out = []
@@ -189,16 +185,8 @@ class _CpuCorrelator:
 
 
 class _TorchCorrelator:
-    """Accelerated correlation against one fixed search image.
-
-    Two things make the difference between a port that wins and one that
-    loses. First, the correlation is evaluated through the Fourier transform
-    rather than as a direct convolution: at a 90 by 90 template over a 1000 by
-    1000 image the direct form is roughly twenty times slower, which is why
-    OpenCV transforms large templates too. Second, the search image, its
-    square, and the per window sums for each template size are computed once
-    and held on the device, because the search image does not change while two
-    hundred pose hypotheses are scored against it.
+    """Accelerated correlation against one fixed search image, with the search
+    side transforms and window sums computed once and held on the device.
     """
 
     CHUNK = 32
@@ -264,17 +252,10 @@ class _TorchCorrelator:
 
 
 class _FftCpuCorrelator:
-    """The OpenCV correlation with the search side work computed once.
-
-    cv2.matchTemplate recomputes the search image's transform and window sum
-    tables on every call, and the pose grid calls it tens of times against one
-    fixed search image, so those are cached here: the search spectrum for the
-    numerator and the integral images for the per window mean and variance,
-    the fast normalized cross correlation factorisation. Each call then costs
-    one template transform, one spectrum product and one inverse transform.
-    The zero mean template makes the window mean term of the numerator vanish,
-    so the surface equals TM_CCOEFF_NORMED up to float rounding; prediction
-    identity against the direct path is verified before this ships."""
+    """The OpenCV correlation with the search side work computed once: the search
+    spectrum and integral images are cached, so each call costs one template
+    transform, one spectrum product and one inverse transform. The surface
+    equals TM_CCOEFF_NORMED to float rounding."""
 
     def __init__(self, search):
         s = np.asarray(search, dtype=np.float32)
@@ -331,17 +312,10 @@ _CPU_CHOICE = {"cls": None}
 
 
 def _pick_cpu_correlator(search):
-    """The faster of the two CPU correlators, decided once per process.
-
-    On this project's development machine the cached transform correlator is
-    twice as fast per call; an external audit measured it 1.3 to 3.2 times
-    SLOWER on a Windows x86 box, where OpenCV's matchTemplate enjoys IPP
-    acceleration the plain dft path does not. The scoring platform is x86 and
-    unknown in detail, so the choice is measured on the machine that is
-    actually running, one warm timed call of each path against the first
-    search image, about a fifth of a second amortised over every pair of the
-    run. The two paths agree to float rounding and were verified prediction
-    identical over full suites, so the choice affects speed alone."""
+    """The faster of the two CPU correlators, decided once per process by a warm
+    timed call of each path against the first search image, since the winner
+    is platform dependent. The paths agree to float rounding, so the choice
+    affects speed alone."""
     if _CPU_CHOICE["cls"] is None:
         import time as _time
         s = np.asarray(search, dtype=np.float32)

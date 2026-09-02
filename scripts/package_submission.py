@@ -23,12 +23,6 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-# The addendum names four things the zip must carry: the entry point, a pip
-# freeze under the name requirements.txt, a documented generator, and a failure
-# analysis of at most two pages. All four are listed here rather than left to a
-# command line flag, because a required deliverable that ships only when the
-# packager is invoked with the right argument is a deliverable that will one day
-# not ship; REQUIRED below fails the build loudly instead.
 INCLUDE = [
     "register.py",
     "generate_dataset.py",
@@ -57,9 +51,6 @@ INCLUDE = [
     "scripts/generate_phase2_suite.py",
     "docs/citations.md",
     "README.md",
-    # Everything the shipped README points at. A readme that references a file
-    # the zip does not carry is a broken reference for whoever extracts it,
-    # and these are all small: the whole set roughly doubles a 190 KB archive.
     "models/reranker.pt",
     "references/references.bib",
     "docs/phase2_failure_analysis.md",
@@ -74,10 +65,6 @@ INCLUDE = [
     "results/README.md",
     "results/runtime_protocol.json",
     "requirements_freeze.txt",
-    # Referenced by the shipped readme, so packed with it: a document that points
-    # at a file the archive does not carry is a broken reference for whoever
-    # extracts it, and these are the dependency files and the tools that produced
-    # the numbers the readme quotes.
     "requirements_dev.txt",
     "requirements_train.txt",
     "scripts/build_results_tables.py",
@@ -87,12 +74,6 @@ INCLUDE = [
     "scripts/build_failure_analysis.py",
 ]
 
-# Two of the disqualifying behaviours are checked here rather than asserted.
-# The socket shim turns any network attempt into an exception. The audit hook
-# records every file the run opens, so reading outside the supplied paths is
-# demonstrated absent rather than promised: the interpreter, its standard
-# library and the extracted submission are the only trees a scored run has any
-# business touching, and anything else is reported by path.
 SOCKET_SHIM = '''
 import sys as _sys, os as _os, socket as _socket
 class _NoNetwork(OSError):
@@ -135,10 +116,6 @@ def main():
                     help="additional files, e.g. the failure analysis pdf")
     args = ap.parse_args()
 
-    # The self test is only evidence if the interpreter running it is the one
-    # the reference machine runs. Trusting the flag let a build report a pass
-    # under an interpreter that could not import the submission at all, so the
-    # version and the third party imports are both confirmed before packing.
     if not args.python311.exists():
         raise SystemExit(f"no Python 3.11 interpreter at {args.python311}; "
                          f"build one with bash scripts/setup_python311.sh")
@@ -156,10 +133,6 @@ def main():
                          f"the reference machine is 3.11")
     print(f"  self test interpreter: Python {major}.{minor}, cv2 {cv_version}")
 
-    # The failure analysis is a build product of docs/phase2_failure_analysis.md
-    # and is not tracked, so it is rebuilt here rather than trusted. It drifted
-    # stale once already, disagreeing with the markdown packed beside it on a
-    # headline number, because nothing regenerated it when the prose changed.
     try:
         import build_failure_analysis as _fa
         pages = _fa.build(REPO / "docs/phase2_failure_analysis.md",
@@ -178,17 +151,11 @@ def main():
 
     with zipfile.ZipFile(args.out, "w", zipfile.ZIP_DEFLATED) as z:
         for f in INCLUDE + list(args.extra):
-            # The failure analysis is named by the addendum, so it lands at the
-            # top of the zip under that name rather than under its repository
-            # directory.
             z.write(REPO / f, Path(f).name if f.endswith("failure_analysis.pdf") else f)
         z.write(REPO / "requirements_phase2.txt", "requirements.txt")
     print(f"packed {args.out} ({args.out.stat().st_size/1024:.0f} KB, "
           f"{len(INCLUDE) + len(args.extra) + 1} files)")
 
-    # Every deliverable the addendum names by name, checked against the zip that
-    # was actually written rather than against the list that was meant to build
-    # it, and the page limit checked rather than assumed.
     with zipfile.ZipFile(args.out) as z:
         names = set(z.namelist())
     required = {"register.py", "requirements.txt", "generate_dataset.py",
@@ -196,10 +163,6 @@ def main():
     absent = sorted(required - names)
     if absent:
         raise SystemExit(f"zip is missing required deliverables: {absent}")
-    # The page limit is counted from the file itself rather than from poppler's
-    # pdfinfo, which is not installed everywhere. A check that silently skips on
-    # the machine that builds the submission is not a check, and this one used to
-    # skip on exactly that machine.
     pdf = (REPO / "submission/failure_analysis.pdf").read_bytes()
     pages = len(re.findall(rb"/Type\s*/Page[^s]", pdf))
     if not pages:
@@ -229,8 +192,6 @@ def main():
         import os
         env = dict(os.environ)
         env["PYTHONPATH"] = str(td / "shim")
-        # The two trees a scored run may read: the extracted submission it runs
-        # from, and the directory holding the pairs csv and the images it names.
         env["DS_RUN_DIR"] = str((td / "run").resolve())
         env["DS_DATA_DIR"] = str(Path(args.pairs).resolve())
         env["DS_IO_DIR"] = str(td.resolve())

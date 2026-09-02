@@ -41,11 +41,6 @@ def main():
     pose_s, pose_r = [], []
     tp = fp = fn = tn = 0
     scores, labels = [], []
-    # A single aggregate hides where the method is and is not making progress.
-    # The degraded set is four populations with very different ceilings, the
-    # pose credit tiers hide whether an error sat just outside a band or far
-    # from it, and the area under the curve rewards ranking while saying
-    # nothing about whether the probabilities themselves are honest.
     by_sev = {}
     raw_scale, raw_rot, raw_err = [], [], []
     for pid, t in truth.items():
@@ -74,7 +69,6 @@ def main():
         scores.append(float(p["score"]) if p else 0.0)
         labels.append(1 if ok else 0)
 
-    # rejection confusion in one clean pass
     tp = sum(1 for pid, t in truth.items()
              if int(t["found"]) == 0 and preds.get(pid, {}).get("found") == "0")
     fp = sum(1 for pid, t in truth.items()
@@ -95,16 +89,10 @@ def main():
     auc = ((sum(ranks[i] for i in pos) - len(pos) * (len(pos) + 1) / 2)
            / max(len(pos) * len(neg), 1)) if pos and neg else 1.0
 
-    # Brier score over the same rows the area under the curve uses. The two
-    # answer different questions: a model can rank perfectly and still be
-    # systematically over confident, which the ranking metric cannot see.
     sc = np.asarray(scores, float); lb = np.asarray(labels, float)
     brier = float(np.mean((sc - lb) ** 2)) if len(sc) else 0.0
     base = float(lb.mean()) if len(lb) else 0.0
     brier_ref = float(np.mean((base - lb) ** 2)) if len(lb) else 0.0
-    # Murphy's two term decomposition over deciles of the reported score:
-    # reliability is how far each bin's mean score sits from its own hit rate,
-    # resolution is how far the bins separate from the base rate.
     rel = res = 0.0
     if len(sc):
         edges = np.linspace(0.0, 1.0 + 1e-9, 11)

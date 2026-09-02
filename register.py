@@ -40,33 +40,7 @@ from drift_sense.localize import MatchConfig, load_gray, locate, optical_config
 from drift_sense.presence import features_for_model, presence_probability
 from scipy.ndimage import grey_dilation, grey_erosion
 
-# Width rescue. Polygon scaling changes feature widths between the two
-# captures, so when the first pass shows the mislock signature, a weak peak on
-# a degenerate surface, the reference is re matched under a small morphological
-# width change and the higher scoring answer is kept. Two variants rather than
-# four: measured on a held out suite the pass is worth about one point of
-# localization, and every extra variant is another full pass over the pose
-# grid, so the cheapest form that keeps the gain is the one that ships.
-# The scored run gives every pair a hard twenty second timeout and a pair that
-# overruns scores zero. The internal budget gates optional stages but cannot
-# abort work already running, so a wall clock alarm is armed per pair as the
-# last line of defence: it fires below the limit, unwinds into the handler that
-# already writes a conservative row, and leaves the remaining pairs to run. On
-# a platform without SIGALRM the alarm is simply absent and the internal budget
-# is all there is, which is the behaviour this file had before.
-# Ours, not the organisers'. The addendum forfeits a pair that runs past twenty
-# seconds, so this alarm is deliberately set inside that at eighteen: it fires
-# first, writes a conservative rejection for the pair and lets the run continue,
-# where their limit would take the pair to zero with no row at all. An audit read
-# the readme's references to the twenty second limit as describing this constant;
-# they describe the scoring rule this constant is chosen to stay under.
 PAIR_HARD_TIMEOUT_S = 18.0
-# Unix only. A thread based timer is not a substitute and is deliberately not
-# used: the work this guards is inside numpy and OpenCV C calls that a Python
-# timer thread cannot interrupt, so a fallback would report a timeout while the
-# call kept running. On a platform without setitimer the per pair budget still
-# gates every optional stage, and the reference machine is Python 3.11 on x86
-# where the alarm is present.
 _HAS_ALARM = hasattr(signal, "SIGALRM") and hasattr(signal, "setitimer")
 
 
@@ -92,17 +66,8 @@ def _finite(v, fallback=0.0):
 
 RESCUE_PEAK_BELOW = 0.62
 RESCUE_MARGIN = 0.02
-# Fraction of the pair's budget past which no further rescue pass is started.
 RESCUE_START_BEFORE = 0.5
 
-# The presence decision. A single peak threshold cannot separate a degraded
-# present pair from a clean absent one, because an impostor reference from the
-# same architecture lets the scale search rescale its lattice onto the search
-# lattice and correlate respectably. The decision is therefore a small logistic
-# model over the diagnostics the localizer already produces, fitted on this
-# repository's own generated suite, never on organiser data, and shipped with
-# the submission as models/presence_model.json. The fallback threshold below is
-# used only if that file is somehow missing.
 MODEL_PATH = Path(__file__).resolve().parent / "models" / "presence_model.json"
 FOUND_THRESHOLD = 0.55
 SCORE_WIDTH = 0.08
@@ -130,34 +95,14 @@ def _load_model():
 
 def _read_pairs(path):
     pairs = []
-    # utf-8-sig, not the platform default: a pairs csv saved from a spreadsheet
-    # carries a byte order mark that stays glued to the first header name, and
-    # since it is not whitespace it survives strip(). The pair_id column then
-    # goes unrecognised and every output row is named row_0000 onward, which
-    # joins to nothing and scores zero on a run that otherwise looks perfect.
     with open(path, newline="", encoding="utf-8-sig") as fh:
         for i, row in enumerate(csv.DictReader(fh)):
-            # A data row carrying more fields than the header puts the surplus
-            # under DictReader's restkey, which is None, and a row carrying
-            # fewer leaves a None value. Both arrive from a manifest a person
-            # edited by hand or joined without quoting, and neither is a reason
-            # to abandon the run: the None key is dropped here so the row is
-            # read on its recognised columns alone, because raising instead
-            # would escape this loop before the per row handler below and cost
-            # every pair rather than the one that is malformed.
             keys = {k.lower().strip(): k for k in row if isinstance(k, str)}
             rk = next((keys[k] for k in ("reference_path", "reference", "ref_path", "ref")
                        if k in keys), None)
             sk = next((keys[k] for k in ("search_path", "search", "wide_path", "wide")
                        if k in keys), None)
             if not rk or not sk:
-                # A manifest whose path columns cannot be recognised used to
-                # end the process before a single row was written, which turns
-                # one unreadable header into a zero on every pair. The run
-                # continues instead: each row still gets an id and a pair of
-                # paths that will fail to load, which the per pair handler
-                # turns into a conservative rejection, so the absent pairs
-                # still score and the failure is reported rather than fatal.
                 if i == 0:
                     print("WARNING: pairs csv has no recognised reference and "
                           "search path columns; every row will be reported "
@@ -167,11 +112,6 @@ def _read_pairs(path):
                 pairs.append((pid, Path(""), Path("")))
                 continue
             pid = row.get(keys.get("pair_id", ""), "") or f"row_{i:04d}"
-            # One unreadable row must not cost the other hundred and ninety
-            # nine. A row whose paths are missing or malformed still gets a
-            # pair id and a pair of paths that will fail to load, which the
-            # per pair handler turns into a conservative rejection; raising
-            # here instead would abandon the whole run and every row with it.
             try:
                 ref, search = Path(row[rk] or ""), Path(row[sk] or "")
                 if str(ref) and not ref.is_absolute():
@@ -205,9 +145,6 @@ def main():
     ap.add_argument("--output", type=Path, required=True)
     args = ap.parse_args()
 
-    # The reference machine runs 3.11. A different interpreter is reported and
-    # then tolerated rather than refused, because aborting the scored run would
-    # forfeit every pair to defend against a difference that may not matter.
     if sys.version_info[:2] != (3, 11):
         print(f"warning: running on Python {sys.version_info.major}."
               f"{sys.version_info.minor}, the reference machine is 3.11",
@@ -217,12 +154,6 @@ def main():
     cfg_optical = optical_config()
     model = _load_model()
     rows = []
-    # The output is written incrementally, one flushed row per pair, so a
-    # process killed mid run, an out of memory abort, or a platform without
-    # SIGALRM where a runaway pair cannot be interrupted, loses at most the
-    # pair in flight rather than the whole batch. The contract prices a
-    # missing row at a certain zero; a partial file keeps every finished
-    # pair's score where a single write at the end kept none of them.
     pairs = list(_read_pairs(args.input))
     out_fh = open(args.output, "w", newline="")
     writer = csv.DictWriter(out_fh, fieldnames=["pair_id", "x", "y", "theta",
@@ -244,11 +175,6 @@ def main():
                 signal.setitimer(signal.ITIMER_REAL, PAIR_HARD_TIMEOUT_S)
             ref, ref_rgb = load_gray(ref_path)
             search, search_rgb = load_gray(search_path)
-            # A near constant capture carries no structure to match and in a
-            # lab means the sensor failed, so it is rejected deliberately
-            # rather than left to a model that never saw such an input. The
-            # nan the degenerate statistics used to produce made the same
-            # decision by accident; this makes it a decision.
             if float(np.std(ref)) < 1.0 or float(np.std(search)) < 1.0:
                 emit({"pair_id": pid, "x": 0, "y": 0, "theta": 0,
                              "scale": 0, "found": 0, "score": "0.50000"})
@@ -259,48 +185,21 @@ def main():
                     and int(diag.get("num_candidates_wide", 1)) > 1
                     and not (ref_rgb or search_rgb)):
                 for op in (grey_erosion, grey_dilation):
-                    # A rescue pass the remaining budget cannot cover is not
-                    # started at all. The rescue fires on a weak peak, and a
-                    # weak peak is what a heavily degraded pair produces, so
-                    # without this the passes pile onto exactly the pairs that
-                    # are already closest to the scored timeout.
                     if time.perf_counter() - t_pair > RESCUE_START_BEFORE * active_cfg.time_budget_s:
                         break
                     ref_cd = op(ref, size=(3, 3)).astype(ref.dtype)
                     x2, y2, d2, _ = locate(ref_cd, search, active_cfg, t_start=t_pair)
-                    # Refusing an override from a pass the clock cut short was
-                    # tried here and measured worse, costing the degraded set
-                    # 0.515 against 0.508 while changing the holdout not at
-                    # all: a starved pass searches fewer poses but is often
-                    # right anyway, and declining it keeps a worse answer. The
-                    # diagnostic that guard read is still recorded.
                     if float(d2["score"]) > float(diag["score"]) + RESCUE_MARGIN:
                         x, y, diag = x2, y2, d2
             peak = float(diag["score"])
             if model is not None:
-                # the model names its own features, so the fifteen, eighteen and
-                # twenty one feature files all work and none can be misread
                 p_present = presence_probability(model, features_for_model(model, diag))
                 found = 1 if p_present >= model["prob_threshold"] else 0
                 score = float(max(p_present, 1.0 - p_present))
                 if ref_rgb or search_rgb:
-                    # The bonus set is disclosed as reference present, and its
-                    # rejection is never scored: the F1 runs over the grayscale
-                    # pairs only, so a rejected optical pair can only forfeit
-                    # bonus credit, never earn anything. The disclosed fact is
-                    # used the way the disclosed pose bounds are, and the score
-                    # becomes the model's probability itself, which is the
-                    # confidence that the forced answer is right.
                     found = 1
                     score = float(p_present)
                 if found and not (ref_rgb or search_rgb):
-                    # A found row's confidence also reflects whether the four
-                    # template quadrants agreed on the site, which tracks
-                    # localization correctness; measured on the training suite
-                    # this damping lifts the calibration auc. Optical rows are
-                    # exempt so their score is the model probability itself,
-                    # exactly as the readme documents; an audit caught the
-                    # damping reaching them through this branch's old order.
                     agree = max(int(diag.get("quad_agree", -1)), 0)
                     score *= 0.5 + 0.5 * min(agree / 4.0, 1.0)
             else:
@@ -320,17 +219,11 @@ def main():
                 emit({"pair_id": pid, "x": 0, "y": 0, "theta": 0,
                              "scale": 0, "found": 0, "score": f"{score:.5f}"})
         except _PairTimeout:
-            # The pair reached the wall clock limit. Its row is written and the
-            # loop moves on, so one slow pair costs one pair rather than every
-            # pair that would have followed it.
             print(f"WARNING: {pid} exceeded {PAIR_HARD_TIMEOUT_S:.0f}s and was "
                   f"reported absent", file=sys.stderr, flush=True)
             emit({"pair_id": pid, "x": 0, "y": 0, "theta": 0,
                          "scale": 0, "found": 0, "score": "0.00000"})
         except Exception:
-            # A pair that fails still gets its row: a missing row scores zero
-            # for certain, a conservative rejection at least scores the pairs
-            # where rejection was the right call.
             emit({"pair_id": pid, "x": 0, "y": 0, "theta": 0,
                          "scale": 0, "found": 0, "score": "0.00000"})
         finally:
@@ -338,10 +231,6 @@ def main():
                 signal.setitimer(signal.ITIMER_REAL, 0.0)
         print(f"{pid} found={rows[-1]['found']} score={rows[-1]['score']}", flush=True)
 
-    # One row per input pair is the contract's hardest invariant, so it is
-    # repaired rather than merely asserted: any pair id that somehow reached
-    # this point without a row gets a conservative rejection before the file
-    # closes.
     written = {r["pair_id"] for r in rows}
     for pid, _, _ in pairs:
         if pid not in written:

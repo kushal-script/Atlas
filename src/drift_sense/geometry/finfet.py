@@ -37,9 +37,6 @@ def build_finfet_layout(mat, hgt, pixel_nm, rng, p, target=None, want=None):
     sram_w = _sample(rng, p.sram_width_nm)
     sram_h = _sample(rng, p.sram_height_nm)
     if target is not None and want == "deep":
-        # Centre the perfectly regular block on the requested site, so that the
-        # hard case is created by structure rather than by searching the canvas
-        # for it, which would bias where the site lands in the search frame.
         sram_u0 = float(np.clip(target[0] - sram_w / 2.0, 0.0, extent - sram_w))
         sram_v0 = float(np.clip(target[1] - sram_h / 2.0, 0.0, extent - sram_h))
     elif target is not None and want == "boundary":

@@ -128,11 +128,6 @@ class PoseParams:
     scale_err_max: float = 0.018
     search_center_jitter_nm: float = 200.0
     ref_margin_px: float = 70.0
-    # Phase 2 draws the pose from disclosed ranges rather than as a small error
-    # around a nominal ten to one: the zoom ratio is uniform over the range and
-    # the rotation of the reference as it appears in the search image is uniform
-    # over plus or minus the maximum. These are only read when phase2 is set, so
-    # the Phase 1 behaviour and every recorded Phase 1 result are unaffected.
     zoom_min: float = 8.0
     zoom_max: float = 12.0
     rel_rotation_deg_max: float = 5.0
@@ -147,6 +142,4 @@ class GeneratorConfig:
     search: CaptureParams = field(default_factory=lambda: SEARCH_CAPTURE)
     pose: PoseParams = field(default_factory=PoseParams)
     placement_mix: tuple = (("uniform", 0.5), ("deep_array", 0.25), ("near_boundary", 0.25))
-    # Phase 2: draw the pose from the disclosed ranges instead of jittering
-    # around a fixed ten to one.
     phase2: bool = False

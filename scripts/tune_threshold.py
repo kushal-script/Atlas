@@ -76,9 +76,6 @@ def harvest(dataset, model):
         s_rel = abs(float(diag["scale"]) * active.zoom - float(r["gt_zoom"])) / float(r["gt_zoom"])
         r_abs = abs(active.theta_report_sign * float(diag["theta_deg"])
                     - float(r["gt_rotation_deg"]))
-        # the full feature vector rides along so any candidate model can be
-        # swept over this harvest without running the localizer again; the
-        # fifteen feature model reads the prefix
         fv = features_all_from_diag(diag)
         row = {"pair_id": r["pair_id"], "set": r["set"], "truth_found": int(r["found"]),
                "p_present": f"{p:.6f}", "err_px": f"{err:.3f}",

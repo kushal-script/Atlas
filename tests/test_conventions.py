@@ -42,9 +42,6 @@ def _lattice_canvas(rng, size, mat=800, strip=220):
             y1, x1 = min(by + mat, size), min(bx + mat, size)
             if y1 - by < 100 or x1 - bx < 100:
                 continue
-            # Pitches stay dense so every mat holds 17 or more periods and its
-            # pitch is a strong signature; the pair (i, j) is unique per mat, so
-            # no two mats are interchangeable.
             py, px = 29 + 2 * i, 37 + 2 * j
             tile = np.full((y1 - by, x1 - bx), 40, np.uint8)
             tile[::py, :] = 150

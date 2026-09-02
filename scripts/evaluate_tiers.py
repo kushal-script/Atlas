@@ -55,9 +55,6 @@ def precision_recall(scores, corrects):
 
 def average_precision(precision, recall):
     order = np.argsort(recall)
-    # numpy 2 renamed trapz to trapezoid and removed the old name, so the
-    # fallback has to be lazy: passing np.trapz as a getattr default would
-    # evaluate it eagerly and raise before the lookup could succeed.
     trapz = np.trapezoid if hasattr(np, "trapezoid") else np.trapz
     return float(trapz(np.asarray(precision)[order], np.asarray(recall)[order]))
 

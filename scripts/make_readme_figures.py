@@ -22,8 +22,6 @@ import numpy as np
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-# the curve and its average precision come from the evaluation script itself, so
-# the README cannot quote a number the experiment record does not hold
 from evaluate_tiers import average_precision, precision_recall
 
 REPO = Path(__file__).resolve().parent.parent
@@ -61,8 +59,6 @@ def input_pair():
     axes[1].set_title("search.png\n1000 x 1000 px at 10 nm/px, a 10 um field")
     axes[1].add_patch(plt.Rectangle((gt["x"] - 50, gt["y"] - 50), 100, 100,
                                     fill=False, edgecolor=GREEN, linewidth=2.2))
-    # the label is anchored to a fixed corner with an opaque background, so it
-    # can never land on top of the pattern and become unreadable
     far_top = gt["y"] > 500
     tx, ty = (40, 70) if far_top else (40, 930)
     axes[1].annotate("the reference sits here,\nabout 100 x 100 px of this frame",

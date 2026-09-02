@@ -59,9 +59,6 @@ def render_optical_capture(mat_canvas, hgt_canvas, canvas_pixel_nm, pose, opt, r
         refl = lut[mat_s, c]
         film = 0.75 + 0.25 * np.cos(4.0 * np.pi * opt["film_index"] * t_film / lam)
         signal = refl * (oxide * film + (1.0 - oxide))
-        # Shorter wavelengths resolve slightly better, so the sampled spot is
-        # scaled by wavelength about the green channel, preserving the colour
-        # dependent sharpness an optical instrument shows.
         sigma_px = opt["psf_sigma_px"] * (lam / 540.0)
         signal = gaussian_filter(signal.astype(np.float32), sigma_px)
         signal = signal * vignette * tilt

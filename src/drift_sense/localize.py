@@ -32,56 +32,16 @@ from . import backend
 @dataclass
 class MatchConfig:
     zoom: float = 10.0
-    # Compute backend for the blur bank and the correlation, the two
-    # operations that dominate runtime. Defaults to cpu, which needs no
-    # framework and is the submitted inference path; an accelerator is only
-    # ever used when asked for explicitly. scripts/verify_backends.py
-    # asserts that every backend returns the same answer.
     device: str = "cpu"
     template_px: int = 90
-    # At an under unity scale hypothesis a fixed pixel size template covers
-    # less of the reference (810 nm at 9 to 1 against 900 at 10 to 1), which
-    # measurably cost accuracy at the low end of the stated magnification
-    # range (60 percent at 9.0 and 9.5 to 1 against 90 at and above 10 to 1,
-    # experiments/*_pose_robustness). When enabled, the template grows as
-    # 1 over scale below unity so its physical reference coverage stays
-    # constant across the magnification range.
     scale_adaptive_template: bool = True
-    # Extending these banks to 28 and 36 nm to represent the specification
-    # proxy's heaviest blur was tried and reverted on attribution evidence
-    # (experiments/*_v3_banks_reverted): the additions caused the whole stress
-    # domain regression through the enlarged hypothesis grid competing for a
-    # fixed prescreen budget, while the specification domain's gain turned out
-    # to come from the scale adaptive template, not the bank. Representing
-    # blur beyond 25 nm therefore remains an open trade off; scaling the
-    # prescreen budget with the bank size is the named future experiment.
     psf_sigma_bank_nm: tuple = (2.0, 4.0, 6.5, 9.0, 14.0, 20.0)
     wide_sigma_bank_nm: tuple = (4.0, 9.0, 16.0, 25.0)
-    # Deciding contrast polarity from its own heavier blur bank was tried and
-    # reverted. On the severity balanced screening suite it lifted the nominal
-    # set from 0.701 to 0.800, five pairs flipping outright, which is the
-    # binary signature a polarity call produces; on the held out proportional
-    # suite it cost the nominal set 0.786 against 0.762 and about nine tenths
-    # of a point end to end, and it eroded the optical bonus margin from 0.033
-    # to 0.006. A gain that appears only on the suite a change was developed
-    # against is not a gain (experiments/20260830_bank_factorial).
-    # Anti aliasing the template models one particular search pipeline, the one
-    # that decimates by area averaging. Measured over four independent
-    # generators it cost more on the point sampling ones than it gained on the
-    # area averaging one, so it is off by default and kept as an option. See
-    # experiments/*_tolerance_and_template_ablation.
     antialias: bool = False
     nominal_preference: float = 0.02
-    # Above 1.0 the early exit never fires and the pose grid is always searched,
-    # which measured better than exiting early on data carrying real rotation
-    # and magnification error. Lower it to trade accuracy for runtime.
     nominal_accept_score: float = 9.9
     bandpass_sigma_px: float = 25.0
     denoise_sigma_px: float = 0.6
-    # At the heaviest acquisition tiers (dose 25 to 60 electrons per pixel)
-    # a fixed 0.6 px denoise leaves the correlation dominated by noise, so
-    # the denoise strength scales with the measured noise level, floored at
-    # the fixed value so clean images are untouched.
     adaptive_denoise: bool = True
     denoise_noise_gain: float = 0.04
     denoise_sigma_max: float = 2.0
@@ -90,54 +50,15 @@ class MatchConfig:
     impulse_detect_delta: int = 55
     tone_norm: str = "none"
     coarse_rotations_deg: tuple = (-5.0, -3.75, -2.5, -1.25, 0.0, 1.25, 2.5, 3.75, 5.0)
-    # Phase 2 draws the zoom ratio uniformly over 8 to 12 rather than jittering
-    # around ten to one, so the grid has to span that range or the pose is not
-    # reachable at all on roughly half the pairs. Widening it alone doubled the
-    # runtime, which the prescreen dominates; screening at quarter resolution
-    # instead of half recovers all of it and then some, measured at the same
-    # accuracy and a lower runtime than the narrow Phase 1 grid.
     coarse_scales: tuple = (0.8, 0.825, 0.85, 0.875, 0.9, 0.925, 0.95, 0.975, 1.0, 1.025, 1.05, 1.075, 1.1, 1.125, 1.15, 1.175, 1.2)
     prescreen_downsample: int = 4
     prescreen_top_k: int = 6
     refine_rot_step_deg: float = 0.375
     refine_scale_step: float = 0.0075
-    # Five levels take the final rotation step to 0.023 degrees and the final
-    # scale step to 0.047 percent, both an order of magnitude inside the Phase 2
-    # full credit bands of 0.25 degrees and 1 percent, at eight extra
-    # correlations per pair. The step halves per level from twice the configured
-    # value, so the count and the two step sizes have to move together.
     refine_levels: int = 5
-    # The equal match set the centre tie break applies to. Kept tight on
-    # purpose: the reference crop origin is sampled uniformly, so proximity to
-    # the frame centre carries no information about correctness, and applying
-    # the tie break to candidates that score measurably worse only loses
-    # accuracy. Measured over four generators, 0.003 beat 0.015 on three of
-    # them and improved median error on all four.
     peak_tolerance: float = 0.003
-    # Wall clock ceiling. The scored run gives every pair a hard timeout, and a
-    # pair that overruns scores nothing at all, so the optional stages are
-    # skipped once the budget is nearly spent rather than risking the whole
-    # pair. Degrading to the answer already in hand always beats returning none.
-    # Fifteen rather than nine: on this machine run solo the guard never fires
-    # and nine against fifteen was measured to change no answer and no credit,
-    # while an external audit on a machine two to three times slower saw the
-    # nine second guard consume the blur bank before the wide grid ran at the
-    # extreme poses the blind set deliberately includes. Fifteen leaves those
-    # machines room to finish the search and still sits inside the eighteen
-    # second alarm and the twenty second forfeit.
     time_budget_s: float = 15.0
-    # Sign of the reported rotation. The pose grid angle is the rotation applied
-    # to the reference to bring it onto the search image; the reported theta is
-    # asked for as the rotation of the reference pattern as it appears in the
-    # search image, counter clockwise positive, which is the opposite sense.
-    # Measured against this repository's own generator the two differ by exactly
-    # a sign: median error 2.62 degrees as the grid reports it against 0.25
-    # degrees negated. Which sign the organiser's ground truth uses is settled
-    # by the three sample pairs shipped with the addendum, not by assumption, so
-    # it is one constant here rather than a convention buried in the geometry.
     theta_report_sign: float = -1.0
-    # Half width of the local window, in search pixels, over which each
-    # template quadrant is independently re matched for the presence check.
     quadrant_window_px: int = 12
     stage2_tolerance_frac: float = 0.6
     stage2_tolerance_cap: float = 0.06
@@ -146,75 +67,20 @@ class MatchConfig:
     residual_pad_px: int = 3
     residual_min_candidates: int = 2
     residual_margin: float = 0.035
-    # The floor applied when a robust z is available and carries the decision;
-    # the configured margin above is the bar when there is no usable z.
     residual_margin_floor: float = 0.02
     residual_z_thresh: float = 5.0
     residual_z_pool_min: int = 9
     residual_median_k: int = 31
-    # Absolute residual re rank. NCC divides each window's mismatch by that
-    # window's own contrast, so a high contrast impostor is forgiven exactly
-    # the mismatch that convicts it; the RMS of the residual after a least
-    # squares gain and offset fit forgives nothing. Ranked among the top peaks
-    # it prefers the true site far more often than the correlation does on
-    # degraded pairs, at severity 4 by 50 percent against 8 on the fitting
-    # suite and 43 against 14 held out, and it overrides the classical choice
-    # only when its relative advantage clears a margin fitted off suite.
     residual_rms_rerank: bool = True
-    # Fitted on p2train alone and fixed before any held out number was read.
-    # The optimum is a plateau from 0.030 to 0.060, all of it worth 26.78 of 40
-    # against 25.84 with the re rank off, so the midpoint ships rather than an
-    # edge of the plateau. On the fitting suite it fires on 16 of 168 pairs,
-    # rescues 4 and damages none, and set A is unchanged to three decimals.
     residual_rms_margin: float = 0.045
-    # Learned combiner over seven statistics of the raw pixels at each top
-    # peak. As a localization override it was fitted on p2train and measured
-    # a held out delta of exactly zero (experiments/20260901_rerank_combiner),
-    # so the margin ships inert and the absolute residual override below stays
-    # the shipped one; the diagnostics still run because the presence model
-    # reads the combiner's score, margin and agreement as ambiguity evidence.
-    # The model file names its own features so a stale file is refused rather
-    # than misread.
     rerank_combiner: bool = True
     rerank_combiner_margin: float = 9.0
-    # Full reference confirmation override. The organisers' released pipeline
-    # regenerates every present pair until the raw full reference correlation's
-    # global argmax lands on the label with a margin of at least 0.02, so when
-    # that statistic disagrees with the pipeline's answer and clears the same
-    # 0.02, the answer moves to it. Swept on the three fitting suites (plus
-    # 0.81 of 40, 7 rescued 2 damaged) and judged held out at plus 1.29, plus
-    # 0.86 and exactly zero on three suites with four rescues and no damage;
-    # experiments/20260901_raw_confirm_and_found_f1.
     raw_override: bool = True
     raw_override_margin: float = 0.02
-    # Neither the override nor the pose arbiter acts unless the raw peak
-    # itself is meaningful. The released gate floors present pair raw peaks
-    # near 0.34, so 0.25 never gates an on recipe fire, while a raw statistic
-    # computed under a broken appearance convention peaks near noise and must
-    # not move anything; the alien suite's inverted pairs measured that
-    # misfire before this floor existed.
     raw_override_min_peak: float = 0.25
-    # Pose arbitration by the same raw statistic. When the wide grid ran, the
-    # top distinct pose candidates are each scored by the raw full reference
-    # correlation, and the pose switches when another candidate's raw peak
-    # beats the chosen one's by the margin. The failure this addresses is
-    # scale aliasing at the range corners: at z twelve the true template is
-    # smallest while a wrong scale lattice lock can win the bandpassed
-    # correlation, and on the diagnosed pair the raw statistic separated the
-    # true pose from the impostor at 0.837 against 0.695 with the true argmax
-    # 0.3 px from truth.
     pose_arbiter: bool = True
     pose_arbiter_top_k: int = 4
     pose_arbiter_margin: float = 0.05
-    # Additive full width charging streak rows, the organisers' charging
-    # mechanism, corrected per row on the search capture before matching. A
-    # row is corrected only when its median exceeds a running median baseline
-    # by both a robust threshold and an absolute floor, and nothing happens
-    # when more than a quarter of rows flag, which is structure rather than
-    # streaks. Measured at plus 2.09 localization of 40 on the hardened
-    # organiser recipe fitting suite and exactly zero with no false trigger
-    # on the sample recipe or on 216 pairs of this repository's own
-    # generator; experiments/20260901_stress_and_decoys.
     streak_suppress: bool = True
     streak_k_mad: float = 5.0
     streak_min_gray: float = 10.0
@@ -269,18 +135,12 @@ def _noise_sigma(img):
 
 
 def _suppress_streak_rows(img, cfg):
-    """Correct additive full width bright streak rows on the search capture.
+    """Correct additive full width streak rows on the search capture.
 
-    The organisers' charging model adds full width horizontal bands one to
-    five rows tall and up to about seventy gray. The hazard is a horizontal
-    lattice whose own bright rows a naive running median baseline would eat,
-    so the baseline is phase aware: the row profile is detrended, its
-    dominant vertical period measured, and each row compared against the
-    median of the rows sharing its phase. A lattice row reconciles with its
-    cohort and reads zero; a sporadic streak stands against thirty odd
-    cohort members and cannot hide. Without a strong period the running
-    median stands in, and if more than thirty percent of rows flag the frame
-    is structure rather than streaks and nothing is done."""
+    The baseline is phase aware, each row compared against the median of rows
+    sharing its lattice phase, so periodic word line rows read zero and only
+    sporadic streaks are lifted; frames where over thirty percent of rows
+    flag are structure and are left untouched."""
     from scipy.ndimage import median_filter
     x = img.astype(np.float32)
     row_med = np.median(x, axis=1)
@@ -299,8 +159,6 @@ def _suppress_streak_rows(img, cfg):
     resid = detr - base
     mad = np.median(np.abs(resid - np.median(resid))) + 1e-6
     hot = resid > max(cfg.streak_min_gray, cfg.streak_k_mad * 1.4826 * mad)
-    # the running median's boundary windows are asymmetric and flag edge rows
-    # of any structured frame, so the outer band is never corrected
     hot[:32] = False
     hot[-32:] = False
     n = int(hot.sum())
@@ -328,14 +186,8 @@ def _preprocess(img, cfg, denoise):
 def _lowpass(x, sigma, cfg):
     """The bandpass's low frequency estimate.
 
-    A Gaussian whose sigma exceeds the frame converges to the frame's mean,
-    so computing it convolutionally spends seconds to produce a constant. The
-    optical preset's 120 px bandpass against a zoom of ten asks for a 1200 px
-    sigma on a 1000 px image, measured at 2.5 s per call for an output whose
-    whole range is one hundredth of a percent of the image's own deviation.
-    Beyond the frame the closed form answer is returned instead. The secondary
-    electron preset's 250 px sigma is left alone: its output still carries
-    nearly a tenth of the image deviation and is real structure.
+    A sigma beyond the frame converges to the frame mean, so that case
+    returns the closed form answer instead of a multi second convolution.
     """
     if sigma >= min(x.shape[:2]):
         return np.full_like(x, float(np.mean(x)))
@@ -363,17 +215,6 @@ def _make_template(ref_band, theta_deg, scale, cfg):
         t = int(round(cfg.template_px / scale))
     zoom = cfg.zoom * scale
     if cfg.scale_adaptive_template:
-        # And never sample past the reference edge. A template of t search
-        # pixels reads t times the zoom reference pixels, so above a zoom of
-        # about 11.1 the fixed 90 px template asks for more than the 1000 px
-        # the reference has and the surplus is filled with a constant. A
-        # constant ring carries no covariance but still counts in the
-        # normalization, so it depresses the correlation more the larger the
-        # scale hypothesis, and the pose search answers by preferring a
-        # smaller one. Measured on held out pairs the reported scale sat
-        # 1.54 percent low above that threshold against 0.13 percent below
-        # it, which is the difference between the one percent full credit
-        # band and the two percent band.
         t = min(t, int(ref_band.shape[0] / zoom))
     ang = np.deg2rad(theta_deg)
     rot = np.array([[np.cos(ang), -np.sin(ang)], [np.sin(ang), np.cos(ang)]])
@@ -445,14 +286,9 @@ def _lattice_lags_of(tmpl):
 def _raw_confirm(ref_raw, search_raw, z_hat, theta_report, x_hat, y_hat):
     """Full reference correlation at the estimated pose, on the raw pixels.
 
-    The organisers' released pipeline regenerates every present pair until the
-    global argmax of exactly this statistic, the full reference box filtered by
-    the integer zoom and warped to the search scale, correlated against the
-    unprocessed search image, lands within 3 px of the label. The blind set is
-    therefore guaranteed solvable by this statistic on present pairs, and its
-    peak is the very number the organisers' own absent separability
-    calibration reads, computed on content our bandpass deliberately removes.
-    One correlation of a roughly hundred pixel template, about 15 ms."""
+    The released generator guarantees every present pair solvable by this
+    exact statistic within 3 px of the label, so it serves as confirmation,
+    override and pose arbiter evidence; about 15 ms per call."""
     try:
         k = max(2, int(round(z_hat)))
         r = cv2.blur(ref_raw, (k, k))
@@ -570,8 +406,6 @@ def _combiner_rerank(search, tmpl, resp, cfg, extra_site=None):
         ey, ex = extra_site
         if 0 <= ey < resp.shape[0] and 0 <= ex < resp.shape[1]:
             sites.append((ey, ex, float(resp[ey, ex])))
-    # a degenerate template yields a meaningless huge lag whose shifted slices
-    # are empty, the mean of which is nan; clamping keeps every slice populated
     lag = min(_lattice_lag_of(tmpl), max(tmpl.shape[1] // 2, 2))
     edge = np.hypot(*np.gradient(tmpl))
     edge_n = edge / (edge.std() + 1e-9)
@@ -667,12 +501,6 @@ def _residual_score_map(search, tmpl, aligned_positions, cfg):
 
 def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
     cfg = cfg or MatchConfig()
-    # The budget belongs to the pair, not to this call. A caller that matches
-    # the same pair more than once, as the width rescue does, passes the time
-    # it started the pair so every pass draws down one shared allowance;
-    # without it each pass gets a full budget and the pair's real ceiling is
-    # the budget times the number of passes, which is how pairs came to exceed
-    # the scored timeout while every individual call stayed inside it.
     t0 = time.perf_counter() if t_start is None else t_start
     lattice_balance = _lattice_balance_of(ref_img)
     ref_raw, search_raw = ref_img, search_img
@@ -718,7 +546,6 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
             scale_step /= 2
         return best_local
 
-    # Contrast polarity, decided once from the nominal pose at half resolution.
     ds = cfg.prescreen_downsample
     small = cv2.resize(search, (search.shape[1] // ds, search.shape[0] // ds),
                        interpolation=cv2.INTER_AREA)
@@ -733,51 +560,23 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
     inverted = -pol_mn > pol_mx
     if inverted:
         search = -search
-        # the raw statistic correlates the unprocessed captures, so the
-        # polarity decision has to reach it too; without this the raw peak on
-        # an inverted search is meaningless noise, and an override firing on
-        # meaningless evidence moved correct answers on the alien suite's
-        # inverted pairs, the exact misfire that suite was built to catch
         search_raw = (255 - search_raw).astype(search_raw.dtype)
         corr = backend.make_correlator(search, cfg.device)
-        # The prescreen correlator has to be negated with the full resolution
-        # one. Rebuilding only the latter left the wide pose grid screened
-        # against the opposite polarity image, where normalized correlation
-        # returns the negated coefficient, so sorting the hypotheses by
-        # descending peak put the worst of them at the top of the list the
-        # top k is drawn from. Measured on this repository's own secondary
-        # electron pairs the inversion fires on about two pairs in five, so
-        # this was not a dormant path. Area resampling is linear, so negating
-        # the downsampled image is exactly the downsampled negation.
         small = -small
         corr_small = backend.make_correlator(small, cfg.device)
         tried.clear()
 
-    # Stage one, the nominal pose. The reference pipeline is an exact 10 to 1
-    # decimation with no rotation, so the nominal pose is by far the most likely
-    # and is evaluated at full resolution over the whole blur bank.
     for sig in cfg.psf_sigma_bank_nm:
         evaluate(sig, 0.0, 1.0)
     nominal_key = max(tried, key=tried.get)
     nominal_key = refine(nominal_key)
     nominal_score = tried[nominal_key]
 
-    # Stage two, the wide pose grid, screened at half resolution. It is skipped
-    # when the nominal pose already correlates strongly, which is the common
-    # case for an exact decimation and keeps the runtime budget down. An off
-    # nominal hypothesis must beat the nominal one by a margin before it is
-    # accepted, because a wide grid gives many chances for a wrong pose to win
-    # on noise alone.
     wide_score = nominal_score
     wide_key = nominal_key
     used_wide = False
     pose_arbiter_diag = None
     budget_left = lambda frac: (time.perf_counter() - t0) < cfg.time_budget_s * frac
-    # Whether the budget, rather than the evidence, decided which stages ran.
-    # A caller comparing two passes over the same pair needs this: a pass that
-    # was cut short is not weaker evidence, it is a different measurement, and
-    # letting it outscore a complete pass replaces a good answer with a worse
-    # one purely because the clock ran down.
     budget_gated = nominal_score < cfg.nominal_accept_score and not budget_left(0.45)
     if nominal_score < cfg.nominal_accept_score and budget_left(0.45):
         poses, grid_tmpls = [], []
@@ -807,13 +606,6 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
         if cfg.pose_arbiter and budget_left(0.75):
             best_key = wide_key if used_wide else nominal_key
             best_th, best_sc, best_sig = best_key
-            # Candidate poses from three sources, deduplicated: the evaluated
-            # poses, the half resolution prescreen's own ranking (the true
-            # pose can lose the prescreen entirely, which is the failure this
-            # exists to catch), and a scale ladder at the chosen rotation,
-            # because the diagnosed failure mode is a wrong scale lattice
-            # lock. The raw statistic is cheap enough to score them all; only
-            # a decisive winner is ever evaluated at full resolution.
             seen, cands = set(), []
 
             def _add(th_k, sc_k, sig_k):
@@ -857,11 +649,6 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
     tmpl_best = _make_template(ref_bank[sigma_best], theta_best, scale_best, cfg)
     resp = corr.full(tmpl_best)
     score_best = float(resp.max())
-    # Pose stability: where does the argmax go when the rotation is perturbed
-    # by one refine step. A true match is pinned by aperiodic content and its
-    # argmax stays put; a lattice alias lock is free to jump to another cell.
-    # Diagnostic only, measured for the presence decision; it does not touch
-    # the answer.
     _py0, _px0 = np.unravel_index(int(np.argmax(resp)), resp.shape)
     _stab = []
     for _dth in (-cfg.refine_rot_step_deg, cfg.refine_rot_step_deg):
@@ -872,26 +659,12 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
             _stab.append(float(np.hypot(_pxx - _px0, _pyy - _py0)))
     pose_stability_px = float(np.median(_stab)) if _stab else -1.0
 
-    # How far the best peak stands clear of the rest of the surface. The raw
-    # correlation value falls with noise, so an absolute threshold on it cannot
-    # separate a present reference in a degraded capture from an absent one in a
-    # clean capture. Prominence is scale free: it asks whether this peak is
-    # unlike the surface it sits on, which is the question the found flag is
-    # actually asking.
     _rf = resp.ravel()
     _med = float(np.median(_rf))
     _mad = float(np.median(np.abs(_rf - _med)))
     _p99 = float(np.quantile(_rf, 0.99))
     peak_prominence = (score_best - _med) / max(1.4826 * _mad, 1e-6)
     peak_over_p99 = score_best - _p99
-    # Peak to correlation energy, the peak's share of the whole surface's
-    # energy, was added here and measured to contribute exactly nothing: an
-    # ablation over the same records put the cross validated reject F1 at
-    # 0.7040 with it and 0.7040 without. It is redundant against prominence,
-    # which already asks whether the peak is unlike the surface it sits on,
-    # and its class medians barely separate at 27.7 present against 25.2
-    # absent. Recorded here rather than left for someone to re derive
-    # (experiments/20260830_pce_ablation).
 
     tol_wide = min(cfg.stage2_tolerance_cap,
                    max(cfg.peak_tolerance,
@@ -934,17 +707,6 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
                           mad=float(mad), residual_median=med_v,
                           best_residual_score=float(vals[wi]),
                           top_scores=[float(v) for v in vals[order[:8]]])
-            # The classical rule is the decision. An enabled re-ranker may
-            # override which candidate is chosen, but when it abstains the
-            # classical rule still decides, because letting an abstention fall
-            # through to the centre tie break discards a sub pixel answer the
-            # deviation field had already identified.
-            # Two regimes, two margins, and they are deliberately different.
-            # With a pool large enough for a robust z, the z carries the
-            # decision and the margin is only a floor against a numerically
-            # trivial separation, so it is the looser of the two. With too few
-            # candidates for a z to mean anything, the margin is the whole
-            # decision and has to clear the higher configured bar alone.
             if len(vals) >= cfg.residual_z_pool_min:
                 decisive = z >= cfg.residual_z_thresh and margin >= cfg.residual_margin_floor
             else:
@@ -980,12 +742,6 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
         x = px + dx + half
         y = py + dy + half
 
-    # Absolute residual re rank over the top peaks. Runs after the classical
-    # decision so the deviation field rule keeps deciding when this abstains,
-    # and before the rotation polish and the quadrant check so both follow
-    # whichever site is finally chosen. Both candidate answers and the
-    # relative margin are recorded whether or not the override fires, so the
-    # margin can be swept offline from one harvest.
     rms_diag = None
     rr_diag = None
     if cfg.rerank_combiner and resp is not None:
@@ -993,8 +749,6 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
         r_cands, r_probs, r_stats = _combiner_rerank(search, tmpl_best, resp, cfg,
                                                       extra_site=(cy, cx))
         if r_cands is not None:
-            # the classical choice's own probability, for the margin and for
-            # the presence model's disagreement feature
             p_cls = 0.0
             for (py2, px2), pr in zip(r_cands, r_probs):
                 if np.hypot(py2 - cy, px2 - cx) <= 2.0:
@@ -1053,14 +807,6 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
                     py, px = b_py, b_px
                     rms_diag["fired"] = True
 
-    # Final rotation polish. The grid quantizes rotation and the parabolic
-    # refinement inherits that lattice; a euclidean ECC alignment between the
-    # matched template and the window under it recovers the residual rotation
-    # continuously. The motion model is deliberately euclidean rather than
-    # affine: on a periodic lattice an affine fit can slide scale by pitch
-    # fractions and made the scale estimate worse, while rotation has no such
-    # aliasing channel at this window size. Applied only when the fit converges
-    # to a small residual, otherwise the grid answer stands.
     theta_polished = theta_best
     py0, px0 = int(round(y - half)), int(round(x - half))
     t_pol = tmpl_best.shape[0]
@@ -1080,13 +826,6 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
         except cv2.error:
             pass
 
-    # Quadrant consistency, an absolute presence check. Each quadrant of the
-    # matched template is correlated independently in a small window around the
-    # winning site. A true match pins every quadrant to the same offset,
-    # because the aperiodic content agrees quadrant by quadrant; an impostor
-    # matches only the shared lattice, so any lattice aligned offset serves any
-    # quadrant equally and their best offsets scatter across cells. The
-    # dispersion of the four offsets is scale free and survives degradation.
     quad_disp, quad_agree = -1.0, -1
     th, tw = tmpl_best.shape
     if min(th, tw) >= 32:
@@ -1114,13 +853,6 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
             quad_disp = float(np.median(d))
             quad_agree = int(sum(1 for v in d if v <= 2.0))
 
-    # Three ambiguity diagnostics for the presence model. The second peak is
-    # searched outside one full lattice period in each axis because inside it
-    # the runner up is the same site, and at the naive radius the runner up of
-    # a periodic layout is a lattice replica of the true site whether or not
-    # the site is right, which is exactly the case the ratio test was not
-    # built for. Near one the surface is comb only; the lower the ratio the
-    # more the chosen site carries that the rest of the lattice does not.
     lag_h, lag_v = _lattice_lags_of(tmpl_best)
     _rad = max(lag_h, lag_v, 8)
     _r1 = float(resp[py, px])
@@ -1200,23 +932,14 @@ def optical_config():
 def load_gray(path):
     """Returns (image, is_rgb); RGB inputs are converted to luminance.
 
-    The flag reports whether the capture carries colour, not whether the file
-    happens to have three planes. A grayscale capture exported as an RGB or
-    RGBA png is an ordinary thing for a tool chain to produce, and deciding
-    the modality from the array's rank would route every such pair through the
-    optical preset, which is a different blur bank and a different bandpass
-    and measurably halves the localization credit on grayscale pairs. The
-    planes are compared instead, with a tolerance rather than an equality test
-    because a lossy round trip can perturb them by a count or two.
+    The flag reports whether the capture carries colour, decided by comparing
+    the planes with a small tolerance rather than by the array's rank, so a
+    grayscale capture exported as RGB stays on the grayscale path. Inputs
+    deeper than eight bits are coerced to the 0 to 255 range.
     """
     img = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
     if img is None:
         raise FileNotFoundError(path)
-    # The contract supplies 8 bit captures, but IMREAD_UNCHANGED faithfully
-    # returns whatever the file holds, and a 16 bit or float export from some
-    # other tool would otherwise flow into stages whose thresholds and
-    # arithmetic assume the 0 to 255 range. Coercing here keeps every
-    # downstream assumption true instead of quietly false.
     if img.dtype == np.uint16:
         img = (img >> 8).astype(np.uint8)
     elif img.dtype != np.uint8:
@@ -1236,13 +959,8 @@ def load_gray(path):
 def load_colour(path):
     """Returns (planes, is_rgb) where planes is a list of matching planes.
 
-    In an optical capture the contrast between materials comes from thin film
-    interference, so two materials can share a luminance and differ only in
-    colour. Measured on generated optical pairs the standard deviation of the
-    channel differences is comparable to the standard deviation of the
-    luminance itself, which is half the available signal thrown away by
-    collapsing to grey before matching. Correlating each plane and summing the
-    surfaces keeps it, at the cost of one correlation per plane.
+    Optical contrast can live in colour alone, so each plane is kept for per
+    plane correlation rather than collapsed to luminance.
     """
     img = cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
     if img is None:

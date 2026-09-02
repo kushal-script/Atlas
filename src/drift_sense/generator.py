@@ -38,14 +38,6 @@ def _uniform_site(rng, search_pose, margin_px, out_px):
     return u, v
 
 
-# Severity ladder for the Phase 2 degraded set. The addendum names the
-# degradations, charging, scan distortion, defocus, elevated shot noise and
-# polygon scaling to twenty percent, and discloses that there are four severity
-# levels, but not the parameters. These values are therefore this repository's
-# own reading, spanning from mild to well past where the Phase 1 noise sits.
-# Every factor scales the search capture only: in the organiser pipeline the
-# reference is a clean crop and the degradations corrupt the wide image, so a
-# degradation shared by both captures would train against the wrong problem.
 DEGRADE_LADDER = {
     1: {"dose": 0.70, "psf": 1.3, "charge": 1.5, "drift_px": 2.0, "jitter": 2.0, "poly": 0.05},
     2: {"dose": 0.45, "psf": 1.7, "charge": 2.2, "drift_px": 4.0, "jitter": 3.0, "poly": 0.10},
@@ -87,8 +79,6 @@ def generate_pair(seed, style, cfg=None, modality="sem", absent=False, degrade=0
     pp = cfg.pose
     theta_r = float(rng_pose.normal(0.0, np.deg2rad(0.15)))
     if cfg.phase2:
-        # The relative rotation is drawn directly rather than as the difference
-        # of two capture angles, so it cannot land outside the disclosed range.
         rel = float(rng_pose.uniform(-pp.rel_rotation_deg_max, pp.rel_rotation_deg_max))
         theta_s = theta_r + np.deg2rad(rel)
         zoom = float(rng_pose.uniform(pp.zoom_min, pp.zoom_max))
@@ -110,12 +100,6 @@ def generate_pair(seed, style, cfg=None, modality="sem", absent=False, degrade=0
         "pixel_nm": search_pixel_nm,
     }
 
-    # The reference site is drawn uniformly in the search frame first, and the
-    # layout is then generated so the requested local structure lands on it.
-    # Searching a finished layout for a structure instead would bias where the
-    # site falls in the frame, because large structures sit preferentially near
-    # the frame centre, and that bias would flatter any decision rule that
-    # favours the frame centre.
     strategies, weights = zip(*cfg.placement_mix)
     strategy = str(rng_pose.choice(strategies, p=np.array(weights) / sum(weights)))
     ru, rv = _uniform_site(rng_pose, search_pose, pp.ref_margin_px, cfg.search.out_px)
@@ -127,10 +111,6 @@ def generate_pair(seed, style, cfg=None, modality="sem", absent=False, degrade=0
         se, se_info = build_se_canvas(mat, hgt, cfg.canvas.pixel_nm, rng_canvas,
                                       cfg.canvas)
 
-    # A degraded pair renders the search capture from a second specimen whose
-    # feature widths are scaled by the drawn polygon factor, built from the same
-    # seed stream so the lattice is identical, and through a capture whose dose,
-    # beam spot, charging and scan stability are pushed by the severity level.
     degrade_info = None
     search_src_mat, search_src_hgt, search_src_se = mat, hgt, None
     search_capture_params = cfg.search
@@ -164,17 +144,6 @@ def generate_pair(seed, style, cfg=None, modality="sem", absent=False, degrade=0
                         "dose_factor": lad["dose"], "psf_factor": lad["psf"],
                         "charge_factor": lad["charge"], "drift_px": lad["drift_px"]}
 
-    # The addendum describes the reference as a clean crop and puts the noise on
-    # the wide image, which is why every factor above scales the search capture
-    # alone. That is a premise about the organiser's pipeline rather than a fact
-    # we can check, so this knob exists to measure what a corrupted reference
-    # would cost: at 0.0 the reference capture is exactly cfg.reference and the
-    # code path, the parameters and the random stream are untouched, so default
-    # generation is byte identical; at 1.0 the reference carries the same ladder
-    # factors the search does, applied to its own dose and spot ranges; between
-    # them each factor is interpolated toward no degradation. Layout scaling is
-    # deliberately not applied, because polygon scaling is process drift between
-    # two visits rather than a property of one capture.
     reference_capture_params = cfg.reference
     reference_degrade_info = None
     if degrade and degrade_reference > 0.0:
@@ -199,12 +168,6 @@ def generate_pair(seed, style, cfg=None, modality="sem", absent=False, degrade=0
                                   "dose_factor": _lerp(lad["dose"]),
                                   "psf_factor": _lerp(lad["psf"])}
 
-    # An absent pair takes its reference from a second, independently drawn
-    # specimen of the same architecture. The layout statistics and the imaging
-    # are identical, so the reference is plausible and periodically similar to
-    # the search image while genuinely having no instance inside it. Cropping a
-    # far corner of the same canvas would not do: the periodic lattice is
-    # continuous, so the same cell content really does appear in the frame.
     ref_mat, ref_hgt, ref_se = mat, hgt, (se if modality == "sem" else None)
     if absent:
         ref_mat = np.zeros((size, size), dtype=np.uint8)
@@ -245,7 +208,6 @@ def generate_pair(seed, style, cfg=None, modality="sem", absent=False, degrade=0
     center = (nr - 1) / 2.0
     corners = []
     if absent:
-        # There is no true instance, so there is no centre and no footprint.
         gt_c = gt_r = 0.0
     else:
         pu, pv = capture_to_specimen(center, center, ref_pose, dx_r, dy_r, nr)

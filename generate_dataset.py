@@ -51,9 +51,6 @@ def _physics(args):
     t0 = time.time()
     cfg = GeneratorConfig()
     cfg.phase2 = bool(args.phase2)
-    # Which pairs carry no true instance is decided up front from the master
-    # seed, so the absent set is reproducible and evenly spread rather than
-    # clustered at the end of the run.
     absent_flags = [False] * args.num
     if args.phase2 and args.absent_fraction > 0:
         rng = np.random.default_rng(args.seed * 7_919 + 11)
@@ -138,9 +135,6 @@ def main():
     ap.add_argument("--scale_jitter", type=float, default=0.0,
                     help="amat_proxy only: robustness magnification error amplitude")
     args = ap.parse_args()
-    # Delegated generators run with the repository as their working directory,
-    # so a relative output path would resolve differently for parent and child
-    # and the pairs would land somewhere the caller never asked for.
     args.out = args.out.resolve()
     args.out.mkdir(parents=True, exist_ok=True)
 
@@ -157,9 +151,6 @@ def main():
     else:
         rows, elapsed = _delegate("generate_stress_dataset.py", args, [])
 
-    # Only the physics generator builds layouts per style; the others carry
-    # their own fixed structure, so recording the requested style for them
-    # would put a claim in the provenance record that the pixels do not support.
     styles = sorted({r["style"] for r in rows if r.get("style")})
     if args.generator == "physics":
         recorded_style = args.style

@@ -37,13 +37,6 @@ def _assemble(peak, prom, wide, strict, noise, nominal, over_p99,
         float(z) if z is not None else 0.0,
         0.0 if z is not None else 1.0,
         float(np.clip(mom, -20.0, 20.0)),
-        # The localizer reports this as "wide_grid" or "nominal". An earlier
-        # revision compared against "wide", which never matches, so the feature
-        # was constant zero through the fit that produced the shipped weights
-        # and carries a weight of exactly zero there: correcting the comparison
-        # changes no shipped decision, and the feature stays inert until a
-        # refit gives it a weight. Both the fit and the inference path build
-        # features through this one function, so they cannot disagree.
         1.0 if str(pose_source).startswith("wide") else 0.0,
         float(np.clip(quad_disp, 0.0, 17.0)) if quad_disp >= 0 else 0.0,
         float(quad_agree) if quad_agree >= 0 else 0.0,
@@ -91,15 +84,9 @@ def _fin(v, default):
 
 
 def _rerank_block(rr):
-    """The re ranker's three contributions to the presence decision.
-
-    rr_score is the combiner's probability that its chosen site is the true
-    one. rr_margin is that probability minus the runner up's, the re ranker's
-    own decisiveness. rr_agree asks whether two independent evidence functions,
-    the correlation and the combiner, chose the same site; disagreement between
-    them is close to a direct measurement of ambiguity, which is what a
-    rejection is. All three are zero when the re ranker did not run, and
-    rr_agree defaults to agreement so the absent case carries no signal."""
+    """The re ranker's contributions: its probability for the chosen site, its
+    margin over the runner up, and whether it agreed with the correlation's
+    choice. Neutral defaults carry no signal when it did not run."""
     rr = rr or {}
     return [
         _fin(rr.get("score", 0.0), 0.0),
@@ -120,16 +107,8 @@ EXTENDED_FEATURES = RERANK_FEATURES + ("lattice_balance", "period_ratio", "peak_
 
 
 def _extended_block(d):
-    """Three ambiguity statistics recorded by the localizer.
-
-    lattice_balance is the spectral balance of the reference, a continuous
-    architecture covariate fed to one pooled model rather than a hard router,
-    since every hard specialisation measured on this repository lost held out
-    credit. period_ratio compares the best peak against the best outside one
-    full lattice period, the ratio test rebuilt for layouts whose naive runner
-    up is a lattice replica of the chosen site. peak_curv is the curvature of
-    the correlation surface at the peak, without which a ratio computed on a
-    broad peak reads as decisive when nothing was decided."""
+    """Ambiguity statistics: the reference's spectral balance, the period aware
+    second peak ratio, and the peak curvature."""
     return [
         _fin(d.get("lattice_balance", 0.0), 0.0),
         _fin(d.get("period_ratio", 1.0), 1.0),
@@ -149,15 +128,9 @@ RAW_CONFIRM_FEATURES = RERANK_FEATURES + ("raw_peak", "raw_margin", "raw_agree")
 
 
 def _raw_block(d):
-    """The full reference confirmation's three contributions.
-
-    raw_peak is the correlation of the organisers' own template formation at
-    the estimated pose against the unprocessed search image, the statistic
-    their generator guarantees solvable on present pairs and the one their
-    absent separability calibration reads. raw_margin is that peak over the
-    best peak outside the site. raw_agree asks whether the raw statistic's
-    global argmax landed on our answer within the 3 px their gate uses.
-    Neutral defaults carry no signal when the confirmation did not run."""
+    """The raw full reference confirmation's peak, its margin over the best peak
+    outside the site, and whether its argmax agreed with the answer. Neutral
+    defaults carry no signal when it did not run."""
     rc = d.get("raw_confirm") or {}
     return [
         _fin(rc.get("peak", 0.0), 0.0),
@@ -203,9 +176,6 @@ def features_for_model_record(model, rec):
 
 
 def presence_probability(model, feats):
-    # A model fitted against a different feature list would silently misalign
-    # every weight with the wrong quantity and still return a plausible looking
-    # probability, so the mismatch is refused rather than tolerated.
     if len(model["weights"]) != len(feats):
         raise ValueError(
             f"presence model has {len(model['weights'])} weights for "

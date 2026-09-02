@@ -51,15 +51,12 @@ def main():
         ref, _ = load_gray(args.dataset / r["reference_path"])
         search, _ = load_gray(args.dataset / r["search_path"])
         gx, gy = float(r["gt_x"]), float(r["gt_y"])
-        # The true pose, straight from the generator's record.
         scale = float(r["gt_zoom"]) / cfg.zoom
         theta = -float(r["gt_rotation_deg"]) / cfg.theta_report_sign * -1.0
         reff = ref.astype(np.float32)
         low = _lowpass(reff, cfg.bandpass_sigma_px * cfg.zoom, cfg)
         proc, _ = _preprocess(search, cfg, denoise=True)
         best = None
-        # The blur level is not known even under a true pose, so the bank is
-        # still searched; only the geometry is oracle supplied.
         for sig in cfg.psf_sigma_bank_nm:
             band = backend.gaussian(reff, _effective_sigma(sig, cfg), cfg.device) - low
             tmpl = _make_template(band, theta, scale, cfg)

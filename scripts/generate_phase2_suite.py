@@ -29,22 +29,11 @@ from drift_sense import __version__
 from drift_sense.generator import generate_pair, save_pair
 from drift_sense.params import GeneratorConfig
 
-# The blind composition, as fractions of the whole.
 MIX = (("A_nominal", 0.35), ("B_degraded", 0.35), ("C_absent", 0.20), ("D_optical", 0.10))
 
-# Tuning one set wants statistical power on that set rather than a faithful
-# blind composition, since a proportional suite spends most of its generation
-# on pairs the question does not concern. The severity balanced degraded mix
-# exists for that: it keeps a quarter of the pairs nominal as a regression
-# guard, because a change that lifts the degraded set by breaking the nominal
-# one is a loss on a weighting of 0.45 against 0.55. A suite drawn this way is
-# for screening only and any winner is confirmed on a proportional holdout.
 MIXES = {
     "blind": MIX,
     "degraded": (("A_nominal", 0.25), ("B_degraded", 0.75)),
-    # The bonus set is a tenth of a proportional suite, so confirming its gate
-    # margin on a proportional draw means generating ten times the pairs that
-    # bear on the question. This mix draws the bonus set alone.
     "optical": (("D_optical", 1.0),),
 }
 
@@ -79,10 +68,6 @@ def main():
         style = "dram" if rng.random() < 0.5 else "finfet"
         severity = int(rng.integers(1, 5)) if set_name == "B_degraded" else 0
         absent = set_name == "C_absent"
-        # Half the absent pairs are degraded across the same severity ladder.
-        # With every absent pair clean, measured noise separates presence from
-        # absence on this suite alone, and a decision fitted to that shortcut
-        # would collapse on any blind set whose absent pairs are degraded too.
         if absent and rng.random() < 0.5:
             severity = int(rng.integers(1, 5))
         modality = "optical" if set_name == "D_optical" else "sem"

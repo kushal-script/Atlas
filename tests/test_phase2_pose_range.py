@@ -17,7 +17,7 @@ import pytest
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "src"))
 
-from drift_sense.localize import MatchConfig, locate  # noqa: E402
+from drift_sense.localize import MatchConfig, locate
 
 ZOOM_MIN, ZOOM_MAX = 8.0, 12.0
 ROT_LIMIT = 5.0
@@ -67,7 +67,6 @@ def test_localizes_at_the_corners_of_the_disclosed_range(zoom, rot):
     big = 900
     field = rng.normal(128, 34, (big, big)).astype(np.float32)
     field = np.clip(field, 0, 255)
-    # an aperiodic landmark so the answer is unique rather than lattice degenerate
     field[400:460, 300:380] += 70.0
     field[520:545, 250:470] -= 55.0
     ref_n = 1000

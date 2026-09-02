@@ -29,18 +29,12 @@ from drift_sense.localize import MatchConfig, load_gray, locate
 TOLERANCES = (1.0, 2.0, 4.0, 5.0, 10.0)
 
 CONFIGS = {
-    # Round one, recorded for the log: anti aliasing and the nominal first early
-    # exit were both net regressions, so point sampling is restored below.
     "baseline_loose_tol": dict(antialias=False, nominal_accept_score=9.9,
                                nominal_preference=-9.9, peak_tolerance=0.015),
     "aa_nominal_loose_tol": dict(antialias=True, peak_tolerance=0.015),
     "aa_nominal_mid_tol": dict(antialias=True, peak_tolerance=0.006),
     "aa_nominal_tight_tol": dict(antialias=True, peak_tolerance=0.002),
 
-    # Round two, isolating the two surviving ideas with point sampling restored
-    # and no early exit, so the pose grid is always searched: does requiring an
-    # off nominal pose to earn its acceptance help, and does restricting the
-    # equal match set to numerical ties help.
     "ps_wide_loose": dict(antialias=False, nominal_accept_score=9.9,
                           nominal_preference=-9.9, peak_tolerance=0.015),
     "ps_wide_tight": dict(antialias=False, nominal_accept_score=9.9,
@@ -50,36 +44,14 @@ CONFIGS = {
     "ps_prefer_tight": dict(antialias=False, nominal_accept_score=9.9,
                             nominal_preference=0.02, peak_tolerance=0.003),
 
-    # Round three: the current defaults, which add the scale adaptive template,
-    # adaptive denoise and the extended blur banks on top of ps_prefer_tight,
-    # and the same with each of the two new mechanisms disabled to attribute
-    # any change.
     "defaults_v3": dict(),
     "v3_no_adaptive_template": dict(scale_adaptive_template=False),
     "v3_no_adaptive_denoise": dict(adaptive_denoise=False),
-    # Tests the causal claim for the stress regression precisely: only the
-    # 36 nm wide bank level is removed, keeping the 28 nm nominal addition and
-    # both adaptive mechanisms, because the regression appeared in every v3
-    # variant and the one change common to all of them was the wide bank
-    # growing the hypothesis grid against a fixed prescreen budget.
     "v3_no_wide36": dict(wide_sigma_bank_nm=(4.0, 9.0, 16.0, 25.0)),
-    # Removing only the 36 nm wide level recovered just part of the stress
-    # regression, leaving one candidate common to every measured variant: the
-    # 28 nm nominal addition. This reverts both banks to their original sizes
-    # while keeping the two adaptive mechanisms, completing the attribution.
     "v3_banks_reverted": dict(
         psf_sigma_bank_nm=(2.0, 4.0, 6.5, 9.0, 14.0, 20.0),
         wide_sigma_bank_nm=(4.0, 9.0, 16.0, 25.0)),
 
-    # Round four, adaptive prescreen budget. The attribution round showed the
-    # wide grid competing 176 hypotheses for six full resolution slots and
-    # implicated candidate survival in the stress regression; this asks
-    # whether six was undersized all along. Prediction registered before the
-    # data: stress improves through candidate survival on the wide path,
-    # physics and amat are untouched because they resolve on the nominal
-    # path, runtime rises by under 0.2 s, and the 9.0 to 1 pose boundary may
-    # recover as a side effect because endpoint hypotheses rank low at half
-    # resolution for the same reason.
     "k12": dict(prescreen_top_k=12),
     "k24": dict(prescreen_top_k=24),
 }

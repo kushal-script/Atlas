@@ -45,7 +45,7 @@ def harvest(dataset, out):
         src, _ = load_gray(f"{dataset}/{r['search_path']}")
         cfg = MatchConfig()
         cfg.rerank_combiner = True
-        cfg.rerank_combiner_margin = 9.0     # record everything, override nothing
+        cfg.rerank_combiner_margin = 9.0
         cfg.rerank_record_stats = True
         x, y, d, _ = locate(ref, src, cfg)
         rr = d.get("rerank") or {}

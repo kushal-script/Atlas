@@ -41,7 +41,6 @@ def fit_logistic(X, y, l2=1.0):
     n, d = X.shape
     def nll(w):
         m = X @ w[:d] + w[d]
-        # class weighted so 48 absents count as much as 168 presents
         wgt = np.where(y == 1, 1.0, (y == 1).sum() / max((y == 0).sum(), 1))
         ll = wgt * (np.logaddexp(0, m) - y * m)
         return ll.sum() + l2 * (w[:d] @ w[:d])
@@ -80,11 +79,6 @@ def main():
         w = fit_logistic(Xs[tr], y[tr])
         probs[te] = 1 / (1 + np.exp(-(Xs[te] @ w[:-1] + w[-1])))
 
-    # The threshold is chosen on the estimated total score, not on rejection F1
-    # alone: a present pair reported absent zeroes its pose columns, so a false
-    # reject forfeits that pair's localization and pose credit on top of the
-    # rejection penalty. Optimizing F1 in isolation traded a third of the
-    # present pairs' localization for two rejection points.
     def loc_credit(e):
         return 1.0 if e <= 1 else 0.8 if e <= 2 else 0.6 if e <= 3 else 0.4 if e <= 5 else 0.0
     def sc_credit(zp):

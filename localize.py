@@ -147,11 +147,6 @@ def run_one(ref_path, search_path, use_reranker, device="cpu", preset="auto"):
             raise SystemExit(f"re-ranker weights not found at {weights}")
         cfg.reranker_path = str(weights)
     x, y, diag, _ = locate(ref, search, cfg)
-    # The grid angle is the rotation applied to the reference to bring it onto
-    # the search image; both entry points report the rotation of the reference
-    # as it appears in the search image, which is the opposite sense. Applying
-    # the one constant here means this CLI and register.py cannot disagree on
-    # the sign, which they previously did.
     diag["theta_reported_deg"] = cfg.theta_report_sign * float(diag["theta_deg"])
     return x, y, diag
 

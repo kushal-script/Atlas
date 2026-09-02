@@ -127,9 +127,6 @@ def main():
         cands = sorted({round(r["peak"], 3) for r in recs})
         scored = [(f1_at(recs, t)[0], f1_at(recs, t)[1], t) for t in cands]
         best_f1 = max(s[0] for s in scored)
-        # among thresholds within a hair of the best F1, take the most
-        # precise, because a false grab silently corrupts a measurement while
-        # a false reject costs one cheap rescan
         thr = max((s for s in scored if s[0] >= best_f1 - 1e-9), key=lambda s: (s[1], s[2]))[2]
     else:
         thr = args.threshold
@@ -152,7 +149,6 @@ def main():
 
     rej_pts = 15 * f1
 
-    # AUC of the decision confidence against per pair correctness at thr
     def decision_ok(r):
         pred = r["peak"] >= thr
         if not r["truth_found"]:

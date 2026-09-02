@@ -165,7 +165,6 @@ def test_output_file_is_written_incrementally(tmp_path):
         [sys.executable, str(REPO / "register.py"),
          "--input", str(manifest), "--output", str(out)],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    # wait for the first pair's stdout line, then kill mid batch
     first = proc.stdout.readline()
     import time as _t
     deadline = _t.time() + 120
