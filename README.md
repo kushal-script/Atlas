@@ -503,6 +503,80 @@ flowchart TB
 
 Among the resulting correlation peaks, a single dominant peak is returned directly with parabolic sub pixel refinement. When the surface is degenerate, a residual disambiguation stage runs: the shared periodic content is estimated by a pixelwise median over aligned candidate windows and projected out of the template together with its sub pixel shift terms, the remaining deviation field is scored densely in closed form at every position, and a robust z score decides whether one candidate is identifiably the true site through its defect signature. If none is, the site is genuinely ambiguous at the available noise level and the mandated tie break returns the equal match closest to the search image centre. Every answer therefore carries its regime: unique peak, identified by residual, or tie break convention.
 
+## Design analysis and complexity
+
+### Symbols
+
+| Symbol | Meaning | Value here |
+| --- | --- | --- |
+| M | search image side | 1000 px |
+| N | template side, scale adaptive | 83 to 125 px |
+| B, W | nominal and wide blur bank sizes | 6 and 4 |
+| G | wide pose grid cells per blur, 9 rotations x 17 scales | 152 |
+| K | full resolution rescores after the prescreen | 6 |
+| L | refinement levels, 4 neighbours each | 5 |
+| C | candidate peaks carried into disambiguation and re ranking | up to 12 |
+| F | presence model features | 18 |
+
+### Time complexity
+
+One FFT correlation of an N px template over an M px image costs O(M^2 log M) regardless of N, which is why the pose grid is affordable at all: the numerator is one template transform, one spectrum product and one inverse against a search spectrum computed once per pair, and the normalisation reads two cached integral images in O(1) per window.
+
+| Stage | Work | Asymptotic | Count per pair |
+| --- | --- | --- | --- |
+| Preprocess: despeckle, tone, streak rows, bandpass | pixel passes plus one row profile FFT | O(M^2) | 1 |
+| Reference blur bank | separable Gaussians, kernel prop. to sigma | O((B+W) sigma M^2) | 10 blurs |
+| Nominal pose, full resolution | B correlations | O(B M^2 log M) | 6 |
+| Wide grid prescreen at quarter resolution | W G correlations at M/4 | O(W G M^2 log M / 16) | 608 |
+| Rescore and refine | K + 4L correlations, twice if the arbiter switches | O((K + 8L) M^2 log M) | 26 to 46 |
+| Pose arbiter, only when the nominal pose is weak | raw statistic per candidate | O(A M^2 log M), A <= 14 | 0 to 14 |
+| Residual disambiguation | median stack and dense deviation scoring | O(C N^2 + M^2 log M) | 1 |
+| Re ranking batteries | per candidate window statistics | O(C N^2) | <= 10 each |
+| Raw confirmation and override | one raw correlation | O(M^2 log M) | 1 |
+| Presence decision | logistic over F features | O(F) | 1 |
+
+Per pair total: **O(H M^2 log M)** with H the correlation surfaces evaluated, about 670 counted (608 of them at quarter resolution, a 16 fold discount, so about 45 full resolution equivalents). Profiled on one representative pair at 2.24 s: correlation 48 percent, blur bank 19 percent, raw statistic 13 percent, template resampling 10 percent. The count H is fixed by configuration, not by content, and the 15 second per pair budget converts the asymptotic statement into a hard wall clock bound: an overrunning pair degrades stages and still writes its row, so worst case time per pair is a constant by construction. A batch of P pairs is exactly linear, O(P H M^2 log M), with no state carried between pairs.
+
+### Space complexity
+
+| Allocation | Size at M = 1000 |
+| --- | --- |
+| search image, float32, plus raw copy | 8 MB |
+| cached search spectrum and squared spectrum | 16 MB |
+| integral images, float64 | 16 MB |
+| reference blur bank, B + W float32 copies | 40 MB |
+| live response surface and its masked copy | 7 MB |
+| presence and re ranker models | under 1 MB |
+| measured peak resident delta, one pair end to end | **277 MB** |
+
+Per pair space is O((B + W) M^2), released between pairs; the output file grows O(P) rows and is flushed per row, so the process footprint is constant in the batch size. Against the reference machine's 8 GB the measured peak leaves 27x headroom, and the generator's transient fine canvas, up to 13009 squared at zoom 12, stays under 0.5 GB.
+
+### Resolution against the credit bands
+
+| Quantity | Search step | Finest step after refinement | Full credit band | Margin |
+| --- | --- | --- | --- | --- |
+| translation | 1 px grid, parabolic sub pixel | about 0.05 px | 1 px | 20x |
+| rotation | 1.25 degrees coarse | 0.023 degrees | 0.25 degrees | 11x |
+| scale | 2.5 percent of nominal coarse | 0.047 percent | 1 percent | 21x |
+
+The coarse steps are set by the correlation lobe width so no true pose can fall between cells, and the refinement floor sits an order of magnitude inside every credit band, so grid quantisation contributes nothing measurable to the scored error.
+
+### Design principles, each carrying its measurement
+
+| Principle | Embodiment | Evidence |
+| --- | --- | --- |
+| Match the formation, not the appearance | template blurred and box filtered to the search optics before correlating | oracle probe: most residual severity 4 loss is information limited, not search limited |
+| Dense propose, strong verify | FFT grid proposes, raw full reference statistic verifies and arbitrates | +1.29/+0.86/0.00 of 40 held out, 731 px corner miss to 0.44 px |
+| Independent evidence functions | correlation surface, raw pixel battery, raw formation statistic feed one logistic | reject F1 0.655 to 0.800 the day the second function joined |
+| Fail toward rejection, never toward confident error | degenerate inputs, timeouts and exceptions all write conservative rows; scores rank wrongness below rightness | severity 5: wrong grabs at median score 0.514 vs 1.000 correct |
+| Measure, then ship; decline by default | every change fits on one family and must not damage any other | 7 shipped, 6 declined in the Phase 2 ledger above |
+| Adapt to the platform, never assume it | correlator chosen by timed calibration, budget sized for slower machines | winner inverted between two audited machines; corner tests repaired on the slower one |
+| Contain every failure to one pair | per pair exception rows, per pair alarm, row by row flushed output | kill mid batch test: finished rows already on disk |
+
+### Bottlenecks and their ceilings
+
+The prescreen's 608 quarter resolution correlations are the largest single block and scale linearly with grid size; halving the grid was measured to cost accuracy on real rotation and magnification error, so the spend is deliberate. The blur bank's four widest members exist for degradations this generator renders and the released one does not; they cost about a fifth of the bank time and are kept as insurance. The residual ceiling is not computational: with the true pose supplied by an oracle, the true site still loses the correlation on 66 percent of severity 4 pairs, so the binding constraint is information in the pixels, and the design's answer to that regime is the found flag rather than more search.
+
 ## Phase 1 results, the cross generator record
 
 Phase 2 figures are in the section above; this is the Phase 1 evidence, kept because it established the cross distribution discipline. Measured on 150 pairs from four generators that share no image formation code, so the localizer is tested under domain shift rather than against its own assumptions.
