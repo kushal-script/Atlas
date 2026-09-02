@@ -85,3 +85,22 @@ def test_optical_pair_is_always_found(run):
     r = by_id["e2e_optical"]
     assert r["found"] == "1"
     assert 0.0 <= float(r["score"]) <= 1.0
+
+
+def test_library_call_matches_the_batch_row(run, tmp_path):
+    """register_pair is the function the batch entry point calls, so a library
+    caller must get the row the CSV holds, character for character."""
+    from drift_sense.api import load_presence_model, register_pair
+    from drift_sense.localize import load_gray
+    _, by_id, _ = run
+    present = generate_pair(seed=4242, style="dram")
+    cv2.imwrite(str(tmp_path / "ref.png"), present["reference"])
+    cv2.imwrite(str(tmp_path / "search.png"), present["search"])
+    ref, ref_rgb = load_gray(tmp_path / "ref.png")
+    search, search_rgb = load_gray(tmp_path / "search.png")
+    result = register_pair(ref, search, reference_rgb=ref_rgb, search_rgb=search_rgb,
+                           model=load_presence_model(REPO / "models" / "presence_model.json"))
+    row = {k: str(v) for k, v in result.as_row("e2e_present").items()}
+    assert row == by_id["e2e_present"]
+    assert result.reason == "matched" and result.regime in (
+        "unique_peak", "residual_identified", "tie_break_convention")

@@ -12,7 +12,7 @@ every parameter range are justified in docs/citations.md.
 import numpy as np
 from scipy.ndimage import gaussian_filter, map_coordinates
 
-from ..params import BASE_SE_YIELD, MATERIAL_STI
+from ..params import BASE_SE_YIELD, MATERIAL_NITRIDE, MATERIAL_STI
 
 
 def build_se_canvas(mat, hgt, pixel_nm, rng, cp):
@@ -142,8 +142,8 @@ def render_capture(se_canvas, mat_canvas, canvas_pixel_nm, pose, cap, rng):
     iu = u / canvas_pixel_nm - 0.5
     jv = v / canvas_pixel_nm - 0.5
     mat_s = _sample_canvas(mat_canvas.astype(np.float32), jv, iu, order=0)
-    oxide = gaussian_filter((mat_s == MATERIAL_STI).astype(np.float32),
-                            sigma=30.0 / p)
+    dielectric = (mat_s == MATERIAL_STI) | (mat_s == MATERIAL_NITRIDE)
+    oxide = gaussian_filter(dielectric.astype(np.float32), sigma=30.0 / p)
     field = rng.standard_normal((n, n)).astype(np.float32)
     field = gaussian_filter(field, sigma=settings["charging_scale_nm"] / p)
     std = field.std()

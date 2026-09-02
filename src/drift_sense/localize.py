@@ -953,7 +953,13 @@ def load_gray(path):
     if img is None:
         raise FileNotFoundError(path)
     if img.dtype == np.uint16:
-        img = (img >> 8).astype(np.uint8)
+        hi = int(img.max())
+        if hi <= 255:
+            img = img.astype(np.uint8)
+        elif hi <= 4095:
+            img = np.clip(np.round(img.astype(np.float32) * (255.0 / 4095.0)), 0, 255).astype(np.uint8)
+        else:
+            img = (img >> 8).astype(np.uint8)
     elif img.dtype != np.uint8:
         x = img.astype(np.float32)
         lo, hi = float(x.min()), float(x.max())

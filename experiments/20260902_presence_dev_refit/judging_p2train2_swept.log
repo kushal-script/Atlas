@@ -1,0 +1,10 @@
+experiments/20260902_presence_dev_refit/model_v2_p2train2.json pooled sweep: top 67.26, plateau 0.2 to 0.525, midpoint threshold 0.363
+model experiments/20260902_presence_dev_refit/model_v2_p2train2.json (18 features) at threshold 0.363, score mode quad
+  p2train      core 60.99/65.13 (rej/found)  loc 25.37  pose 18.42  F1 0.555/0.831  auc 0.888
+  b180         core 61.30/65.62 (rej/found)  loc 25.59  pose 18.78  F1 0.527/0.815  auc 0.902
+  h1           core 65.64/68.97 (rej/found)  loc 28.82  pose 18.05  F1 0.644/0.866  auc 0.911
+  h2           core 60.51/64.68 (rej/found)  loc 24.38  pose 18.94  F1 0.571/0.850  auc 0.861
+  amath        core 75.42/79.42 (rej/found)  loc 36.69  pose 19.07  F1 0.667/0.933  auc 0.967
+  amats        core 78.22/80.93 (rej/found)  loc 37.70  pose 19.71  F1 0.762/0.943  auc 0.939
+  amath_t      core 76.45/79.92 (rej/found)  loc 37.30  pose 18.92  F1 0.700/0.932  auc 0.973
+  decoy        core 70.48/77.88 (rej/found)  loc 36.61  pose 18.90  F1 0.364/0.857  auc 0.952

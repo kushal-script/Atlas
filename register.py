@@ -25,8 +25,6 @@ the same peak statistics the Phase 1 confidence regimes already used.
 
 import argparse
 import csv
-import json
-import math
 import signal
 import sys
 import time
@@ -34,11 +32,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
 
-import numpy as np
-
-from drift_sense.localize import MatchConfig, load_gray, locate, optical_config
-from drift_sense.presence import features_for_model, presence_probability
-from scipy.ndimage import grey_dilation, grey_erosion
+from drift_sense.api import load_presence_model, register_pair
+from drift_sense.localize import MatchConfig, load_gray, optical_config
 
 PAIR_HARD_TIMEOUT_S = 18.0
 _HAS_ALARM = hasattr(signal, "SIGALRM") and hasattr(signal, "setitimer")
@@ -52,25 +47,7 @@ def _on_alarm(signum, frame):
     raise _PairTimeout()
 
 
-def _finite(v, fallback=0.0):
-    """Never write nan or inf into the predictions file.
-
-    A degenerate pair, a constant image or an all zero variance window can put
-    a nan through normalized correlation, and the row formatting would render
-    it as the literal text nan, which is not a number the scorer can read and
-    may cost more than the pair itself.
-    """
-    v = float(v)
-    return v if math.isfinite(v) else float(fallback)
-
-
-RESCUE_PEAK_BELOW = 0.62
-RESCUE_MARGIN = 0.02
-RESCUE_START_BEFORE = 0.5
-
 MODEL_PATH = Path(__file__).resolve().parent / "models" / "presence_model.json"
-FALLBACK_FOUND_THRESHOLD = 0.55
-FALLBACK_SCORE_WIDTH = 0.08
 
 
 def _load_model():
@@ -82,10 +59,7 @@ def _load_model():
     not disturb the predictions file.
     """
     try:
-        model = json.load(open(MODEL_PATH))
-        if len(model.get("weights", [])) != len(model.get("features", [])):
-            raise ValueError("weights and features disagree in length")
-        return model
+        return load_presence_model(MODEL_PATH)
     except Exception as exc:
         print(f"WARNING: presence model at {MODEL_PATH} unusable ({exc}); "
               f"falling back to the peak threshold rule, which scores worse",
@@ -124,21 +98,6 @@ def _read_pairs(path):
     return pairs
 
 
-def _score(peak, prominence, wide_candidates):
-    """Monotonic confidence in the decision actually being made.
-
-    Presence probability rises with the peak against the threshold; a pair
-    rejected with a very weak peak is a confident rejection, so the score
-    reflects distance from the boundary on either side, damped when the
-    correlation surface was degenerate.
-    """
-    p_present = 1.0 / (1.0 + np.exp(-(peak - FALLBACK_FOUND_THRESHOLD) / FALLBACK_SCORE_WIDTH))
-    decision_conf = max(p_present, 1.0 - p_present)
-    uniqueness = 1.0 / (1.0 + np.log1p(max(int(wide_candidates), 1) - 1))
-    strength = min(max(prominence, 0.0) / 20.0, 1.0)
-    return float(decision_conf * (0.6 + 0.25 * uniqueness + 0.15 * strength))
-
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--input", type=Path, required=True)
@@ -175,49 +134,10 @@ def main():
                 signal.setitimer(signal.ITIMER_REAL, PAIR_HARD_TIMEOUT_S)
             ref, ref_rgb = load_gray(ref_path)
             search, search_rgb = load_gray(search_path)
-            if float(np.std(ref)) < 1.0 or float(np.std(search)) < 1.0:
-                emit({"pair_id": pid, "x": 0, "y": 0, "theta": 0,
-                             "scale": 0, "found": 0, "score": "0.50000"})
-                continue
-            active_cfg = cfg_optical if (ref_rgb or search_rgb) else cfg
-            x, y, diag, _ = locate(ref, search, active_cfg, t_start=t_pair)
-            if (float(diag["score"]) < RESCUE_PEAK_BELOW
-                    and int(diag.get("num_candidates_wide", 1)) > 1
-                    and not (ref_rgb or search_rgb)):
-                for op in (grey_erosion, grey_dilation):
-                    if time.perf_counter() - t_pair > RESCUE_START_BEFORE * active_cfg.time_budget_s:
-                        break
-                    ref_cd = op(ref, size=(3, 3)).astype(ref.dtype)
-                    x2, y2, d2, _ = locate(ref_cd, search, active_cfg, t_start=t_pair)
-                    if float(d2["score"]) > float(diag["score"]) + RESCUE_MARGIN:
-                        x, y, diag = x2, y2, d2
-            peak = float(diag["score"])
-            if model is not None:
-                p_present = presence_probability(model, features_for_model(model, diag))
-                found = 1 if p_present >= model["prob_threshold"] else 0
-                score = float(max(p_present, 1.0 - p_present))
-                if ref_rgb or search_rgb:
-                    found = 1
-                    score = float(p_present)
-                if found and not (ref_rgb or search_rgb):
-                    agree = max(int(diag.get("quad_agree", -1)), 0)
-                    score *= 0.5 + 0.5 * min(agree / 4.0, 1.0)
-            else:
-                found = 1 if peak >= FALLBACK_FOUND_THRESHOLD else 0
-                score = _score(peak, float(diag.get("peak_prominence", 0.0)),
-                               diag.get("num_candidates_wide", 1))
-            theta = active_cfg.theta_report_sign * float(diag["theta_deg"])
-            scale = float(diag["scale"]) * active_cfg.zoom
-            x, y = _finite(x), _finite(y)
-            theta, scale = _finite(theta), _finite(scale, active_cfg.zoom)
-            score = _finite(score)
-            if found:
-                emit({"pair_id": pid, "x": f"{x:.3f}", "y": f"{y:.3f}",
-                             "theta": f"{theta:.3f}", "scale": f"{scale:.4f}",
-                             "found": 1, "score": f"{score:.5f}"})
-            else:
-                emit({"pair_id": pid, "x": 0, "y": 0, "theta": 0,
-                             "scale": 0, "found": 0, "score": f"{score:.5f}"})
+            result = register_pair(ref, search, reference_rgb=ref_rgb,
+                                   search_rgb=search_rgb, model=model, config=cfg,
+                                   optical=cfg_optical, t_start=t_pair)
+            emit(result.as_row(pid))
         except _PairTimeout:
             print(f"WARNING: {pid} exceeded {PAIR_HARD_TIMEOUT_S:.0f}s and was "
                   f"reported absent", file=sys.stderr, flush=True)

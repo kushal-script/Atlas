@@ -1,0 +1,245 @@
+pair_0001 B_degraded peak 0.280 err 558.5
+pair_0003 B_degraded peak 0.338 err 397.5
+pair_0004 B_degraded peak 0.804 err 160.7
+pair_0006 A_nominal  peak 0.877 err 0.0
+pair_0007 B_degraded peak 0.389 err 631.9
+pair_0008 C_absent   peak 0.210 err None
+pair_0009 B_degraded peak 0.519 err 2.1
+pair_0010 A_nominal  peak 0.906 err 11.8
+pair_0011 C_absent   peak 0.836 err None
+pair_0012 A_nominal  peak 0.825 err 0.1
+pair_0013 B_degraded peak 0.707 err 95.4
+pair_0014 A_nominal  peak 0.984 err 0.3
+pair_0015 A_nominal  peak 0.791 err 0.3
+pair_0016 B_degraded peak 0.956 err 0.4
+pair_0018 A_nominal  peak 0.709 err 0.1
+pair_0019 B_degraded peak 0.755 err 1.6
+pair_0020 C_absent   peak 0.335 err None
+pair_0021 B_degraded peak 0.823 err 0.5
+pair_0022 C_absent   peak 0.302 err None
+pair_0023 B_degraded peak 0.946 err 0.6
+pair_0024 B_degraded peak 0.660 err 0.9
+pair_0025 A_nominal  peak 0.883 err 0.1
+pair_0026 A_nominal  peak 0.760 err 0.1
+pair_0027 A_nominal  peak 0.887 err 0.2
+pair_0028 A_nominal  peak 0.964 err 0.2
+pair_0029 A_nominal  peak 0.528 err 0.5
+pair_0030 A_nominal  peak 0.964 err 0.1
+pair_0031 A_nominal  peak 0.677 err 74.8
+pair_0032 B_degraded peak 0.376 err 0.4
+pair_0033 B_degraded peak 0.576 err 1.0
+pair_0034 A_nominal  peak 0.860 err 0.1
+pair_0035 C_absent   peak 0.358 err None
+pair_0036 A_nominal  peak 0.973 err 0.3
+pair_0037 A_nominal  peak 0.898 err 0.1
+pair_0039 A_nominal  peak 0.828 err 10.0
+pair_0040 A_nominal  peak 0.811 err 0.1
+pair_0041 B_degraded peak 0.204 err 612.5
+pair_0042 B_degraded peak 0.406 err 321.1
+pair_0043 B_degraded peak 0.934 err 0.3
+pair_0044 C_absent   peak 0.614 err None
+pair_0045 A_nominal  peak 0.365 err 319.1
+pair_0046 A_nominal  peak 0.913 err 0.1
+pair_0047 A_nominal  peak 0.748 err 0.1
+pair_0048 B_degraded peak 0.446 err 216.7
+pair_0049 C_absent   peak 0.364 err None
+pair_0050 A_nominal  peak 0.708 err 0.1
+pair_0051 C_absent   peak 0.742 err None
+pair_0052 B_degraded peak 0.727 err 0.9
+pair_0053 B_degraded peak 0.945 err 0.5
+pair_0054 B_degraded peak 0.289 err 438.5
+pair_0057 B_degraded peak 0.427 err 0.2
+pair_0058 B_degraded peak 0.628 err 1.0
+pair_0059 B_degraded peak 0.413 err 736.4
+pair_0060 B_degraded peak 0.371 err 35.9
+pair_0061 A_nominal  peak 0.741 err 0.1
+pair_0062 A_nominal  peak 0.335 err 915.8
+pair_0063 A_nominal  peak 0.898 err 0.1
+pair_0065 B_degraded peak 0.795 err 1.5
+pair_0066 B_degraded peak 0.858 err 0.1
+pair_0067 A_nominal  peak 0.871 err 0.2
+pair_0068 B_degraded peak 0.785 err 0.1
+pair_0069 C_absent   peak 0.395 err None
+pair_0070 A_nominal  peak 0.338 err 430.8
+pair_0072 A_nominal  peak 0.873 err 0.1
+pair_0073 A_nominal  peak 0.793 err 0.1
+pair_0074 A_nominal  peak 0.946 err 0.3
+pair_0075 A_nominal  peak 0.961 err 0.1
+pair_0076 A_nominal  peak 0.873 err 0.1
+pair_0077 C_absent   peak 0.417 err None
+pair_0078 C_absent   peak 0.519 err None
+pair_0080 A_nominal  peak 0.852 err 14.4
+pair_0081 B_degraded peak 0.817 err 0.1
+pair_0082 A_nominal  peak 0.238 err 502.4
+pair_0083 B_degraded peak 0.742 err 0.3
+pair_0084 B_degraded peak 0.519 err 1.8
+pair_0085 C_absent   peak 0.400 err None
+pair_0086 C_absent   peak 0.645 err None
+pair_0087 C_absent   peak 0.224 err None
+pair_0088 C_absent   peak 0.250 err None
+pair_0089 C_absent   peak 0.383 err None
+pair_0090 A_nominal  peak 0.800 err 0.4
+pair_0091 B_degraded peak 0.178 err 563.6
+pair_0092 B_degraded peak 0.202 err 935.1
+pair_0093 A_nominal  peak 0.589 err 0.3
+pair_0094 B_degraded peak 0.298 err 368.6
+pair_0095 C_absent   peak 0.742 err None
+pair_0096 A_nominal  peak 0.824 err 0.1
+pair_0097 B_degraded peak 0.562 err 0.5
+pair_0098 C_absent   peak 0.291 err None
+pair_0099 B_degraded peak 0.236 err 122.8
+pair_0100 B_degraded peak 0.552 err 175.1
+pair_0101 C_absent   peak 0.262 err None
+pair_0102 A_nominal  peak 0.948 err 0.4
+pair_0104 B_degraded peak 0.393 err 400.2
+pair_0105 A_nominal  peak 0.981 err 0.1
+pair_0106 B_degraded peak 0.392 err 192.5
+pair_0108 A_nominal  peak 0.872 err 0.3
+pair_0109 C_absent   peak 0.624 err None
+pair_0110 A_nominal  peak 0.957 err 0.1
+pair_0111 A_nominal  peak 0.922 err 0.2
+pair_0112 A_nominal  peak 0.892 err 0.1
+pair_0113 B_degraded peak 0.223 err 859.4
+pair_0114 A_nominal  peak 0.961 err 0.2
+pair_0115 B_degraded peak 0.286 err 731.8
+pair_0117 A_nominal  peak 0.798 err 0.1
+pair_0118 A_nominal  peak 0.876 err 0.0
+pair_0119 B_degraded peak 0.432 err 0.3
+pair_0120 B_degraded peak 0.229 err 535.9
+pair_0121 B_degraded peak 0.954 err 0.5
+pair_0122 A_nominal  peak 0.967 err 0.1
+pair_0123 C_absent   peak 0.844 err None
+pair_0124 B_degraded peak 0.372 err 552.4
+pair_0125 A_nominal  peak 0.916 err 0.1
+pair_0126 A_nominal  peak 0.842 err 0.0
+pair_0127 A_nominal  peak 0.938 err 0.2
+pair_0128 A_nominal  peak 0.784 err 0.1
+pair_0129 B_degraded peak 0.728 err 0.6
+pair_0132 C_absent   peak 0.510 err None
+pair_0134 A_nominal  peak 0.778 err 0.2
+pair_0135 B_degraded peak 0.371 err 0.9
+pair_0136 B_degraded peak 0.881 err 69.7
+pair_0137 C_absent   peak 0.613 err None
+pair_0138 C_absent   peak 0.632 err None
+pair_0139 C_absent   peak 0.771 err None
+pair_0140 C_absent   peak 0.838 err None
+pair_0141 A_nominal  peak 0.800 err 0.5
+pair_0142 A_nominal  peak 0.815 err 0.2
+pair_0143 A_nominal  peak 0.849 err 0.2
+pair_0144 A_nominal  peak 0.865 err 0.1
+pair_0145 B_degraded peak 0.235 err 42.0
+pair_0146 A_nominal  peak 0.964 err 0.1
+pair_0147 C_absent   peak 0.640 err None
+pair_0148 B_degraded peak 0.819 err 0.2
+pair_0149 C_absent   peak 0.204 err None
+pair_0150 B_degraded peak 0.829 err 0.2
+pair_0151 B_degraded peak 0.681 err 0.4
+pair_0152 B_degraded peak 0.782 err 0.2
+pair_0153 A_nominal  peak 0.980 err 0.1
+pair_0154 B_degraded peak 0.893 err 0.3
+pair_0155 A_nominal  peak 0.869 err 0.2
+pair_0156 A_nominal  peak 0.860 err 0.2
+pair_0157 A_nominal  peak 0.974 err 0.0
+pair_0158 B_degraded peak 0.227 err 808.0
+pair_0159 A_nominal  peak 0.656 err 55.3
+pair_0161 A_nominal  peak 0.924 err 0.3
+pair_0162 C_absent   peak 0.478 err None
+pair_0163 B_degraded peak 0.369 err 1.8
+pair_0164 A_nominal  peak 0.980 err 0.0
+pair_0165 B_degraded peak 0.718 err 51.5
+pair_0166 C_absent   peak 0.464 err None
+pair_0167 C_absent   peak 0.246 err None
+pair_0168 A_nominal  peak 0.984 err 0.1
+pair_0169 C_absent   peak 0.342 err None
+pair_0170 C_absent   peak 0.477 err None
+pair_0171 C_absent   peak 0.377 err None
+pair_0172 B_degraded peak 0.426 err 0.4
+pair_0173 B_degraded peak 0.812 err 0.1
+pair_0174 B_degraded peak 0.421 err 677.7
+pair_0175 A_nominal  peak 0.868 err 0.4
+pair_0176 C_absent   peak 0.371 err None
+pair_0177 B_degraded peak 0.825 err 0.1
+pair_0178 C_absent   peak 0.358 err None
+pair_0179 B_degraded peak 0.926 err 0.2
+pair_0180 A_nominal  peak 0.912 err 0.1
+pair_0181 B_degraded peak 0.862 err 1.2
+pair_0182 C_absent   peak 0.778 err None
+pair_0184 B_degraded peak 0.283 err 582.7
+pair_0186 B_degraded peak 0.671 err 0.5
+pair_0188 A_nominal  peak 0.830 err 0.1
+pair_0189 A_nominal  peak 0.657 err 0.3
+pair_0190 A_nominal  peak 0.936 err 0.0
+pair_0192 C_absent   peak 0.623 err None
+pair_0193 C_absent   peak 0.261 err None
+pair_0194 A_nominal  peak 0.883 err 0.0
+pair_0195 C_absent   peak 0.581 err None
+pair_0196 B_degraded peak 0.324 err 0.8
+pair_0197 C_absent   peak 0.441 err None
+pair_0198 C_absent   peak 0.253 err None
+pair_0199 B_degraded peak 0.829 err 0.1
+pair_0200 A_nominal  peak 0.941 err 0.2
+pair_0201 B_degraded peak 0.190 err 291.3
+pair_0202 B_degraded peak 0.698 err 0.2
+pair_0203 C_absent   peak 0.772 err None
+pair_0204 B_degraded peak 0.648 err 0.0
+pair_0205 C_absent   peak 0.870 err None
+pair_0206 B_degraded peak 0.374 err 665.8
+pair_0207 B_degraded peak 0.948 err 0.2
+pair_0208 A_nominal  peak 0.371 err 740.3
+pair_0209 A_nominal  peak 0.873 err 12.4
+pair_0210 A_nominal  peak 0.793 err 0.3
+pair_0211 B_degraded peak 0.404 err 416.3
+pair_0212 B_degraded peak 0.908 err 0.6
+pair_0213 C_absent   peak 0.308 err None
+pair_0214 B_degraded peak 0.370 err 286.6
+pair_0216 C_absent   peak 0.344 err None
+pair_0218 B_degraded peak 0.491 err 392.5
+pair_0219 A_nominal  peak 0.931 err 0.0
+pair_0220 B_degraded peak 0.386 err 121.3
+pair_0221 B_degraded peak 0.250 err 90.7
+pair_0222 A_nominal  peak 0.773 err 0.1
+pair_0223 A_nominal  peak 0.834 err 0.1
+pair_0224 A_nominal  peak 0.569 err 117.5
+pair_0225 A_nominal  peak 0.887 err 0.2
+pair_0226 C_absent   peak 0.342 err None
+pair_0227 B_degraded peak 0.456 err 0.6
+pair_0228 A_nominal  peak 0.832 err 0.2
+pair_0229 B_degraded peak 0.838 err 0.2
+pair_0230 B_degraded peak 0.658 err 57.3
+pair_0232 B_degraded peak 0.342 err 2.1
+pair_0233 C_absent   peak 0.617 err None
+pair_0234 A_nominal  peak 0.821 err 0.3
+pair_0235 B_degraded peak 0.313 err 320.4
+pair_0236 A_nominal  peak 0.859 err 103.9
+pair_0237 B_degraded peak 0.440 err 292.1
+pair_0238 B_degraded peak 0.627 err 0.7
+pair_0239 A_nominal  peak 0.911 err 0.0
+{
+  "dataset": "data/p2train2",
+  "pairs_gray": 216,
+  "found_threshold": 0.645,
+  "rejection": {
+    "f1": 0.5454545454545455,
+    "precision": 0.4105263157894737,
+    "recall": 0.8125,
+    "tp": 39,
+    "fp": 56,
+    "fn": 9
+  },
+  "localization": {
+    "credit_A": 0.8452380952380952,
+    "credit_B": 0.5261904761904761,
+    "points_of_40": 26.79047619047619
+  },
+  "pose": {
+    "scale_credit": 0.9085470085470085,
+    "rotation_credit": 0.8948717948717948,
+    "points_of_20": 18.034188034188034
+  },
+  "calibration_auc": 0.698028590114921,
+  "calibration_points_of_10": 6.980285901149211,
+  "runtime_median_s": 2.93858449999243,
+  "runtime_max_s": 9.6975643329788,
+  "estimated_core_score": 59.986768307631614
+}
+wrote /Users/kushalsathyanarayan/Desktop/semicon_india_hackathon/PS2/experiments/20260902_191042_dev_p2train2

@@ -17,3 +17,5 @@ variants/*/data/
 
 # Organiser shared material, confidential, never committed
 OneDrive_1_1-9-2026/
+
+*.egg-info/

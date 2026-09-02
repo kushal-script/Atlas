@@ -36,7 +36,7 @@ signal, the signal is not present in the fit domain at all.
 
 ## Five deployments, judged per suite under the authoritative scoring
 
-`eval_models.py` rebuilds every decision offline exactly as register.py
+`eval_models.py`, shipped as `scripts/eval_presence_models.py`, rebuilds every decision offline exactly as register.py
 makes it, override at 0.05 applied to effective errors, localization gated
 on found, pose gated on localization, both F1 readings, calibration from
 the shipped score construction; its baseline row reproduces the committed

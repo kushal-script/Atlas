@@ -72,6 +72,14 @@ INCLUDE = [
     "scripts/tune_threshold.py",
     "scripts/setup_python311.sh",
     "scripts/build_failure_analysis.py",
+    "scripts/fit_presence.py",
+    "scripts/tune_phase2.py",
+    "scripts/eval_presence_models.py",
+    "scripts/generate_stress_dataset.py",
+    "scripts/generate_starter_spec_dataset.py",
+    "scripts/generate_amat_proxy.py",
+    "setup.py",
+    "docs/lab_guide.md",
 ]
 
 SOCKET_SHIM = '''

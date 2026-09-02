@@ -25,6 +25,27 @@ dataset_meta.json    generator version, style, count, master seed
 * `se_model`: sampled secondary electron yields and detector asymmetry.
 * `reference_capture`, `search_capture`: pose, beam, dose, noise, scan and charging parameters of each capture.
 
+## ground_truth.csv columns for a Phase 2 suite
+
+The scoring, recording and fitting tools read one row per pair with these
+columns, which `scripts/generate_phase2_suite.py` writes and which a
+laboratory suite must supply to use the refit workflow in
+`docs/lab_guide.md`:
+
+| column | meaning |
+| --- | --- |
+| `pair_id` | the identifier the predictions row must carry |
+| `set` | `A_nominal`, `B_degraded`, `C_absent` or `D_optical`; present pairs must be A or B, since localization credit is weighted by set |
+| `severity` | integer degradation rung, 0 for clean |
+| `reference_path`, `search_path` | paths relative to the csv |
+| `style` | `dram` or `finfet` |
+| `modality` | `sem` or `optical`; only `sem` rows enter the grayscale scoring |
+| `found` | 1 when the reference is present in the search, 0 when absent |
+| `gt_x`, `gt_y` | match centre in search pixels, blank for absent pairs |
+| `gt_zoom` | magnification ratio, nominally 8 to 12 |
+| `gt_rotation_deg` | relative rotation in the reported convention |
+| `seed` | the pair's generator seed |
+
 ## Conventions
 
 The evaluation treats an algorithm output (x, y) as matching pixel convention above. Errors are reported in search image pixels; one search pixel corresponds to 10 nm nominal.
