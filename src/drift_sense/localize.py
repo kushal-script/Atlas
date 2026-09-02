@@ -76,7 +76,7 @@ class MatchConfig:
     rerank_combiner: bool = True
     rerank_combiner_margin: float = 9.0
     raw_override: bool = True
-    raw_override_margin: float = 0.02
+    raw_override_margin: float = 0.05
     raw_override_min_peak: float = 0.25
     pose_arbiter: bool = True
     pose_arbiter_top_k: int = 4
@@ -316,6 +316,21 @@ def _raw_confirm(ref_raw, search_raw, z_hat, theta_report, x_hat, y_hat):
                 "x": float(rx), "y": float(ry)}
     except cv2.error:
         return None
+
+
+def _override_fires(cfg, rc):
+    """The raw override's firing decision on one confirmation record.
+
+    The margin floor sits well above the generator's own 0.02 uniqueness
+    guarantee because the statistic runs at the estimated pose, where a
+    slightly wrong zoom or rotation can hand a wrong lattice site a margin
+    just over 0.02; every observed damage margin is 0.0202 or lower across
+    two builds and an external audit, while every genuine raw resolution
+    carries 0.1089 or more, so 0.05 clears the damage band by 2.5x and the
+    rescue band clears it by 2x (experiments/20260902_raw_override_hardening)."""
+    return bool(cfg.raw_override and not rc["agree"]
+                and rc["peak"] >= cfg.raw_override_min_peak
+                and rc["margin"] >= cfg.raw_override_margin)
 
 
 def _lattice_balance_of(img):
@@ -871,10 +886,7 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
                                cfg.theta_report_sign * float(theta_polished),
                                float(x), float(y))
     if raw_confirm is not None:
-        raw_confirm["fired"] = bool(cfg.raw_override
-                                    and not raw_confirm["agree"]
-                                    and raw_confirm["peak"] >= cfg.raw_override_min_peak
-                                    and raw_confirm["margin"] >= cfg.raw_override_margin)
+        raw_confirm["fired"] = _override_fires(cfg, raw_confirm)
         if raw_confirm["fired"]:
             x, y = raw_confirm["x"], raw_confirm["y"]
 

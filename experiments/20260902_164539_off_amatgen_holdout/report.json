@@ -1,0 +1,28 @@
+{
+  "dataset": "data/amatgen_holdout",
+  "pairs_gray": 54,
+  "found_threshold": 0.535,
+  "rejection": {
+    "f1": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "tp": 12,
+    "fp": 0,
+    "fn": 0
+  },
+  "localization": {
+    "credit_A": 0.9428571428571428,
+    "credit_B": 0.8571428571428571,
+    "points_of_40": 35.82857142857143
+  },
+  "pose": {
+    "scale_credit": 0.97,
+    "rotation_credit": 0.97,
+    "points_of_20": 19.4
+  },
+  "calibration_auc": 0.7403846153846154,
+  "calibration_points_of_10": 7.403846153846154,
+  "runtime_median_s": 3.6152218960341997,
+  "runtime_max_s": 6.0561997089535,
+  "estimated_core_score": 77.63241758241759
+}

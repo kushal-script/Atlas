@@ -1,0 +1,83 @@
+v000 A_nominal  peak 0.953 err 0.1
+v001 A_nominal  peak 0.941 err 0.1
+v002 A_nominal  peak 0.967 err 0.2
+v003 A_nominal  peak 0.956 err 0.5
+v004 A_nominal  peak 0.914 err 0.3
+v005 A_nominal  peak 0.873 err 0.1
+v006 A_nominal  peak 0.899 err 0.5
+v007 A_nominal  peak 0.776 err 19.2
+v008 A_nominal  peak 0.981 err 0.3
+v009 A_nominal  peak 0.952 err 0.6
+v010 A_nominal  peak 0.935 err 0.1
+v011 A_nominal  peak 0.975 err 0.1
+v012 A_nominal  peak 0.933 err 0.4
+v013 A_nominal  peak 0.981 err 0.3
+v014 A_nominal  peak 0.962 err 1.0
+v015 A_nominal  peak 0.934 err 0.3
+v016 A_nominal  peak 0.962 err 0.1
+v017 A_nominal  peak 0.979 err 0.2
+v018 A_nominal  peak 0.981 err 0.1
+v019 A_nominal  peak 0.957 err 0.4
+v020 A_nominal  peak 0.964 err 0.1
+v021 B_degraded peak 0.783 err 1.2
+v022 B_degraded peak 0.823 err 1.5
+v023 B_degraded peak 0.889 err 0.1
+v024 B_degraded peak 0.877 err 1.1
+v025 B_degraded peak 0.892 err 0.1
+v026 B_degraded peak 0.931 err 0.3
+v027 B_degraded peak 0.834 err 1.5
+v028 B_degraded peak 0.773 err 1.1
+v029 B_degraded peak 0.925 err 1.2
+v030 B_degraded peak 0.826 err 1.9
+v031 B_degraded peak 0.849 err 0.3
+v032 B_degraded peak 0.895 err 0.1
+v033 B_degraded peak 0.899 err 1.5
+v034 B_degraded peak 0.809 err 0.4
+v035 B_degraded peak 0.860 err 0.9
+v036 B_degraded peak 0.787 err 0.1
+v037 B_degraded peak 0.928 err 0.4
+v038 B_degraded peak 0.787 err 1.2
+v039 B_degraded peak 0.907 err 0.9
+v040 B_degraded peak 0.857 err 29.5
+v041 B_degraded peak 0.723 err 1.4
+v042 C_absent   peak 0.488 err None
+v043 C_absent   peak 0.424 err None
+v044 C_absent   peak 0.535 err None
+v045 C_absent   peak 0.490 err None
+v046 C_absent   peak 0.502 err None
+v047 C_absent   peak 0.346 err None
+v048 C_absent   peak 0.500 err None
+v049 C_absent   peak 0.473 err None
+v050 C_absent   peak 0.402 err None
+v051 C_absent   peak 0.327 err None
+v052 C_absent   peak 0.513 err None
+v053 C_absent   peak 0.526 err None
+{
+  "dataset": "data/amatgen_holdout",
+  "pairs_gray": 54,
+  "found_threshold": 0.535,
+  "rejection": {
+    "f1": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "tp": 12,
+    "fp": 0,
+    "fn": 0
+  },
+  "localization": {
+    "credit_A": 0.9428571428571428,
+    "credit_B": 0.8571428571428571,
+    "points_of_40": 35.82857142857143
+  },
+  "pose": {
+    "scale_credit": 0.97,
+    "rotation_credit": 0.97,
+    "points_of_20": 19.4
+  },
+  "calibration_auc": 0.7403846153846154,
+  "calibration_points_of_10": 7.403846153846154,
+  "runtime_median_s": 3.6152218960341997,
+  "runtime_max_s": 6.0561997089535,
+  "estimated_core_score": 77.63241758241759
+}
+wrote /Users/kushalsathyanarayan/Desktop/semicon_india_hackathon/PS2/experiments/20260902_164539_off_amatgen_holdout

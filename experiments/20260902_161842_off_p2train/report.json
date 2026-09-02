@@ -1,0 +1,28 @@
+{
+  "dataset": "data/p2train",
+  "pairs_gray": 216,
+  "found_threshold": 0.79,
+  "rejection": {
+    "f1": 0.4624277456647399,
+    "precision": 0.32,
+    "recall": 0.8333333333333334,
+    "tp": 40,
+    "fp": 85,
+    "fn": 8
+  },
+  "localization": {
+    "credit_A": 0.8214285714285714,
+    "credit_B": 0.5452380952380952,
+    "points_of_40": 26.78095238095238
+  },
+  "pose": {
+    "scale_credit": 0.9318965517241379,
+    "rotation_credit": 0.886206896551724,
+    "points_of_20": 18.18103448275862
+  },
+  "calibration_auc": 0.4578865444482878,
+  "calibration_points_of_10": 4.578865444482878,
+  "runtime_median_s": 2.391704750014469,
+  "runtime_max_s": 3.1253847499610856,
+  "estimated_core_score": 56.477268493164985
+}

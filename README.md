@@ -22,7 +22,7 @@ Submission packed, self tested with sockets blocked, and frozen at the numbers b
 | Median runtime per pair | 2.85 to 4.5 s vs the 5 s requirement | `p2_runtime` figure below |
 | Six unseen appearance families, localization | 1.000 on all six after one measured fix | `experiments/20260901_alien_distribution` |
 | Severity five, past the disclosed ladder | 0.68 credit, zero false rejects | `experiments/20260901_stress_and_decoys` |
-| External audit rounds, verified finding by finding | 4, every new signal closed by a measured change | commit history |
+| External audit rounds, verified finding by finding | 5, every new signal closed by a measured change | commit history |
 | Recorded residual weakness | identical geometry decoys grabbed 6 in 10, priced into the threshold | same |
 
 ![Core score by suite](docs/images/p2_core_by_suite.png)
@@ -98,7 +98,7 @@ flowchart TB
     D --> E
     Z --> E
     PA["<b>Pose arbiter</b><br/>PHASE 2: raw full reference statistic scores top pose<br/>candidates, switches on a decisive margin"]
-    RC["<b>Raw confirmation override</b><br/>PHASE 2: organiser formation statistic at the final pose,<br/>override at margin 0.02, floor 0.25"]
+    RC["<b>Raw confirmation override</b><br/>PHASE 2: organiser formation statistic at the final pose,<br/>override at margin 0.05, floor 0.25"]
     E --> F --> G --> PA --> R --> H
     H -- yes --> K
     H -- no --> I --> J
@@ -159,7 +159,7 @@ Two further dependency files exist for optional work: `requirements_dev.txt` add
 .venv/bin/python -m pytest tests/ -q
 ```
 
-The 59 tests assert the coordinate convention, sub pixel accuracy on constructively unique pairs, generator reproducibility, independent capture noise, every manifest and layout form an evaluator might supply including 16 bit exports, symlinks and blank frames, streak correction that never touches lattice structure, the raw confirmation's present against absent separation, incremental output survival of a mid batch kill, and agreement of the fitting and inference feature constructions.
+The 60 tests assert the coordinate convention, sub pixel accuracy on constructively unique pairs, generator reproducibility, independent capture noise, every manifest and layout form an evaluator might supply including 16 bit exports, symlinks and blank frames, streak correction that never touches lattice structure, the raw confirmation's present against absent separation and its override floor, incremental output survival of a mid batch kill, and agreement of the fitting and inference feature constructions.
 
 ## Generate a dataset
 
@@ -302,6 +302,7 @@ The refit was accepted only after beating its predecessor on all three suites se
 | Phase aware streak row correction | **+2.09** of 40 hardened recipe, 0 false triggers on 432 clean pairs | shipped |
 | Calibrated correlator choice | median **3.85 to 2.85 s**, byte identical output | shipped |
 | Budget 9 to 15 s | 0 here, repaired both corner tests on a 2 to 3x slower audit machine | shipped |
+| Override margin floor 0.02 to 0.05 | audited wrong grab class eliminated, every genuine rescue kept, all six fresh suites moved exactly 0 | shipped |
 | Learned combiner as localization override | +0.00 | declined |
 | Ambiguity feature block (period ratio, curvature, balance) | won 1 suite of 3 | declined |
 | Per architecture models and thresholds | minus 0.545 to collapse held out | declined |
@@ -309,7 +310,7 @@ The refit was accepted only after beating its predecessor on all three suites se
 | Impulse trigger at their severity 3 rate | minus 0.86 sample recipe | declined |
 | Reinforcement learning layered search | declined on the verified literature before construction | declined |
 
-The raw confirmation exists because the released generator regenerates every present pair until this exact statistic lands on the label with margin at least 0.02; the pipeline computes it at the final pose for about 15 ms and lets it override or arbitrate only above a 0.25 peak floor, which on recipe never gates a real pair and off convention blocks noise from firing.
+The raw confirmation exists because the released generator regenerates every present pair until this exact statistic lands on the label with margin at least 0.02; the pipeline computes it at the final pose for about 15 ms and lets it override or arbitrate only above a 0.25 peak floor, which on recipe never gates a real pair and off convention blocks noise from firing. The override's own margin floor is 0.05, deliberately above the generator's 0.02, because the statistic runs at the estimated pose rather than the true one: an external audit reproduced a wrong lattice grab firing at margin 0.0202, and fresh override off records over all six suites, 660 pairs on the current build, put every observed damage at 0.0202 or below and every genuine raw resolution at 0.1089 or above, with the one stable scored rescue at 0.2049 and the organisers' own severity 4 sample pair at 0.1453, so 0.05 clears the damage band by 2.5x, the rescue band clears it by 2x, and every held out suite moves exactly zero (`experiments/20260902_raw_override_hardening`). The same fresh records exposed the original sweep's own generator rescues as pose estimate luck of an earlier build, margins that collapsed below 0.01 when remeasured, which is itself the scope lesson: the statistic is trustworthy exactly where the generator guarantees its formation, and the floor now prices that.
 
 **How the score column is computed.** The reported score is confidence in the decision actually made, not in presence itself, so a pair rejected on overwhelming evidence ranks as high as a confident detection. It is the larger of the model's presence probability and its complement; for a grayscale row reported found it is further damped by how many of the four quadrants agreed, which tracks whether the location is right rather than merely whether something is there, so found rows span 0.25 to 1.0 and rejected rows 0.5 to 1.0. An optical row's score is the model probability itself, undamped, since the bonus set is disclosed reference present and the probability is the confidence that the forced answer is right. The scale is monotonic in the probability that the row is correct, which is what a ranking metric needs; no fixed range is claimed. If a manifest's path columns are not recognised by name, every pair is conservatively rejected and a warning names the header on stderr.
 
@@ -358,6 +359,7 @@ A single 40 pair suite carries real draw noise, two same generator suites at dis
 | --- | --- |
 | Median per pair, suite level | 2.85 to 4.5 s across suites and machines, vs the 5 s requirement |
 | Worst pair ever observed | 9.01 s, eleven seconds inside the 20 s forfeit |
+| Slowest machine audited | about 10.6 s median on a Windows box roughly 2.5x slower than the reference stack, nothing budget gated on any of its pairs; the margin that transfers to unknown hardware is the 20 s forfeit distance, not the 5 s headroom |
 | Correlator choice | one timed calibration per process; the winner inverts between platforms, so it is measured, not assumed |
 | Reference stack penalty | Python 3.11 with pinned numpy and scipy runs 12 percent slower than the dev stack at identical credit |
 | Thread scaling | capping OpenCV to the reference machine's four cores moves the median 0.15 s and the credit not at all |

@@ -68,6 +68,10 @@ def main():
     ap.add_argument("--name", default="p2_tune")
     ap.add_argument("--threshold", type=float, default=None,
                     help="evaluate at this fixed threshold instead of sweeping")
+    ap.add_argument("--no_raw_override", action="store_true",
+                    help="record the classical answer and the raw candidate "
+                         "without letting the override move anything, the "
+                         "input an offline margin floor sweep needs")
     args = ap.parse_args()
 
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -77,6 +81,8 @@ def main():
     rows = list(csv.DictReader(open(args.dataset / "ground_truth.csv")))
     gray = [r for r in rows if r["modality"] == "sem"]
     cfg = MatchConfig()
+    if args.no_raw_override:
+        cfg.raw_override = False
     recs = []
     for r in gray:
         ref, _ = load_gray(args.dataset / r["reference_path"])

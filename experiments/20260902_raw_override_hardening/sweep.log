@@ -1,0 +1,5 @@
+fitting pool 252 present pairs, override off 29.68 of 40, shipped floor 0.02 30.66 (fired 10, rescued 7, damaged 1)
+optimum 30.75 on floors 0.021 to 0.036; midpoint 0.0285 scores 30.75 (fired 9, rescued 7, damaged 0) chosen on the fitting pool BEFORE any held out number
+HELD OUT 20260901_183704_h1_raw: off 30.19, shipped 0.02 30.19 (r0 d0), floor 0.0285 30.19 (r0 d0), delta +0.00
+HELD OUT 20260901_184557_h2_raw: off 24.90, shipped 0.02 25.76 (r2 d0), floor 0.0285 25.76 (r2 d0), delta +0.00
+HELD OUT 20260901_185447_amath_raw: off 35.83, shipped 0.02 36.69 (r1 d0), floor 0.0285 36.69 (r1 d0), delta +0.00

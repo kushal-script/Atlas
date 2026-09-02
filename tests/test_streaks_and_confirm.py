@@ -12,7 +12,8 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from drift_sense.localize import MatchConfig, _raw_confirm, _suppress_streak_rows
+from drift_sense.localize import (MatchConfig, _override_fires, _raw_confirm,
+                                  _suppress_streak_rows)
 
 
 def _lattice(h, w, period=12):
@@ -52,6 +53,26 @@ def test_wide_structure_refuses_correction():
     out, n = _suppress_streak_rows(img, cfg)
     assert n == 0
     assert np.array_equal(out, img)
+
+
+def test_override_floor_sits_above_the_damage_band():
+    """Every observed wrong lattice grab fires at margin 0.0202 or lower,
+    including the case an external audit reproduced, while every genuine raw
+    resolution across six fresh suites carries 0.1089 or more, so the gate
+    must refuse the whole damage band and admit the whole rescue band."""
+    cfg = MatchConfig()
+    assert cfg.raw_override_margin > 0.0202
+    assert cfg.raw_override_margin < 0.1089
+    audited_damage = {"agree": False, "peak": 0.611, "margin": 0.0202}
+    assert not _override_fires(cfg, audited_damage)
+    highest_neutral = {"agree": False, "peak": 0.596, "margin": 0.0322}
+    assert not _override_fires(cfg, highest_neutral)
+    lowest_resolution = {"agree": False, "peak": 0.730, "margin": 0.1089}
+    assert _override_fires(cfg, lowest_resolution)
+    stable_rescue = {"agree": False, "peak": 0.677, "margin": 0.2049}
+    assert _override_fires(cfg, stable_rescue)
+    assert not _override_fires(cfg, {"agree": True, "peak": 0.9, "margin": 0.5})
+    assert not _override_fires(cfg, {"agree": False, "peak": 0.20, "margin": 0.5})
 
 
 def test_raw_confirm_separates_present_from_absent():

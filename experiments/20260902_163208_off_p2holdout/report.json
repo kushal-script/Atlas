@@ -1,0 +1,28 @@
+{
+  "dataset": "data/p2holdout",
+  "pairs_gray": 108,
+  "found_threshold": 0.664,
+  "rejection": {
+    "f1": 0.5333333333333333,
+    "precision": 0.39215686274509803,
+    "recall": 0.8333333333333334,
+    "tp": 20,
+    "fp": 31,
+    "fn": 4
+  },
+  "localization": {
+    "credit_A": 0.8333333333333334,
+    "credit_B": 0.6904761904761905,
+    "points_of_40": 30.19047619047619
+  },
+  "pose": {
+    "scale_credit": 0.9061538461538461,
+    "rotation_credit": 0.8784615384615384,
+    "points_of_20": 17.846153846153847
+  },
+  "calibration_auc": 0.649029311001142,
+  "calibration_points_of_10": 6.49029311001142,
+  "runtime_median_s": 3.144774333050009,
+  "runtime_max_s": 10.161546666990034,
+  "estimated_core_score": 62.52692314664146
+}

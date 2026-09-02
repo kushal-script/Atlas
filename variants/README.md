@@ -12,7 +12,10 @@ variants/finfet/   register.py, generate_dataset.py, models/, src/drift_sense_fi
 Each is a complete clone with its package renamed. Intra package imports are relative, so
 nothing needed rewiring; only the two entry points named the package absolutely. Neither
 variant imports the other, and neither imports the shipped `drift_sense`. Nothing here is
-part of the submission and nothing here modifies it.
+part of the submission and nothing here modifies it. Both forks are frozen at the
+configuration they were measured with, including the retired 15 feature presence model at
+threshold 0.45, so their numbers stay reproducible; improvements to the shipped pipeline
+are deliberately not stamped forward into them.
 
 Run either exactly as the shipped entry point is run, from its own directory:
 
