@@ -69,7 +69,7 @@ def main():
     pseudo = {"features": list(feats)}
     X = np.array([features_for_model_record(pseudo, r) for r in recs], float)
     y = np.array([1 if r["truth_found"] else 0 for r in recs])
-    mu, sd = X.mean(0), X.std(0) + 1e-9
+    mu, sd = X.mean(0), np.maximum(X.std(0), 1e-4)
     Xs = (X - mu) / sd
 
     rng = np.random.default_rng(0)

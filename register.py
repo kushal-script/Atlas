@@ -69,8 +69,8 @@ RESCUE_MARGIN = 0.02
 RESCUE_START_BEFORE = 0.5
 
 MODEL_PATH = Path(__file__).resolve().parent / "models" / "presence_model.json"
-FOUND_THRESHOLD = 0.55
-SCORE_WIDTH = 0.08
+FALLBACK_FOUND_THRESHOLD = 0.55
+FALLBACK_SCORE_WIDTH = 0.08
 
 
 def _load_model():
@@ -132,7 +132,7 @@ def _score(peak, prominence, wide_candidates):
     reflects distance from the boundary on either side, damped when the
     correlation surface was degenerate.
     """
-    p_present = 1.0 / (1.0 + np.exp(-(peak - FOUND_THRESHOLD) / SCORE_WIDTH))
+    p_present = 1.0 / (1.0 + np.exp(-(peak - FALLBACK_FOUND_THRESHOLD) / FALLBACK_SCORE_WIDTH))
     decision_conf = max(p_present, 1.0 - p_present)
     uniqueness = 1.0 / (1.0 + np.log1p(max(int(wide_candidates), 1) - 1))
     strength = min(max(prominence, 0.0) / 20.0, 1.0)
@@ -203,7 +203,7 @@ def main():
                     agree = max(int(diag.get("quad_agree", -1)), 0)
                     score *= 0.5 + 0.5 * min(agree / 4.0, 1.0)
             else:
-                found = 1 if peak >= FOUND_THRESHOLD else 0
+                found = 1 if peak >= FALLBACK_FOUND_THRESHOLD else 0
                 score = _score(peak, float(diag.get("peak_prominence", 0.0)),
                                diag.get("num_candidates_wide", 1))
             theta = active_cfg.theta_report_sign * float(diag["theta_deg"])

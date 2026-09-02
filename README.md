@@ -159,7 +159,7 @@ Two further dependency files exist for optional work: `requirements_dev.txt` add
 .venv/bin/python -m pytest tests/ -q
 ```
 
-The 60 tests assert the coordinate convention, sub pixel accuracy on constructively unique pairs, generator reproducibility, independent capture noise, every manifest and layout form an evaluator might supply including 16 bit exports, symlinks and blank frames, streak correction that never touches lattice structure, the raw confirmation's present against absent separation and its override floor, incremental output survival of a mid batch kill, and agreement of the fitting and inference feature constructions.
+The 64 tests assert the coordinate convention, sub pixel accuracy on constructively unique pairs, generator reproducibility, independent capture noise, every manifest and layout form an evaluator might supply including 16 bit exports, symlinks and blank frames, streak correction that never touches lattice structure, the raw confirmation's present against absent separation and its override floor, incremental output survival of a mid batch kill, agreement of the fitting and inference feature constructions, and the entry point end to end as a subprocess over freshly generated present, absent and RGB optical pairs, asserting the found decisions, the pose accuracy and the zeroed rejection row on the actual CSV it writes.
 
 ## Generate a dataset
 
@@ -367,6 +367,7 @@ A single 40 pair suite carries real draw noise, two same generator suites at dis
 | Reference stack penalty | Python 3.11 with pinned numpy and scipy runs 12 percent slower than the dev stack at identical credit |
 | Thread scaling | capping OpenCV to the reference machine's four cores moves the median 0.15 s and the credit not at all |
 | Per pair budget | 15 s internal, 18 s alarm, output flushed row by row so a kill costs one pair, never the batch |
+| Platforms without SIGALRM | the alarm is Unix only, but the original attempt and both width rescues share the one 15 s wall clock budget measured from pair start, so the bound is 15 s plus a single stage's granularity, and a stage is a sub second C call |
 
 (`experiments/20260831_python311_reference_stack`, `experiments/20260901_stress_and_decoys`)
 
