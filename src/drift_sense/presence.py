@@ -139,15 +139,40 @@ def _raw_block(d):
     ]
 
 
+DEV_FEATURES = ("dev_best", "dev_excess", "dev_missing")
+
+
+def _dev_block(d):
+    """The deviation field's absolute evidence at the answer: the winner's
+    normalized deviation correlation, its gap over the candidate field median,
+    and an indicator for the stage not having run. The z statistic asks
+    whether one site stands out among its peers, which a decoy site can do by
+    being the only zone with the right geometry; these ask whether the site
+    unique content matched at all, in absolute units a decoy cannot fake."""
+    s2 = d.get("stage2") or {}
+    best = d.get("dev_best", s2.get("best_residual_score"))
+    med = d.get("dev_median", s2.get("residual_median"))
+    have = np.isfinite(_fin(best, np.nan))
+    excess = (float(best) - float(med)) if (have and med is not None
+                                            and np.isfinite(_fin(med, np.nan))) else 0.0
+    return [
+        _fin(best, 0.0) if have else 0.0,
+        _fin(excess, 0.0),
+        0.0 if have else 1.0,
+    ]
+
+
 ALL_FEATURE_NAMES = tuple(list(FEATURES)
                           + ["rr_score", "rr_margin", "rr_agree",
                              "lattice_balance", "period_ratio", "peak_curv",
-                             "raw_peak", "raw_margin", "raw_agree"])
+                             "raw_peak", "raw_margin", "raw_agree",
+                             "dev_best", "dev_excess", "dev_missing"])
 
 
 def _all_named(diag_or_rec, base):
     vals = (base + _rerank_block(diag_or_rec.get("rerank"))
-            + _extended_block(diag_or_rec) + _raw_block(diag_or_rec))
+            + _extended_block(diag_or_rec) + _raw_block(diag_or_rec)
+            + _dev_block(diag_or_rec))
     return dict(zip(ALL_FEATURE_NAMES, vals))
 
 

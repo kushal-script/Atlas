@@ -111,6 +111,11 @@ def main():
                      "z": (float(s2["z"]) if s2.get("z") is not None else None),
                      "margin": (float(s2["margin"]) if s2.get("margin") is not None else None),
                      "mad": (float(s2["mad"]) if s2.get("mad") is not None else None),
+                     "dev_best": (float(s2["best_residual_score"])
+                                  if s2.get("best_residual_score") is not None else None),
+                     "dev_median": (float(s2["residual_median"])
+                                    if s2.get("residual_median") is not None else None),
+                     "s2_evaluated": int(s2.get("evaluated", 0)),
                      "s2_used": bool(s2.get("used")),
                      "quad_disp": float(d.get("quad_disp", -1.0)),
                      "quad_agree": int(d.get("quad_agree", -1)),

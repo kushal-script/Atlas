@@ -1,0 +1,28 @@
+{
+  "dataset": "data/p2blind180",
+  "pairs_gray": 162,
+  "found_threshold": 0.661,
+  "rejection": {
+    "f1": 0.5090909090909091,
+    "precision": 0.3783783783783784,
+    "recall": 0.7777777777777778,
+    "tp": 28,
+    "fp": 46,
+    "fn": 8
+  },
+  "localization": {
+    "credit_A": 0.7777777777777778,
+    "credit_B": 0.584126984126984,
+    "points_of_40": 26.850793650793648
+  },
+  "pose": {
+    "scale_credit": 0.955813953488372,
+    "rotation_credit": 0.9081395348837209,
+    "points_of_20": 18.639534883720927
+  },
+  "calibration_auc": 0.7017741935483871,
+  "calibration_points_of_10": 7.017741935483871,
+  "runtime_median_s": 3.1172477080253884,
+  "runtime_max_s": 4.828905417001806,
+  "estimated_core_score": 60.144434106362084
+}

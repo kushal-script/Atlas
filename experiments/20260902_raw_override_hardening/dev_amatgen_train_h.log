@@ -1,0 +1,83 @@
+v000 A_nominal  peak 0.965 err 0.3
+v001 A_nominal  peak 0.952 err 0.1
+v002 A_nominal  peak 0.971 err 0.1
+v003 A_nominal  peak 0.955 err 0.2
+v004 A_nominal  peak 0.967 err 0.3
+v005 A_nominal  peak 0.954 err 1.0
+v006 A_nominal  peak 0.933 err 0.5
+v007 A_nominal  peak 0.883 err 23.3
+v008 A_nominal  peak 0.967 err 0.3
+v009 A_nominal  peak 0.952 err 0.3
+v010 A_nominal  peak 0.899 err 0.5
+v011 A_nominal  peak 0.952 err 0.1
+v012 A_nominal  peak 0.901 err 0.3
+v013 A_nominal  peak 0.945 err 0.2
+v014 A_nominal  peak 0.983 err 0.2
+v015 A_nominal  peak 0.912 err 0.1
+v016 A_nominal  peak 0.959 err 0.7
+v017 A_nominal  peak 0.960 err 0.7
+v018 A_nominal  peak 0.953 err 0.2
+v019 A_nominal  peak 0.900 err 0.2
+v020 A_nominal  peak 0.985 err 0.3
+v021 B_degraded peak 0.834 err 0.1
+v022 B_degraded peak 0.843 err 1.8
+v023 B_degraded peak 0.895 err 0.3
+v024 B_degraded peak 0.852 err 0.3
+v025 B_degraded peak 0.936 err 0.6
+v026 B_degraded peak 0.809 err 1.0
+v027 B_degraded peak 0.811 err 1.8
+v028 B_degraded peak 0.728 err 0.5
+v029 B_degraded peak 0.906 err 1.4
+v030 B_degraded peak 0.817 err 0.6
+v031 B_degraded peak 0.899 err 0.3
+v032 B_degraded peak 0.882 err 0.4
+v033 B_degraded peak 0.821 err 0.2
+v034 B_degraded peak 0.815 err 0.1
+v035 B_degraded peak 0.929 err 0.4
+v036 B_degraded peak 0.463 err 773.4
+v037 B_degraded peak 0.937 err 0.2
+v038 B_degraded peak 0.756 err 0.3
+v039 B_degraded peak 0.900 err 1.0
+v040 B_degraded peak 0.808 err 1.0
+v041 B_degraded peak 0.814 err 0.4
+v042 C_absent   peak 0.454 err None
+v043 C_absent   peak 0.328 err None
+v044 C_absent   peak 0.371 err None
+v045 C_absent   peak 0.581 err None
+v046 C_absent   peak 0.296 err None
+v047 C_absent   peak 0.479 err None
+v048 C_absent   peak 0.391 err None
+v049 C_absent   peak 0.415 err None
+v050 C_absent   peak 0.647 err None
+v051 C_absent   peak 0.520 err None
+v052 C_absent   peak 0.464 err None
+v053 C_absent   peak 0.256 err None
+{
+  "dataset": "data/amatgen_train_h",
+  "pairs_gray": 54,
+  "found_threshold": 0.647,
+  "rejection": {
+    "f1": 0.9600000000000001,
+    "precision": 0.9230769230769231,
+    "recall": 1.0,
+    "tp": 12,
+    "fp": 1,
+    "fn": 0
+  },
+  "localization": {
+    "credit_A": 0.9428571428571428,
+    "credit_B": 0.9238095238095237,
+    "points_of_40": 37.2952380952381
+  },
+  "pose": {
+    "scale_credit": 0.9724999999999999,
+    "rotation_credit": 0.9199999999999999,
+    "points_of_20": 18.924999999999997
+  },
+  "calibration_auc": 0.875,
+  "calibration_points_of_10": 8.75,
+  "runtime_median_s": 3.1127163954661228,
+  "runtime_max_s": 4.089722707984038,
+  "estimated_core_score": 79.3702380952381
+}
+wrote /Users/kushalsathyanarayan/Desktop/semicon_india_hackathon/PS2/experiments/20260902_175512_dev_amatgen_train_h

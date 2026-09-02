@@ -1,0 +1,40 @@
+model models/presence_model.json (18 features) at threshold 0.35, score mode quad
+  b180         core 63.69/67.85 (rej/found)  loc 26.57  pose 18.62  F1 0.611/0.889  auc 0.933
+  h1           core 68.35/70.73 (rej/found)  loc 30.19  pose 17.85  F1 0.776/0.934  auc 0.869
+  h2           core 58.23/65.73 (rej/found)  loc 24.90  pose 18.89  F1 0.359/0.859  auc 0.905
+  amath        core 76.64/78.67 (rej/found)  loc 35.83  pose 19.40  F1 0.818/0.953  auc 0.914
+  amats        core 79.86/81.28 (rej/found)  loc 37.70  pose 19.71  F1 0.870/0.965  auc 0.941
+  amath_t      core 79.08/80.70 (rej/found)  loc 37.30  pose 18.92  F1 0.857/0.966  auc 1.000
+  decoy        core 73.79/78.66 (rej/found)  loc 36.61  pose 18.90  F1 0.560/0.884  auc 0.989
+model experiments/20260902_presence_dev_refit/model_v2.json (18 features) at threshold 0.35, score mode quad
+  b180         core 64.19/68.15 (rej/found)  loc 26.57  pose 18.62  F1 0.638/0.902  auc 0.944
+  h1           core 68.47/70.85 (rej/found)  loc 30.19  pose 17.85  F1 0.776/0.934  auc 0.880
+  h2           core 58.45/65.53 (rej/found)  loc 24.90  pose 18.89  F1 0.372/0.844  auc 0.908
+  amath        core 76.56/78.59 (rej/found)  loc 35.83  pose 19.40  F1 0.818/0.953  auc 0.906
+  amats        core 79.73/81.15 (rej/found)  loc 37.70  pose 19.71  F1 0.870/0.965  auc 0.928
+  amath_t      core 78.22/80.54 (rej/found)  loc 37.30  pose 18.92  F1 0.800/0.955  auc 1.000
+  decoy        core 73.76/78.63 (rej/found)  loc 36.61  pose 18.90  F1 0.560/0.884  auc 0.985
+model experiments/20260902_presence_dev_refit/model_v5.json (21 features) at threshold 0.35, score mode quad
+  b180         core 63.89/68.11 (rej/found)  loc 26.57  pose 18.62  F1 0.618/0.898  auc 0.944
+  h1           core 68.41/70.79 (rej/found)  loc 30.19  pose 17.85  F1 0.776/0.934  auc 0.874
+  h2           core 58.57/65.61 (rej/found)  loc 24.90  pose 18.89  F1 0.381/0.851  auc 0.906
+  amath        core 76.64/78.67 (rej/found)  loc 35.83  pose 19.40  F1 0.818/0.953  auc 0.914
+  amats        core 79.79/81.22 (rej/found)  loc 37.70  pose 19.71  F1 0.870/0.965  auc 0.935
+  amath_t      core 79.08/80.70 (rej/found)  loc 37.30  pose 18.92  F1 0.857/0.966  auc 1.000
+  decoy        core 73.50/78.51 (rej/found)  loc 36.61  pose 18.90  F1 0.538/0.872  auc 0.992
+model experiments/20260902_presence_dev_refit/model_v6.json (24 features) at threshold 0.35, score mode quad
+  b180         core 63.83/68.23 (rej/found)  loc 26.57  pose 18.62  F1 0.606/0.899  auc 0.955
+  h1           core 68.69/70.92 (rej/found)  loc 30.19  pose 17.85  F1 0.792/0.940  auc 0.878
+  h2           core 58.29/65.37 (rej/found)  loc 24.48  pose 19.00  F1 0.372/0.844  auc 0.924
+  amath        core 76.03/78.06 (rej/found)  loc 35.83  pose 19.40  F1 0.818/0.953  auc 0.853
+  amats        core 79.18/81.20 (rej/found)  loc 37.70  pose 19.71  F1 0.818/0.953  auc 0.950
+  amath_t      core 78.49/80.52 (rej/found)  loc 37.30  pose 18.92  F1 0.818/0.953  auc 1.000
+  decoy        core 74.10/78.44 (rej/found)  loc 36.61  pose 18.90  F1 0.593/0.882  auc 0.970
+model experiments/20260902_presence_dev_refit/model_v4.json (21 features) at threshold 0.35, score mode quad
+  b180         core 63.99/68.20 (rej/found)  loc 26.57  pose 18.62  F1 0.618/0.898  auc 0.954
+  h1           core 68.71/70.94 (rej/found)  loc 30.19  pose 17.85  F1 0.792/0.940  auc 0.880
+  h2           core 58.52/65.59 (rej/found)  loc 24.90  pose 18.89  F1 0.372/0.844  auc 0.914
+  amath        core 75.91/77.94 (rej/found)  loc 35.83  pose 19.40  F1 0.818/0.953  auc 0.841
+  amats        core 79.23/81.25 (rej/found)  loc 37.70  pose 19.71  F1 0.818/0.953  auc 0.955
+  amath_t      core 78.49/80.52 (rej/found)  loc 37.30  pose 18.92  F1 0.818/0.953  auc 1.000
+  decoy        core 74.03/78.37 (rej/found)  loc 36.61  pose 18.90  F1 0.593/0.882  auc 0.964

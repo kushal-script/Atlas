@@ -25,7 +25,8 @@ import numpy as np
 from scipy.optimize import minimize
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
-from drift_sense.presence import (ALL_FEATURE_NAMES, EXTENDED_FEATURES, FEATURES,
+from drift_sense.presence import (ALL_FEATURE_NAMES, DEV_FEATURES,
+                                  EXTENDED_FEATURES, FEATURES,
                                   RAW_CONFIRM_FEATURES, RERANK_FEATURES,
                                   features_for_model_record, features_from_record)
 
@@ -52,14 +53,19 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--records", type=Path, required=True)
     ap.add_argument("--out", type=Path, default=Path("models/presence_model.json"))
-    ap.add_argument("--features", choices=("v1", "v2", "v3", "v4", "all"), default="v1",
+    ap.add_argument("--features", choices=("v1", "v2", "v3", "v4", "v5", "v6", "all"),
+                    default="v1",
                     help="v1 the fifteen diagnostics, v2 adds the rerank combiner block, "
                          "v3 the ambiguity block on v2, v4 the raw confirmation block "
-                         "on v2, all every named feature")
+                         "on v2, v5 the deviation evidence block on v2, v6 both raw "
+                         "and deviation blocks on v2, all every named feature")
     args = ap.parse_args()
     recs = json.load(open(args.records))
     feats = {"v1": FEATURES, "v2": RERANK_FEATURES, "v3": EXTENDED_FEATURES,
-             "v4": RAW_CONFIRM_FEATURES, "all": ALL_FEATURE_NAMES}[args.features]
+             "v4": RAW_CONFIRM_FEATURES,
+             "v5": RERANK_FEATURES + DEV_FEATURES,
+             "v6": RAW_CONFIRM_FEATURES + DEV_FEATURES,
+             "all": ALL_FEATURE_NAMES}[args.features]
     pseudo = {"features": list(feats)}
     X = np.array([features_for_model_record(pseudo, r) for r in recs], float)
     y = np.array([1 if r["truth_found"] else 0 for r in recs])

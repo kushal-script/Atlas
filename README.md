@@ -23,7 +23,7 @@ Submission packed, self tested with sockets blocked, and frozen at the numbers b
 | Six unseen appearance families, localization | 1.000 on all six after one measured fix | `experiments/20260901_alien_distribution` |
 | Severity five, past the disclosed ladder | 0.68 credit, zero false rejects | `experiments/20260901_stress_and_decoys` |
 | External audit rounds, verified finding by finding | 5, every new signal closed by a measured change | commit history |
-| Recorded residual weakness | identical geometry decoys grabbed 6 in 10, priced into the threshold | same |
+| Recorded residual weakness | identical geometry decoys grabbed 6 in 10, priced; its discriminating signal measured at d' 1.68 and five deployments declined for damaging other suites | `experiments/20260902_presence_dev_refit` |
 
 ![Core score by suite](docs/images/p2_core_by_suite.png)
 
@@ -303,6 +303,9 @@ The refit was accepted only after beating its predecessor on all three suites se
 | Calibrated correlator choice | median **3.85 to 2.85 s**, byte identical output | shipped |
 | Budget 9 to 15 s | 0 here, repaired both corner tests on a 2 to 3x slower audit machine | shipped |
 | Override margin floor 0.02 to 0.05 | audited wrong grab class eliminated, every genuine rescue kept, all six fresh suites moved exactly 0 | shipped |
+| Deviation evidence block for the decoy class | signal real, d' 1.68 on decoys and 1.5 to 1.8 on the organiser recipe, absent in the fit domain at d' 0.02; five fits all damage a suite | declined |
+| Raw confirmation block as presence features, fresh records | amath minus 0.73, amats minus 0.63; September's decline reconfirmed on stable margins | declined |
+| Score damping by raw or re ranker disagreement | three constructions, each wins suites and damages b180 or the decoy suite | declined |
 | Learned combiner as localization override | +0.00 | declined |
 | Ambiguity feature block (period ratio, curvature, balance) | won 1 suite of 3 | declined |
 | Per architecture models and thresholds | minus 0.545 to collapse held out | declined |
