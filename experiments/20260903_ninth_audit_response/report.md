@@ -56,3 +56,15 @@ clock budget as the bound, the always entered wide grid, the F1 figure the
 review compared across two different protocols, cross validation in the
 model file against held out end to end in the readme, and the correlator
 pair whose byte identity on full suites is gated on every packaging run.
+
+## Addendum: the same reviewer's re run on the organisers' sample
+
+The reviewer whose synthetic harness raised the claims above re ran the
+current build on the organisers' twenty shared pairs on a Windows machine
+and independently reproduced the committed numbers: sixteen of sixteen
+present pairs within 5 px, mean error 0.37 px against the 0.38 px median
+recorded here, maximum 1.15 px, and the two identical geometry decoys
+grabbed with the other two absents rejected, exactly the priced behaviour
+the threshold selection recorded. A second operating system, a second
+architecture and a second pair of hands landing on the same digits is the
+strongest reproduction the sample allows.
