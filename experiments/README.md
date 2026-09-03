@@ -5,7 +5,10 @@ naming forms coexist: a folder named `YYYYMMDD_HHMMSS_name` is one recorded
 run, its `records.json`, predictions and `report.json` written by the harness
 that ran it; a folder named `YYYYMMDD_name` is a campaign, and its
 `report.md` states what was asked, what was measured and what shipped or was
-declined. Reading the campaign reports in order reconstructs every decision
+declined. A run folder holds `config.json` with the dataset path and the full
+matcher configuration, `results.csv` or `records.json` with one row per pair,
+`metrics.json` or `report.json` with the aggregates, and often `plots/`, so
+every number stays traceable to the exact configuration that produced it. Reading the campaign reports in order reconstructs every decision
 in the repository; the single run folders are their raw material.
 
 The campaigns that decide the shipped configuration, in reading order:
