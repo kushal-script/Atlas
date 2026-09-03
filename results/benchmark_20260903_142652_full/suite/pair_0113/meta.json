@@ -1,0 +1,93 @@
+{
+  "seed": 999003110,
+  "style": "finfet",
+  "modality": "optical",
+  "placement": "uniform",
+  "found": 1,
+  "degrade": null,
+  "degrade_reference": null,
+  "ground_truth": {
+    "x": 509.94924414147016,
+    "y": 454.465325912096
+  },
+  "zoom": 8.43829067544674,
+  "gt_corners_xy": [
+    [
+      452.68919545611107,
+      393.3977131015764
+    ],
+    [
+      571.0168569519898,
+      397.2052772267368
+    ],
+    [
+      567.2092928268294,
+      515.5329387226155
+    ],
+    [
+      448.8816313309506,
+      511.72537459745513
+    ]
+  ],
+  "relative_rotation_deg": -1.8430357097290007,
+  "search_scale_error": -0.15617093245532598,
+  "layout": {
+    "style": "finfet",
+    "fin_pitch_nm": 26.46895180649044,
+    "fin_width_nm": 8.786179496785662,
+    "gate_pitch_nm": 59.41401892996555,
+    "gate_width_nm": 20.79699547563203,
+    "fins_per_row": 6,
+    "row_pitch_nm": 211.75161445192353,
+    "ler_sigma_nm": 1.2381190994067588,
+    "ler_corr_nm": 21.013329202973445,
+    "sram_rect_nm": [
+      5247.66765356431,
+      7070.757981881549,
+      8052.425841251605,
+      9232.285234120034
+    ]
+  },
+  "se_model": {},
+  "reference_capture": {
+    "pose": {
+      "center_u_nm": 5858.42905229883,
+      "center_v_nm": 5137.125603128878,
+      "theta_rad": 0.00038167235889447073,
+      "pixel_nm": 1.0
+    },
+    "settings": {
+      "wavelengths_nm": [
+        620.0,
+        540.0,
+        460.0
+      ],
+      "na": 0.8604031768939819,
+      "photon_dose": 9679.153234411344,
+      "film_base_nm": 205.22245507913289,
+      "vignette": 0.05354481239256593,
+      "illum_tilt": 0.04933302265980209
+    }
+  },
+  "search_capture": {
+    "pose": {
+      "center_u_nm": 5782.376735050535,
+      "center_v_nm": 5519.751486544157,
+      "theta_rad": -0.03178536900770708,
+      "pixel_nm": 8.43829067544674
+    },
+    "settings": {
+      "wavelengths_nm": [
+        620.0,
+        540.0,
+        460.0
+      ],
+      "na": 0.8903647507495581,
+      "photon_dose": 1370.2688382653475,
+      "film_base_nm": 333.0117706880505,
+      "vignette": 0.055516891992399724,
+      "illum_tilt": 0.015308315143792753
+    }
+  },
+  "pixel_convention": "origin at center of top left pixel, x rightward column, y downward row"
+}

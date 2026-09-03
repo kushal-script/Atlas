@@ -1,0 +1,96 @@
+{
+  "seed": 999003001,
+  "style": "dram",
+  "modality": "sem",
+  "placement": "deep_array",
+  "found": 0,
+  "degrade": null,
+  "degrade_reference": null,
+  "ground_truth": {
+    "x": 0.0,
+    "y": 0.0
+  },
+  "zoom": 8.958191655452145,
+  "gt_corners_xy": [],
+  "relative_rotation_deg": 2.4722311692506893,
+  "search_scale_error": -0.10418083445478543,
+  "layout": {
+    "style": "dram",
+    "feature_nm": 16.116079272053884,
+    "wl_pitch_nm": 32.23215854410777,
+    "bl_pitch_nm": 48.34823781616166,
+    "wl_width_nm": 15.426821505208954,
+    "bl_width_nm": 21.3862432428988,
+    "contact_radius_nm": 13.039274693269006,
+    "ler_sigma_nm": 2.2718227994569227,
+    "ler_corr_nm": 29.99593729442665,
+    "mat_width_nm": 8281.826827811225,
+    "mat_height_nm": 7652.393075820727,
+    "sa_stripe_nm": 419.4578797627878,
+    "swd_stripe_nm": 340.3802683001688,
+    "contact_missing_prob": 0.004379216701275132
+  },
+  "se_model": {
+    "yields": {
+      "0": 1.3700256416083312,
+      "1": 1.0720240044929594,
+      "2": 1.271416245486511,
+      "3": 1.361511954897723,
+      "4": 1.3257185258929867
+    },
+    "detector_asymmetry": 0.08459137735990291,
+    "detector_azimuth_rad": 3.908754976934277,
+    "norm": 10.491987228393555
+  },
+  "reference_capture": {
+    "pose": {
+      "center_u_nm": 5925.40049641069,
+      "center_v_nm": 7816.020091269909,
+      "theta_rad": 0.0008210979889653521,
+      "pixel_nm": 1.0
+    },
+    "settings": {
+      "psf_sigma_x_nm": 2.0989090213651225,
+      "psf_sigma_y_nm": 1.9456970917234666,
+      "dose_e": 721.3796933673123,
+      "read_noise_e": 3.957809620992629,
+      "charging_amp": 0.03241688140485887,
+      "charging_scale_nm": 271.0106149745785
+    },
+    "scan": {
+      "drift_total_px": [
+        2.2782859014307495,
+        -0.4901809962901712
+      ],
+      "jitter_sigma_px": 0.15964340090457527,
+      "vib_amp_px": 0.24598927480384886,
+      "vib_period_rows": 105.35796956423894
+    }
+  },
+  "search_capture": {
+    "pose": {
+      "center_u_nm": 5722.046156690079,
+      "center_v_nm": 5653.850469518099,
+      "theta_rad": 0.043969671762819074,
+      "pixel_nm": 8.958191655452145
+    },
+    "settings": {
+      "psf_sigma_x_nm": 11.851568962935403,
+      "psf_sigma_y_nm": 14.668807317917436,
+      "dose_e": 293.2428406039086,
+      "read_noise_e": 7.2334815762073585,
+      "charging_amp": 0.0797569195333488,
+      "charging_scale_nm": 252.19942627384083
+    },
+    "scan": {
+      "drift_total_px": [
+        0.19286985846555196,
+        -0.4171279222337758
+      ],
+      "jitter_sigma_px": 0.08587255891062151,
+      "vib_amp_px": 0.12554413476244153,
+      "vib_period_rows": 146.56501636720998
+    }
+  },
+  "pixel_convention": "origin at center of top left pixel, x rightward column, y downward row"
+}

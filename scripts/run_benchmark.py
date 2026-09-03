@@ -430,7 +430,7 @@ def main():
     md.append("")
     md.append("## How to compare across devices")
     md.append("")
-    md.append("Commit `benchmark_report.json` from each device and diff `runtime.median_s_per_pair`, `runtime.p90_s`, `runtime.max_s`, `estimated_core`, `rejection.f1`, `calibration.auc`. Headline full-suite numbers should sit in the 76.6–81.7 band for `full` (120) and scale similarly for `quick` (40).")
+    md.append("Commit `benchmark_report.json` from each device and diff `runtime.median_s_per_pair`, `runtime.p90_s`, `runtime.max_s`, `estimated_core`, `rejection.f1`, `calibration.auc`. This tool generates with the repository's own harsher generator, whose documented band is the 59 to 68 floor row of the readme status table; the 76.6 to 81.7 band belongs to the released recipe suites, which this tool cannot generate. Compare devices against each other, not against the released recipe band.")
     md.append("")
     (out_dir / "benchmark_report.md").write_text("\n".join(md), encoding="utf-8")
 
