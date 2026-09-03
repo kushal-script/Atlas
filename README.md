@@ -36,7 +36,7 @@ Submission packed, self tested with sockets blocked, and frozen at the numbers b
 | Own harsher generator, the cross distribution floor | 59.2 and 68.4 | same |
 | Organisers' shared 20, present credit, never fitted on | **0.988** vs their baseline 0.800 | `experiments/20260901_organiser_sample_validation` |
 | Rejection F1 at the operating point, reject / found reading | 0.62 to 0.88 / 0.86 to 0.97 per suite | same experiments |
-| Median runtime per pair | 3.0 s on the development laptop after the pose surfaces spread over a four worker pool; the budget states median 5 s on a four core x86 reference machine, where the serial build measured 6.6 s and the pooled build is the direct response | `p2_runtime` figure below |
+| Median runtime per pair | 1.82 s median, 3.00 s mean on the 120 pair proportional holdout with the pose surfaces on a four worker pool, worst pair 6.33 s against the 20 s forfeit; the budget states median 5 s on a four core x86 reference machine, where the serial build measured 6.6 s and the pooled build is the direct response | [results/runtime_protocol.json](results/runtime_protocol.json) |
 | Six unseen appearance families, localization | 1.000 on all six after one measured fix | `experiments/20260901_alien_distribution` |
 | Severity five, past the disclosed ladder | 0.68 credit, zero false rejects | `experiments/20260901_stress_and_decoys` |
 | External audit rounds, verified finding by finding | 7, every new signal closed by a measured change or refuted with recorded evidence | commit history |
@@ -57,7 +57,7 @@ Submission packed, self tested with sockets blocked, and frozen at the numbers b
 | Output | centre x y sub pixel, rotation, recovered scale, found flag, confidence |
 | Coordinate origin | centre of the top left pixel, x increases right, y increases down |
 | Multiple matches | the match closest to the search image centre is returned |
-| Runtime | 3.0 s per pair median on the development laptop with the pose surfaces pooled, 4.02 s on the same holdout before the pool, under the pinned stack, Python 3.11 with numpy 2.4.6 and scipy 1.17.1; a four core x86 of the reference class measured 6.6 s on the serial build and the pooled build is the response; worst pair observed 9.01 s against the organisers' 20 s forfeit |
+| Runtime | 1.82 s per pair median on the 120 pair proportional holdout with the pose surfaces pooled, 4.02 s on the same holdout before the pool, under the pinned stack, Python 3.11 with numpy 2.4.6 and scipy 1.17.1; a four core x86 of the reference class measured 6.6 s on the serial build and the pooled build is the response; worst pair observed 9.01 s against the organisers' 20 s forfeit |
 
 ### What changed in Phase 2
 
