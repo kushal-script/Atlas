@@ -210,6 +210,10 @@ def register_pair(reference, search, *, reference_rgb=False, search_rgb=False,
     t_start = time.perf_counter() if t_start is None else t_start
     ref = np.asarray(reference)
     search = np.asarray(search)
+    if ref.ndim != 2 or search.ndim != 2:
+        raise ValueError("register_pair expects grayscale 2d arrays as load_gray "
+                         "returns them; pass a colour capture through load_gray and "
+                         "forward its rgb flag")
     ref_std, search_std = float(np.std(ref)), float(np.std(search))
     if (not np.isfinite(ref_std) or ref_std < DEGENERATE_STD
             or not np.isfinite(search_std) or search_std < DEGENERATE_STD):

@@ -19,15 +19,21 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from drift_sense.generator import generate_pair
+from drift_sense.params import GeneratorConfig
 
 REPO = Path(__file__).resolve().parent.parent
+
+def _phase2_cfg():
+    cfg = GeneratorConfig()
+    cfg.phase2 = True
+    return cfg
 
 
 @pytest.fixture(scope="module")
 def run(tmp_path_factory):
     d = tmp_path_factory.mktemp("e2e")
     present = generate_pair(seed=4242, style="dram")
-    absent = generate_pair(seed=555, style="finfet", absent=True)
+    absent = generate_pair(seed=557, style="finfet", cfg=_phase2_cfg(), absent=True)
     cv2.imwrite(str(d / "p_ref.png"), present["reference"])
     cv2.imwrite(str(d / "p_search.png"), present["search"])
     cv2.imwrite(str(d / "a_ref.png"), absent["reference"])
@@ -104,3 +110,10 @@ def test_library_call_matches_the_batch_row(run, tmp_path):
     assert row == by_id["e2e_present"]
     assert result.reason == "matched" and result.regime in (
         "unique_peak", "residual_identified", "tie_break_convention")
+
+
+def test_register_pair_refuses_colour_arrays():
+    import numpy as np
+    from drift_sense.api import register_pair
+    with pytest.raises(ValueError):
+        register_pair(np.zeros((100, 100, 3), np.uint8), np.zeros((100, 100), np.uint8))

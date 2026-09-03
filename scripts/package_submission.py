@@ -186,7 +186,8 @@ def main():
         present = [r for r in sem if r["found"] == "1"][:max(args.num - 1, 1)]
         absent = [r for r in sem if r["found"] == "0"][:3]
         assert absent, "sample suite carries no absent pair"
-        sample = present + absent
+        optical = [r for r in rows if r["modality"] == "optical"][:1]
+        sample = present + absent + optical
         io_dir = td / "io"
         io_dir.mkdir()
         pairs_csv = io_dir / "pairs.csv"
