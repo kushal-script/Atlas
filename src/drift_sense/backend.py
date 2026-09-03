@@ -165,6 +165,30 @@ def match_ccoeff_normed_batch(search, tmpls, device="cpu", want_min=False):
     return results
 
 
+_POOL = {"ex": None}
+
+
+def _pool():
+    if _POOL["ex"] is None:
+        import os
+        from concurrent.futures import ThreadPoolExecutor
+        _POOL["ex"] = ThreadPoolExecutor(max_workers=min(4, os.cpu_count() or 1))
+    return _POOL["ex"]
+
+
+def map_parallel(fn, items):
+    """Order preserving parallel map over independent per template work.
+
+    The heavy calls, OpenCV transforms and scipy resampling, release the GIL,
+    so a small thread pool uses the reference machine's four cores; each item
+    is computed by the same function on the same input as the serial loop, so
+    the returned list is identical element for element."""
+    items = list(items)
+    if len(items) < 3:
+        return [fn(i) for i in items]
+    return list(_pool().map(fn, items))
+
+
 class _CpuCorrelator:
     """OpenCV correlation, which already transforms large templates."""
 
@@ -172,12 +196,13 @@ class _CpuCorrelator:
         self.search = np.asarray(search, dtype=np.float32)
 
     def peaks(self, tmpls, want_min=False):
-        out = []
-        for t in tmpls:
+        def one(t):
             r = cv2.matchTemplate(self.search, np.asarray(t, dtype=np.float32),
                                   cv2.TM_CCOEFF_NORMED)
-            out.append((float(r.min()), float(r.max())) if want_min else float(r.max()))
-        return out
+            return (float(r.min()), float(r.max())) if want_min else float(r.max())
+        if min(self.search.shape[:2]) <= 512:
+            return map_parallel(one, tmpls)
+        return [one(t) for t in tmpls]
 
     def full(self, tmpl):
         return cv2.matchTemplate(self.search, np.asarray(tmpl, dtype=np.float32),
@@ -298,11 +323,13 @@ class _FftCpuCorrelator:
         return out.astype(np.float32)
 
     def peaks(self, tmpls, want_min=False):
-        out = []
         for t in tmpls:
+            th, tw = np.asarray(t).shape
+            self._window_var(th, tw)
+        def one(t):
             r = self._surface(t)
-            out.append((float(r.min()), float(r.max())) if want_min else float(r.max()))
-        return out
+            return (float(r.min()), float(r.max())) if want_min else float(r.max())
+        return map_parallel(one, tmpls)
 
     def full(self, tmpl):
         return self._surface(tmpl)

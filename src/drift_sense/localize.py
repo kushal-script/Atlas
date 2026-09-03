@@ -544,6 +544,24 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
         tried[key] = float(corr.peaks([tmpl])[0])
         return tried[key]
 
+    def evaluate_many(items):
+        """The serial evaluate over independent poses, batched so the
+        correlator can spread the surfaces over the machine's cores; keys
+        enter the tried table in the given order, so every tie break that
+        reads insertion order is unchanged."""
+        fresh = []
+        for sig, theta, scale in items:
+            key = (round(theta, 4), round(scale, 5), sig)
+            if key not in tried and key not in [k for k, _ in fresh]:
+                fresh.append((key, (sig, theta, scale)))
+        if not fresh:
+            return
+        tmpls = backend.map_parallel(
+            lambda a: _make_template(ref_bank[a[0]], a[1], a[2], cfg),
+            [a for _, a in fresh])
+        for (key, _), pk in zip(fresh, corr.peaks(tmpls)):
+            tried[key] = float(pk)
+
     def refine(seed_key):
         """Local descent on rotation and scale, keeping the seed's blur level."""
         best_local = seed_key
@@ -552,9 +570,10 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
         for _ in range(cfg.refine_levels):
             th0, sc0, sig0 = best_local
             neighbourhood = [best_local]
-            for th, sc in ((th0 - rot_step, sc0), (th0 + rot_step, sc0),
-                           (th0, sc0 - scale_step), (th0, sc0 + scale_step)):
-                evaluate(sig0, th, sc)
+            steps = ((th0 - rot_step, sc0), (th0 + rot_step, sc0),
+                     (th0, sc0 - scale_step), (th0, sc0 + scale_step))
+            evaluate_many([(sig0, th, sc) for th, sc in steps])
+            for th, sc in steps:
                 neighbourhood.append((round(th, 4), round(sc, 5), sig0))
             best_local = max(neighbourhood, key=tried.get)
             rot_step /= 2
@@ -581,8 +600,7 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
         corr_small = backend.make_correlator(small, cfg.device)
         tried.clear()
 
-    for sig in cfg.psf_sigma_bank_nm:
-        evaluate(sig, 0.0, 1.0)
+    evaluate_many([(sig, 0.0, 1.0) for sig in cfg.psf_sigma_bank_nm])
     nominal_key = max(tried, key=tried.get)
     nominal_key = refine(nominal_key)
     nominal_score = tried[nominal_key]
@@ -600,18 +618,22 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
                 for sc in cfg.coarse_scales:
                     if th == 0.0 and sc == 1.0:
                         continue
-                    tmpl_h = _make_template(ref_bank[sig], th, sc, cfg)
-                    th_px = max(tmpl_h.shape[0] // ds, 8)
-                    grid_tmpls.append(cv2.resize(tmpl_h, (th_px, th_px),
-                                                 interpolation=cv2.INTER_AREA))
                     poses.append((sig, th, sc))
+
+        def _grid_tmpl(a):
+            tmpl_h = _make_template(ref_bank[a[0]], a[1], a[2], cfg)
+            th_px = max(tmpl_h.shape[0] // ds, 8)
+            return cv2.resize(tmpl_h, (th_px, th_px), interpolation=cv2.INTER_AREA)
+
+        grid_tmpls = backend.map_parallel(_grid_tmpl, poses)
         peaks = corr_small.peaks(grid_tmpls)
         prescreen = [(peak, sig, th, sc)
                      for peak, (sig, th, sc) in zip(peaks, poses)]
         prescreen.sort(key=lambda p: -p[0])
+        evaluate_many([(sig, th, sc)
+                       for _, sig, th, sc in prescreen[:cfg.prescreen_top_k]])
         wide_keys = []
         for _, sig, th, sc in prescreen[:cfg.prescreen_top_k]:
-            evaluate(sig, th, sc)
             wide_keys.append((round(th, 4), round(sc, 5), sig))
         cand = max(wide_keys, key=tried.get, default=nominal_key)
         cand = refine(cand)
