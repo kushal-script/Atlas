@@ -71,7 +71,6 @@ INCLUDE = [
     "scripts/oracle_probe.py",
     "scripts/tune_threshold.py",
     "scripts/setup_python311.sh",
-    "scripts/build_failure_analysis.py",
     "scripts/fit_presence.py",
     "scripts/tune_phase2.py",
     "scripts/eval_presence_models.py",
@@ -141,17 +140,13 @@ def main():
                          f"the reference machine is 3.11")
     print(f"  self test interpreter: Python {major}.{minor}, cv2 {cv_version}")
 
-    try:
-        import build_failure_analysis as _fa
-        pages = _fa.build(REPO / "docs/phase2_failure_analysis.md",
-                          REPO / "submission/failure_analysis.pdf")
-        print(f"  rebuilt the failure analysis from its markdown, {pages} pages")
-    except ImportError:
-        if not (REPO / "submission/failure_analysis.pdf").exists():
-            raise SystemExit("reportlab is needed to build the failure analysis: "
-                             ".venv/bin/python -m pip install reportlab")
-        print("  WARNING: reportlab absent, packing the failure analysis pdf as it "
-              "stands without rebuilding it from the markdown", file=sys.stderr)
+    pdf = REPO / "submission/failure_analysis.pdf"
+    if not pdf.exists():
+        raise SystemExit("submission/failure_analysis.pdf is missing")
+    pages = pdf.read_bytes().count(b"/Type /Page") - pdf.read_bytes().count(b"/Type /Pages")
+    if pages > 2:
+        raise SystemExit(f"failure analysis is {pages} pages, the limit is 2")
+    print(f"  failure analysis pdf verified at {pages} pages from its bytes")
 
     missing = [f for f in INCLUDE if not (REPO / f).exists()]
     if missing:
