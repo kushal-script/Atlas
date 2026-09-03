@@ -70,9 +70,11 @@ was refused before any matching ran.
 
 ## Runtime and limits
 
-A pair takes about three to five seconds on a laptop core with no
-accelerator, with a 15 second internal budget that trims the search on a
-slow machine rather than overrunning, and an 18 second alarm on Unix. The
+A pair takes about two seconds at the median with the pose surfaces
+pooled over the machine's four cores and no accelerator, with a tail
+observed to about six and a half seconds, a 15 second internal budget that
+trims the search on a slow machine rather than overrunning, and an 18
+second alarm on Unix. The
 search covers magnification 8 to 12 and rotation within 5 degrees of
 nominal, the ranges the problem states; a capture outside them is reported
 at the nearest edge of the searched range. The information limit is real:
