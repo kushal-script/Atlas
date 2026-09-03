@@ -10,7 +10,7 @@ Usage (called via benchmark.sh / benchmark.ps1, or directly):
 
 Modes:
     --quick  40 pairs (~70s) for ad-hoc device check
-    --full  120 pairs (~200s) for headline numbers (README 76.6-81.7 band)
+    --full  120 pairs (~200s) for the cross device headline (own generator floor band, 59 to 68)
     --num N  overrides quick/full
 Requires internet only for pip install (done by wrapper); this driver is offline.
 """
