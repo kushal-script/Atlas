@@ -26,6 +26,7 @@ the same peak statistics the Phase 1 confidence regimes already used.
 import argparse
 import csv
 import signal
+import statistics
 import sys
 import time
 from pathlib import Path
@@ -134,9 +135,10 @@ def main():
 
     if _HAS_ALARM:
         signal.signal(signal.SIGALRM, _on_alarm)
+    pair_times = []
     for pid, ref_path, search_path in pairs:
+        t_pair = time.perf_counter()
         try:
-            t_pair = time.perf_counter()
             if _HAS_ALARM:
                 signal.setitimer(signal.ITIMER_REAL, PAIR_HARD_TIMEOUT_S)
             ref, ref_rgb = load_gray(ref_path)
@@ -161,6 +163,7 @@ def main():
         finally:
             if _HAS_ALARM:
                 signal.setitimer(signal.ITIMER_REAL, 0.0)
+            pair_times.append(time.perf_counter() - t_pair)
         print(f"{pid} found={rows[-1]['found']} score={rows[-1]['score']}", flush=True)
 
     written = {r["pair_id"] for r in rows}
@@ -171,6 +174,9 @@ def main():
             written.add(pid)
     out_fh.close()
     print(f"wrote {args.output} with {len(rows)} rows")
+    if pair_times:
+        print(f"median {statistics.median(pair_times):.2f}s per pair, "
+              f"total {sum(pair_times):.1f}s over {len(pair_times)} pairs", flush=True)
 
 
 if __name__ == "__main__":
