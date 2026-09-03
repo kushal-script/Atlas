@@ -187,10 +187,49 @@ def precision_recall_by_tier():
     print("wrote precision_recall.png")
 
 
+def phase2_montages():
+    """The success and honest failure showcases, rendered from the current
+    build on named holdout pairs: reference, search with truth and
+    prediction, and the correlation response the decision read."""
+    import csv
+    import sys
+    sys.path.insert(0, str(REPO / "src"))
+    from drift_sense.localize import MatchConfig, load_gray, locate
+
+    gt = {r["pair_id"]: r for r in csv.DictReader(open(REPO / "data/p2holdout2/ground_truth.csv"))}
+    for name, pid, kind in (("montage_success.png", "pair_0009", "success case"),
+                            ("montage_failure.png", "pair_0063", "hardest case")):
+        g = gt[pid]
+        ref, _ = load_gray(REPO / "data/p2holdout2" / g["reference_path"])
+        search, _ = load_gray(REPO / "data/p2holdout2" / g["search_path"])
+        x, y, diag, resp = locate(ref, search, MatchConfig(), return_artifacts=True)
+        tx, ty = float(g["gt_x"]), float(g["gt_y"])
+        err = float(np.hypot(x - tx, y - ty))
+        fig, axes = plt.subplots(1, 3, figsize=(13.2, 4.4),
+                                 gridspec_kw={"width_ratios": [1, 1, 1.15]})
+        axes[0].imshow(ref, cmap="gray")
+        axes[0].set_title("reference, 1 nm per px", fontsize=10)
+        axes[1].imshow(search, cmap="gray")
+        axes[1].plot(tx, ty, "+", color="#2ecc71", ms=14, mew=2.5, label="truth")
+        axes[1].plot(x, y, "x", color="#e67e22", ms=11, mew=2.5, label="predicted")
+        axes[1].legend(loc="upper right", fontsize=8, framealpha=0.9)
+        axes[1].set_title(f"{kind} {pid}, severity {g['severity']}\n"
+                          f"search, err {err:.2f} px", fontsize=10)
+        r = diag["artifacts"]["resp"]
+        im = axes[2].imshow(r, cmap="RdBu_r", vmin=-1, vmax=1)
+        axes[2].set_title("correlation response", fontsize=10)
+        fig.colorbar(im, ax=axes[2], fraction=0.046)
+        for ax in axes:
+            ax.set_xticks([]); ax.set_yticks([])
+        fig.tight_layout()
+        fig.savefig(OUT / name, dpi=140)
+        plt.close(fig)
+        print(f"wrote {name}: {pid} severity {g['severity']} err {err:.2f} px, "
+              f"found evidence peak {diag['score']:.3f}, stage2 used {bool((diag.get('stage2') or {}).get('used'))}")
+
+
 def copy_experiment_figures():
     wanted = {
-        "montage_success.png": latest("experiments/*_final_physics/plots") ,
-        "montage_failure.png": latest("experiments/*_final_physics/plots"),
         "runtime_by_backend.png": latest("experiments/*_backend_port/plots"),
     }
     for name, folder in wanted.items():
@@ -205,4 +244,5 @@ if __name__ == "__main__":
     confidence_regimes()
     pose_robustness()
     precision_recall_by_tier()
+    phase2_montages()
     copy_experiment_figures()

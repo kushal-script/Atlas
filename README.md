@@ -635,11 +635,11 @@ The domains that score lowest are the ones deliberately built to be hardest. Acc
 
 ![Success case](docs/images/montage_success.png)
 
-A FinFET site with a diffusion break inside the window. One correlation peak dominates, the prediction lands 0.02 px from truth, and the answer is labelled `unique_peak`.
+A severity 4 DRAM pair from the held out suite, the hardest rung of the degradation ladder, rendered from the current build: one intersection dominates the correlation response and the prediction lands 0.22 px from truth, reported found=1 at presence probability 0.983.
 
 ![Failure case](docs/images/montage_failure.png)
 
-A window deep inside a defect free DRAM mat, where every cell is a near copy of its neighbours. The correlation response is a lattice of near equal peaks rather than one, and the prediction lands on a wrong periodic instance, 51.54 px away. Three independent tests show this is information limited rather than a search failure: raising the candidate budget from 6 to 24 changed no answer on any of the 150 pairs, the failing cases recover the correct scale and rotation, and supplying the true pose from the generator metadata does not resolve them. The localizer reports `tie_break_convention` here rather than claiming certainty.
+A severity 4 window deep inside a degraded mat where every cell is a near copy of its neighbours: the correlation response is near flat and the best site the search can offer is a wrong periodic instance 257 px away. The oracle experiments established this class as information limited, the true site loses the correlation on two thirds of such pairs even with the true pose supplied, under four independent statistics (`experiments/20260902_sev4_oracle_revisited`). The shipped answer is the honest one: the presence decision rejects the pair at probability 0.203, so the wrong centre never reaches the output, a low scored found=0 instead of a confident miss.
 
 ### Confidence is calibrated, not asserted
 
