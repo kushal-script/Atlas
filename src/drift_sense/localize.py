@@ -983,7 +983,7 @@ def load_gray(path):
         else:
             img = (img >> 8).astype(np.uint8)
     elif img.dtype != np.uint8:
-        x = img.astype(np.float32)
+        x = np.nan_to_num(img.astype(np.float32), nan=0.0, posinf=255.0, neginf=0.0)
         lo, hi = float(x.min()), float(x.max())
         img = (np.zeros(x.shape, np.uint8) if hi <= lo else
                np.clip((x - lo) / (hi - lo) * 255.0, 0, 255).astype(np.uint8))

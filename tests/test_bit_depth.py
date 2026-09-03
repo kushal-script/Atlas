@@ -50,3 +50,15 @@ def test_twelve_bit_range_is_rescaled_not_crushed(tmp_path):
     assert back.dtype == np.uint8
     assert int(back.max()) > 100
     assert np.abs(back.astype(int) - frame.astype(int)).max() <= 1
+
+
+def test_float_frames_with_nan_and_inf_load_finitely(tmp_path):
+    frame = _frame().astype(np.float32)
+    frame[3, 4] = np.nan
+    frame[5, 6] = np.inf
+    frame[7, 8] = -np.inf
+    cv2.imwrite(str(tmp_path / "f.tiff"), frame)
+    back, _ = load_gray(tmp_path / "f.tiff")
+    assert back.dtype == np.uint8
+    assert np.isfinite(back.astype(np.float64)).all()
+    assert int(back.max()) > 100

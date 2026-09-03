@@ -143,7 +143,9 @@ def main():
                   f"reported absent", file=sys.stderr, flush=True)
             emit({"pair_id": pid, "x": 0, "y": 0, "theta": 0,
                          "scale": 0, "found": 0, "score": "0.00000"})
-        except Exception:
+        except Exception as exc:
+            print(f"WARNING: {pid} failed ({type(exc).__name__}: {exc}) and was "
+                  f"reported absent", file=sys.stderr, flush=True)
             emit({"pair_id": pid, "x": 0, "y": 0, "theta": 0,
                          "scale": 0, "found": 0, "score": "0.00000"})
         finally:
