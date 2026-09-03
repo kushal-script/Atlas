@@ -23,6 +23,7 @@ Submission packed, self tested with sockets blocked, and frozen at the numbers b
 | Six unseen appearance families, localization | 1.000 on all six after one measured fix | `experiments/20260901_alien_distribution` |
 | Severity five, past the disclosed ladder | 0.68 credit, zero false rejects | `experiments/20260901_stress_and_decoys` |
 | External audit rounds, verified finding by finding | 7, every new signal closed by a measured change or refuted with recorded evidence | commit history |
+| Bonus gates, plus 6 optical and plus 4 rejection | Set D credit 1.000 on all 12 organiser recipe optical pairs measured, 0.574 to 0.608 on the deliberately harsher own generator with about 2 percent gate risk; rejection F1 0.94 to 0.97 under the found class reading the organisers' scorer implements | `experiments/20260830_optical_margin` |
 | Recorded residual weakness | identical geometry decoys grabbed 6 in 10, priced; its discriminating signal measured at d' 1.68 and five deployments declined for damaging other suites | `experiments/20260902_presence_dev_refit` |
 
 ![Core score by suite](docs/images/p2_core_by_suite.png)
