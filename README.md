@@ -39,7 +39,7 @@ Submission packed, self tested with sockets blocked, and frozen at the numbers b
 | Median runtime per pair | 1.82 s median, 3.00 s mean on the 120 pair proportional holdout with the pose surfaces on a four worker pool, worst pair 6.33 s against the 20 s forfeit; the budget states median 5 s on a four core x86 reference machine, where the serial build measured 6.6 s and the pooled build is the direct response | [results/runtime_protocol.json](results/runtime_protocol.json) |
 | Six unseen appearance families, localization | 1.000 on all six after one measured fix | `experiments/20260901_alien_distribution` |
 | Severity five, past the disclosed ladder | 0.68 credit, zero false rejects | `experiments/20260901_stress_and_decoys` |
-| External audit rounds, verified finding by finding | 7, every new signal closed by a measured change or refuted with recorded evidence | commit history |
+| External audit rounds, verified finding by finding | 14, every new signal closed by a measured change or refuted with recorded evidence | commit history and the audit response folders under `experiments/` |
 | Bonus gates, plus 6 optical and plus 4 rejection | Set D credit 1.000 on all 12 organiser recipe optical pairs measured, 0.574 to 0.608 on the deliberately harsher own generator with about 2 percent gate risk; rejection F1 0.94 to 0.97 under the found class reading the organisers' scorer implements | `experiments/20260830_optical_margin` |
 | Recorded residual weakness | identical geometry decoys grabbed 6 in 10, priced; its discriminating signal measured at d' 1.68 and five deployments declined for damaging other suites | `experiments/20260902_presence_dev_refit` |
 
@@ -177,7 +177,7 @@ Two further dependency files exist for optional work: `requirements_dev.txt` add
 .venv/bin/python -m pytest tests/ -q
 ```
 
-The 69 tests assert the coordinate convention, sub pixel accuracy on constructively unique pairs, generator reproducibility, independent capture noise, every manifest and layout form an evaluator might supply including 16 bit containers holding 8, 12 or 16 bit data, symlinks and blank frames, streak correction that never touches lattice structure, the raw confirmation's present against absent separation and its override floor, incremental output survival of a mid batch kill, agreement of the fitting and inference feature constructions, and the entry point end to end as a subprocess over freshly generated present, absent and RGB optical pairs, asserting the found decisions, the pose accuracy and the zeroed rejection row on the actual CSV it writes.
+The 73 tests assert the coordinate convention, sub pixel accuracy on constructively unique pairs, generator reproducibility, independent capture noise, every manifest and layout form an evaluator might supply including 16 bit containers holding 8, 12 or 16 bit data, symlinks and blank frames, streak correction that never touches lattice structure, the raw confirmation's present against absent separation and its override floor, incremental output survival of a mid batch kill, agreement of the fitting and inference feature constructions, and the entry point end to end as a subprocess over freshly generated present, absent and RGB optical pairs, asserting the found decisions, the pose accuracy and the zeroed rejection row on the actual CSV it writes.
 
 ## Generate a dataset
 

@@ -32,6 +32,6 @@ The campaigns that decide the shipped configuration, in reading order:
 | `20260903_reference_machine_runtime` | the pose surfaces pooled for the four core reference machine, byte identical math |
 
 The audit response folders, `20260902_sixth_audit_response` through
-`20260903_eighth_audit_response`, disposition every external review finding
-by finding, each one either shipped with a regression test or refuted with
-recorded evidence.
+`20260903_thirteenth_audit_response`, disposition the fourteen external
+review rounds finding by finding, each one either shipped with a
+regression test or refuted with recorded evidence.
