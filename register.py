@@ -85,9 +85,10 @@ def _read_pairs(path):
                 pid = row.get(keys.get("pair_id", ""), "") or f"row_{i:04d}"
                 pairs.append((pid, Path(""), Path("")))
                 continue
-            pid = row.get(keys.get("pair_id", ""), "") or f"row_{i:04d}"
+            pid = (row.get(keys.get("pair_id", ""), "") or f"row_{i:04d}").strip()
             try:
-                ref, search = Path(row[rk] or ""), Path(row[sk] or "")
+                ref = Path((row[rk] or "").strip())
+                search = Path((row[sk] or "").strip())
                 if str(ref) and not ref.is_absolute():
                     ref = (path.parent / ref).resolve()
                 if str(search) and not search.is_absolute():
@@ -113,7 +114,13 @@ def main():
     cfg_optical = optical_config()
     model = _load_model()
     rows = []
-    pairs = list(_read_pairs(args.input))
+    try:
+        pairs = list(_read_pairs(args.input))
+    except OSError as exc:
+        print(f"cannot read {args.input}: {exc}", file=sys.stderr, flush=True)
+        sys.exit(2)
+    if args.output.parent and not args.output.parent.exists():
+        args.output.parent.mkdir(parents=True, exist_ok=True)
     out_fh = open(args.output, "w", newline="")
     writer = csv.DictWriter(out_fh, fieldnames=["pair_id", "x", "y", "theta",
                                                 "scale", "found", "score"])
@@ -137,6 +144,9 @@ def main():
             result = register_pair(ref, search, reference_rgb=ref_rgb,
                                    search_rgb=search_rgb, model=model, config=cfg,
                                    optical=cfg_optical, t_start=t_pair)
+            if result.diagnostics.get("budget_gated"):
+                print(f"WARNING: {pid} hit the wall clock budget and skipped "
+                      f"optional stages", file=sys.stderr, flush=True)
             emit(result.as_row(pid))
         except _PairTimeout:
             print(f"WARNING: {pid} exceeded {PAIR_HARD_TIMEOUT_S:.0f}s and was "

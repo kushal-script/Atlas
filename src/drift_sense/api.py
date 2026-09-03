@@ -210,7 +210,9 @@ def register_pair(reference, search, *, reference_rgb=False, search_rgb=False,
     t_start = time.perf_counter() if t_start is None else t_start
     ref = np.asarray(reference)
     search = np.asarray(search)
-    if float(np.std(ref)) < DEGENERATE_STD or float(np.std(search)) < DEGENERATE_STD:
+    ref_std, search_std = float(np.std(ref)), float(np.std(search))
+    if (not np.isfinite(ref_std) or ref_std < DEGENERATE_STD
+            or not np.isfinite(search_std) or search_std < DEGENERATE_STD):
         return Registration(0.0, 0.0, 0.0, 0.0, False, 0.5, "degenerate",
                             "degenerate_input", time.perf_counter() - t_start)
     rgb = bool(reference_rgb or search_rgb)

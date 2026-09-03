@@ -220,7 +220,8 @@ def _make_template(ref_band, theta_deg, scale, cfg):
     rot = np.array([[np.cos(ang), -np.sin(ang)], [np.sin(ang), np.cos(ang)]])
     matrix = rot * zoom
     half = (t - 1) / 2.0
-    center_ref = (ref_band.shape[0] - 1) / 2.0
+    center_ref = np.array([(ref_band.shape[0] - 1) / 2.0,
+                           (ref_band.shape[1] - 1) / 2.0])
     offset = center_ref - matrix @ np.array([half, half])
     return affine_transform(ref_band, matrix, offset=offset,
                             output_shape=(t, t), order=1, mode="constant",

@@ -45,7 +45,11 @@ def test_grid_step_is_no_coarser_than_the_refinement_can_close():
     rot_step = max(b - a for a, b in zip(rot, rot[1:]))
     sca_step = max(b - a for a, b in zip(sca, sca[1:]))
     assert rot_step <= 2 * cfg.refine_rot_step_deg * 2 + 1e-9
-    assert sca_step <= 2 * cfg.refine_scale_step * 2 * 10 + 1e-9
+    assert sca_step <= 2 * cfg.refine_scale_step * 2 + 1e-9
+    assert min(sca) * cfg.zoom == 8.0
+    assert max(sca) * cfg.zoom == 12.0
+    assert min(rot) == -5.0
+    assert max(rot) == 5.0
 
 
 def test_refinement_resolves_inside_the_full_credit_bands():

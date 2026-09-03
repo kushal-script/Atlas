@@ -182,15 +182,25 @@ def main():
         (td / "shim" / "sitecustomize.py").write_text(SOCKET_SHIM)
 
         rows = list(csv.DictReader(open(args.pairs / "ground_truth.csv")))
-        sample = [r for r in rows if r["modality"] == "sem"][:args.num]
-        pairs_csv = td / "pairs.csv"
+        sem = [r for r in rows if r["modality"] == "sem"]
+        present = [r for r in sem if r["found"] == "1"][:max(args.num - 1, 1)]
+        absent = [r for r in sem if r["found"] == "0"][:3]
+        assert absent, "sample suite carries no absent pair"
+        sample = present + absent
+        io_dir = td / "io"
+        io_dir.mkdir()
+        pairs_csv = io_dir / "pairs.csv"
+        import shutil as _sh
         with open(pairs_csv, "w", newline="") as fh:
             w = csv.writer(fh)
             w.writerow(["pair_id", "reference_path", "search_path"])
             for r in sample:
-                w.writerow([r["pair_id"],
-                            (args.pairs / r["reference_path"]).resolve(),
-                            (args.pairs / r["search_path"]).resolve()])
+                pd = io_dir / r["pair_id"]
+                pd.mkdir()
+                _sh.copy(args.pairs / r["reference_path"], pd / "reference.png")
+                _sh.copy(args.pairs / r["search_path"], pd / "search.png")
+                w.writerow([r["pair_id"], f"{r['pair_id']}/reference.png",
+                            f" {r['pair_id']}/search.png"])
 
         import os
         env = dict(os.environ)
@@ -216,9 +226,16 @@ def main():
         assert list(out_rows[0].keys()) == ["pair_id", "x", "y", "theta",
                                             "scale", "found", "score"], "wrong columns"
         for r in out_rows:
+            assert all(float(r[k]) == float(r[k]) for k in ("x", "y", "theta", "scale", "score")), "non finite value"
             if r["found"] == "0":
-                assert r["x"] == "0" and r["theta"] == "0", "rejected row must zero pose"
-        print(f"  SELF TEST PASSED: {len(out_rows)} rows, exact columns, "
+                assert (r["x"], r["y"], r["theta"], r["scale"]) == ("0",) * 4, \
+                    "rejected row must zero all four pose columns"
+        assert [r["pair_id"] for r in out_rows] == [r["pair_id"] for r in sample], "row order"
+        if not any(r["found"] == "0" for r in out_rows):
+            print("  note: no rejection on this sample; pose zeroing is locked "
+                  "by the unit and end to end tests")
+        print(f"  SELF TEST PASSED: {len(out_rows)} rows over csv relative paths with "
+              f"an absent pair, exact columns and order, all pose zeros on rejection, "
               f"no network, no reads outside the supplied paths")
 
 
