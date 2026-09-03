@@ -19,12 +19,12 @@
   "scipy": "1.17.1",
   "opencv": "5.0.0",
   "phase2": {
-    "protocol": "register.py over data/p2holdout2, all 120 pairs of a proportional holdout including absent and optical, wall clock per pair inside the entry point, sole occupant of the machine, opencv capped to the reference machine's four cores",
+    "protocol": "register.py over data/p2holdout2, all 120 pairs of a proportional holdout including absent and optical, wall clock per pair inside the entry point, sole occupant of the machine, the pose surfaces evaluated on a four worker pool sized for the reference machine's four cores",
     "stack": "the reference machine stack: Python 3.11.14, numpy 2.4.6, scipy 1.17.1, opencv 5.0.0",
-    "median_s_per_pair": 4.02,
-    "p90_s": 5.6,
-    "max_s": 6.35,
-    "over_5s_pct": 25,
+    "median_s_per_pair": 1.82,
+    "p90_s": 5.63,
+    "max_s": 6.33,
+    "over_5s_pct": 27.5,
     "requirement_median_s": 5.0,
     "hard_timeout_s": 20.0,
     "development_stack_comparison": {
@@ -37,7 +37,20 @@
       "over_5s_pct": 20,
       "note": "same dataset, same code, interpreter and its numpy and scipy the only variable. The reference stack is 12.0 percent slower at the median, 5.9 at p90 and 10.6 at the worst pair, while returning identical credit, so accuracy measured during development transfers and runtime measured during development does not."
     },
-    "note": "These are the figures the scored run will produce. Headroom against the five second median requirement is 0.98 s rather than the 1.41 s the development stack implied, and the worst pair finishes 13.65 s inside the twenty second timeout that would forfeit it. See experiments/20260831_python311_reference_stack."
+    "note": "Measured on the development M3 under the pinned reference software stack. The pool halves the median, 1.82 s against the requirement's 5.0; the worst pair finishes 13.67 s inside the organisers' twenty second forfeit. The tail is budget bound, not surface bound, so it does not shrink with the pool.",
+    "measured_at": "2026-09-03",
+    "mean_s_per_pair": 3.0,
+    "pre_pool_reference": {
+      "median_s_per_pair": 4.02,
+      "p90_s": 5.6,
+      "max_s": 6.35,
+      "over_5s_pct": 25,
+      "note": "the same protocol on the serial build; the pool halves the median by spreading the independent correlation surfaces while the tail pairs, already bounded by the wall clock budget, are unchanged"
+    },
+    "reference_class_external": {
+      "median_s_per_pair_serial": 6.6,
+      "note": "a four core x86 box on the pinned stack measured the serial build; the pooled build exists to bring that class inside the five second median and is to be re measured there"
+    }
   },
   "measured_on": {
     "python": "3.14.0",
