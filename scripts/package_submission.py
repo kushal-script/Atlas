@@ -99,6 +99,7 @@ _socket.getaddrinfo = _blocked
 _ALLOWED = tuple(_os.path.realpath(p) for p in
                  (_sys.prefix, _sys.base_prefix, _sys.exec_prefix,
                   _os.path.dirname(_os.__file__), "/System", "/usr", "/Library",
+                  _os.devnull, _os.path.realpath(_os.devnull),
                   _os.environ["DS_RUN_DIR"], _os.environ["DS_DATA_DIR"],
                   _os.environ["DS_IO_DIR"]) if p)
 _seen = set()
