@@ -152,12 +152,12 @@ def main():
             print(f"WARNING: {pid} exceeded {PAIR_HARD_TIMEOUT_S:.0f}s and was "
                   f"reported absent", file=sys.stderr, flush=True)
             emit({"pair_id": pid, "x": 0, "y": 0, "theta": 0,
-                         "scale": 0, "found": 0, "score": "0.00000"})
+                         "scale": 0, "found": 0, "score": "0.50000"})
         except Exception as exc:
             print(f"WARNING: {pid} failed ({type(exc).__name__}: {exc}) and was "
                   f"reported absent", file=sys.stderr, flush=True)
             emit({"pair_id": pid, "x": 0, "y": 0, "theta": 0,
-                         "scale": 0, "found": 0, "score": "0.00000"})
+                         "scale": 0, "found": 0, "score": "0.50000"})
         finally:
             if _HAS_ALARM:
                 signal.setitimer(signal.ITIMER_REAL, 0.0)
@@ -167,7 +167,7 @@ def main():
     for pid, _, _ in pairs:
         if pid not in written:
             emit({"pair_id": pid, "x": 0, "y": 0, "theta": 0,
-                  "scale": 0, "found": 0, "score": "0.00000"})
+                  "scale": 0, "found": 0, "score": "0.50000"})
             written.add(pid)
     out_fh.close()
     print(f"wrote {args.output} with {len(rows)} rows")

@@ -38,4 +38,4 @@ def test_loop_without_alarm_writes_conservative_rows(tmp_path, monkeypatch):
         assert r["found"] == "0"
         assert (r["x"], r["y"], r["theta"], r["scale"]) == ("0", "0", "0", "0")
     assert rows["blank_pair"]["score"] == "0.50000"
-    assert rows["missing_pair"]["score"] == "0.00000"
+    assert rows["missing_pair"]["score"] == "0.50000"

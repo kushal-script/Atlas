@@ -88,3 +88,6 @@ def test_localizes_at_the_corners_of_the_disclosed_range(zoom, rot):
     err = float(np.hypot(x - cx, y - cy))
     assert err <= 5.0, f"zoom {zoom} rot {rot}: error {err:.2f} px, diag scale {diag['scale']}"
     assert abs(diag["scale"] * MatchConfig().zoom - zoom) / zoom < 0.05
+    reported = MatchConfig().theta_report_sign * float(diag["theta_deg"])
+    assert abs(reported - rot) <= 0.5, f"theta {reported:.2f} vs injected {rot}"
+    assert reported * rot > 0

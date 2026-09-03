@@ -542,7 +542,8 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
         if key in tried:
             return tried[key]
         tmpl = _make_template(ref_bank[sig], theta, scale, cfg)
-        tried[key] = float(corr.peaks([tmpl])[0])
+        pk = float(corr.peaks([tmpl])[0])
+        tried[key] = pk if np.isfinite(pk) else -2.0
         return tried[key]
 
     def evaluate_many(items):
@@ -561,7 +562,8 @@ def locate(ref_img, search_img, cfg=None, return_artifacts=False, t_start=None):
             lambda a: _make_template(ref_bank[a[0]], a[1], a[2], cfg),
             [a for _, a in fresh])
         for (key, _), pk in zip(fresh, corr.peaks(tmpls)):
-            tried[key] = float(pk)
+            pk = float(pk)
+            tried[key] = pk if np.isfinite(pk) else -2.0
 
     def refine(seed_key):
         """Local descent on rotation and scale, keeping the seed's blur level."""

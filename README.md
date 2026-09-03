@@ -57,7 +57,7 @@ Submission packed, self tested with sockets blocked, and frozen at the numbers b
 | Output | centre x y sub pixel, rotation, recovered scale, found flag, confidence |
 | Coordinate origin | centre of the top left pixel, x increases right, y increases down |
 | Multiple matches | the match closest to the search image centre is returned |
-| Runtime | median 4.02 s per pair measured through the entry point on a proportional holdout under the reference machine stack, Python 3.11 with numpy 2.4.6 and scipy 1.17.1; worst pair observed 9.01 s against a 20 s forfeit, and the run to run band of suite medians on one machine is about a second |
+| Runtime | 3.0 s per pair median on the development laptop with the pose surfaces pooled, 4.02 s on the same holdout before the pool, under the pinned stack, Python 3.11 with numpy 2.4.6 and scipy 1.17.1; a four core x86 of the reference class measured 6.6 s on the serial build and the pooled build is the response; worst pair observed 9.01 s against the organisers' 20 s forfeit |
 
 ### What changed in Phase 2
 
