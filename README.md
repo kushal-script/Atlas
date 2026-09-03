@@ -412,6 +412,8 @@ The named outstanding experiment in the source, extending the blur bank to repre
 | 5 | Training script or notebook | [notebooks/train_reranker.ipynb](notebooks/train_reranker.ipynb), [scripts/train_reranker.py](scripts/train_reranker.py) | reproduces the whole chain: generate, harvest candidates, train, calibrate, export, and verify that the numpy and torch forward passes agree |
 | 6 | requirements.txt | [requirements_phase2.txt](requirements_phase2.txt), [requirements.txt](requirements.txt), [requirements_freeze.txt](requirements_freeze.txt) | `requirements_phase2.txt` is frozen from a Python 3.11 environment and ships in the submission zip as `requirements.txt`, because the Phase 1 numpy pin has no 3.11 wheels and would not install on the reference machine at all. `requirements.txt` is the development runtime set, verified end to end from a fresh virtual environment, and `requirements_freeze.txt` is the complete `pip freeze` including test and training only packages |
 | 7 | Citation document | [docs/citations.md](docs/citations.md), [references/references.bib](references/references.bib) | 52 references, each verified against the publisher and each tied to the specific parameter, noise model or method choice it supports; these are the sources cited in the submission |
+| 8 | Failure analysis, max 2 pages | [submission/failure_analysis.pdf](submission/failure_analysis.pdf), source [docs/phase2_failure_analysis.md](docs/phase2_failure_analysis.md) | rendered at exactly 2 pages; the packaging self test re reads the page count from the PDF bytes on every build |
+| 9 | Walkthrough video | [Drive folder](https://drive.google.com/drive/folders/1LNOOawzsAabmhB1LChAdT-beJ5i7mDL7?usp=sharing) | the Phase 2 demonstration, one continuous screen recording of the entry point running live on the organisers' twenty shared pairs; the link is shared for anyone with it and was verified from a private browsing session |
 
 The Phase 2 submission zip is built and verified by one command, which packs the entry point, its sources, the shipped weights and the two page failure analysis, then proves the pack works the way the scored run will: it extracts the zip into a fresh directory, runs the entry point there under a Python 3.11 interpreter with a socket shim that turns any network call into an exception, and asserts one row per pair with the exact required columns and zeroed pose on every rejection.
 
@@ -425,13 +427,13 @@ Also in the repository beyond the required list: the complete experiment record 
 
 ## Walkthrough
 
-A recorded run of the system, end to end and unedited.
+### [Watch the Phase 2 demonstration](https://drive.google.com/drive/folders/1LNOOawzsAabmhB1LChAdT-beJ5i7mDL7?usp=sharing)
 
-### [Watch the full recording](https://drive.google.com/file/d/1t1uv_nKDmpo3YISUgpnWzXUI2qzN_WHd/view?usp=sharing)
+One continuous, unedited screen recording of the scored entry point running live on the organisers' twenty shared pairs: the manifest, `register.py` streaming all twenty decisions with each prediction drawn on the search frame as its row lands, the exact seven column output with zeros on every rejected pose, and the run scored against the organisers' ground truth at 0.988 mean credit, 0.38 px median error and no false rejects. Nothing is mocked and no timing is compressed.
 
-[![Walkthrough](docs/images/demo.gif)](https://drive.google.com/file/d/1t1uv_nKDmpo3YISUgpnWzXUI2qzN_WHd/view?usp=sharing)
+[![Walkthrough](docs/images/demo.gif)](https://drive.google.com/drive/folders/1LNOOawzsAabmhB1LChAdT-beJ5i7mDL7?usp=sharing)
 
-The preview above is twenty five seconds drawn from the three minute run: the localizer answering on one pair with its error against the recorded truth, then the success case, the honest failure and the runtime comparison. The full recording additionally covers the environment check, dataset generation, the confidence diagnostics, and the batch, manifest and accelerator invocation forms, and ends with the test suite. A copy is in the repository as [drift_sense_demo.mp4](drift_sense_demo.mp4); GitHub cannot play an mp4 inside a readme, so the link above is the one to use.
+The preview above is drawn from the Phase 1 recording, which remains available [here](https://drive.google.com/file/d/1t1uv_nKDmpo3YISUgpnWzXUI2qzN_WHd/view?usp=sharing) and covers the environment check, dataset generation, the confidence diagnostics, the batch, manifest and accelerator invocation forms, and the test suite; a copy is in the repository as [drift_sense_demo.mp4](drift_sense_demo.mp4).
 
 ## Repository layout
 

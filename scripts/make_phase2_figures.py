@@ -169,10 +169,9 @@ def runtime():
 def organiser_sample():
     """experiments/20260901_organiser_sample_validation and the final battery."""
     fig, ax = plt.subplots(figsize=(7.6, 3.7))
-    labels = ["organisers' own\nZNCC baseline", "this pipeline,\nSeptember 1 morning",
-              "this pipeline,\ncurrent build"]
-    vals = [0.800, 0.925, 0.988]
-    bars = ax.bar(labels, vals, color=[GREY, BLUE, GREEN], width=0.55)
+    labels = ["organisers' own\nZNCC baseline", "this pipeline,\ncurrent build"]
+    vals = [0.800, 0.988]
+    bars = ax.bar(labels, vals, color=[GREY, GREEN], width=0.45)
     for b, v in zip(bars, vals):
         ax.text(b.get_x() + b.get_width() / 2, v + 0.012, f"{v:.3f}", ha="center", fontsize=12)
     ax.set_ylim(0, 1.09)
