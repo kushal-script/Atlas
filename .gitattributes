@@ -1,0 +1,4 @@
+benchmark.sh text eol=lf
+benchmark.ps1 text eol=crlf
+benchmark.bat text eol=crlf
+*.sh text eol=lf
